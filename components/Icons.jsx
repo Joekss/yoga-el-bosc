@@ -1,0 +1,63 @@
+// components/Icons.jsx — Icones lineals minimalistes
+
+const Icon = ({ name, size = 22, color = 'currentColor', strokeWidth = 1.6 }) => {
+  const props = {
+    width: size, height: size, viewBox: '0 0 24 24',
+    fill: 'none', stroke: color, strokeWidth,
+    strokeLinecap: 'round', strokeLinejoin: 'round',
+  };
+  const paths = {
+    home: <><path d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-7H10v7H6a2 2 0 0 1-2-2v-9z"/></>,
+    library: <><path d="M4 5h6v14H4zM14 5h6v14h-6z"/><path d="M7 9h0M17 9h0"/></>,
+    calendar: <><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></>,
+    journal: <><path d="M5 4h12a2 2 0 0 1 2 2v14l-4-2-4 2-4-2-4 2V6a2 2 0 0 1 2-2z"/></>,
+    note: <><path d="M5 4h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/><path d="M8 11h8M8 15h6"/></>,
+    play: <><polygon points="8,5 19,12 8,19" fill={color} fillOpacity="0.95"/></>,
+    pause: <><rect x="6" y="5" width="4" height="14" fill={color}/><rect x="14" y="5" width="4" height="14" fill={color}/></>,
+    skip: <><polygon points="6,5 14,12 6,19" fill={color}/><line x1="17" y1="5" x2="17" y2="19"/></>,
+    back: <><polyline points="15,18 9,12 15,6"/></>,
+    next: <><polyline points="9,6 15,12 9,18"/></>,
+    close: <><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></>,
+    check: <><polyline points="4,12 10,18 20,6"/></>,
+    leaf: <><path d="M4 20c0-9 7-16 16-16-1 9-7 16-16 16z"/><path d="M4 20l8-8"/></>,
+    flame: <><path d="M12 3c2 4 6 6 6 11a6 6 0 0 1-12 0c0-3 2-4 3-7 1 2 2 2 3 1 0-2 0-3 0-5z"/></>,
+    sparkle: <><path d="M12 3v6M12 15v6M3 12h6M15 12h6M5 5l4 4M15 15l4 4M19 5l-4 4M9 15l-4 4"/></>,
+    heart: <><path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.5A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/></>,
+    bell: <><path d="M6 16l-1 2h14l-1-2V11a6 6 0 0 0-12 0v5z"/><path d="M10 21h4"/></>,
+    settings: <><circle cx="12" cy="12" r="3"/><path d="M19 12c0 .5-.1 1-.2 1.4l2 1.5-2 3.4-2.3-.9c-.7.6-1.5 1-2.4 1.3L13.5 21h-3l-.6-2.3c-.9-.3-1.7-.7-2.4-1.3l-2.3.9-2-3.4 2-1.5c-.1-.4-.2-.9-.2-1.4s.1-1 .2-1.4l-2-1.5 2-3.4 2.3.9c.7-.6 1.5-1 2.4-1.3L10.5 3h3l.6 2.3c.9.3 1.7.7 2.4 1.3l2.3-.9 2 3.4-2 1.5c.1.4.2.9.2 1.4z"/></>,
+    user: <><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-7 8-7s8 3 8 7"/></>,
+    moon: <><path d="M21 13a9 9 0 1 1-10-10 7 7 0 0 0 10 10z"/></>,
+    sun: <><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/></>,
+    flower: <><circle cx="12" cy="12" r="2.5"/><circle cx="12" cy="6" r="2.5"/><circle cx="12" cy="18" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="12" r="2.5"/></>,
+    breath: <><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="8" strokeOpacity="0.4"/></>,
+    timer: <><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 3h6"/></>,
+    plus: <><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+    arrowRight: <><line x1="5" y1="12" x2="19" y2="12"/><polyline points="13,6 19,12 13,18"/></>,
+    search: <><circle cx="11" cy="11" r="7"/><line x1="16" y1="16" x2="21" y2="21"/></>,
+    filter: <><path d="M3 5h18M6 12h12M10 19h4"/></>,
+    chakra: <><circle cx="12" cy="12" r="3"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3"/><circle cx="12" cy="12" r="9" strokeOpacity="0.3"/></>,
+    download: <><path d="M12 3v12M7 11l5 5 5-5"/><path d="M4 19h16"/></>,
+    chat: <><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z"/></>,
+    send: <><path d="M4 12l16-8-7 18-3-7-6-3z"/></>,
+    mic: <><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></>,
+    image: <><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 17l-6-6-9 9"/></>,
+    pdf: <><path d="M7 3h8l4 4v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M14 3v5h5M9 14h2a1.4 1.4 0 0 0 0-2.8H9zM9 17h6"/></>,
+    quote: <><path d="M5 9c0-2 1-4 4-4M5 13h3v6H4v-3a3 3 0 0 1 1-3zM14 9c0-2 1-4 4-4M14 13h3v6h-4v-3a3 3 0 0 1 1-3z"/></>,
+    smile: <><circle cx="12" cy="12" r="9"/><path d="M9 14a3.5 3.5 0 0 0 6 0"/><path d="M9 9.5h0M15 9.5h0"/></>,
+    check2: <><polyline points="3,12 8,17 14,9"/><polyline points="11,17 16,22 22,8"/></>,
+    clock: <><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 16,14"/></>,
+    pin: <><path d="M12 3l3 5 5 1-4 4 1 5-5-3-5 3 1-5-4-4 5-1z"/></>,
+    broadcast: <><path d="M4 11l16-7v16L4 13z"/><path d="M9 12v5a2 2 0 0 0 4 0v-3"/></>,
+    dots: <><circle cx="6" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="18" cy="12" r="1.4"/></>,
+    mail: <><rect x="2" y="5" width="20" height="14" rx="2"/><polyline points="2,7 12,13 22,7"/></>,
+    lock: <><rect x="6" y="11" width="12" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/><circle cx="12" cy="16" r="1.3" fill="currentColor" stroke="none"/></>,
+    shield: <><path d="M12 3l8 3v6c0 5-4 9-8 10-4-1-8-5-8-10V6l8-3z"/></>,
+    'user-plus': <><circle cx="9" cy="8" r="4"/><path d="M3 21c0-4 3-7 6-7s6 3 6 7"/><line x1="18" y1="8" x2="18" y2="14"/><line x1="15" y1="11" x2="21" y2="11"/></>,
+    trash: <><polyline points="3,7 21,7"/><path d="M9 7V4h6v3M19 7l-1 14H6L5 7"/><path d="M10 11v5M14 11v5"/></>,
+    key: <><circle cx="8" cy="15" r="4"/><path d="M11.7 11.7L21 3"/><path d="M20 4l1 1-3 3-1-1"/></>,
+    refresh: <><polyline points="23,4 23,10 17,10"/><path d="M20.5 16a9 9 0 1 1-.5-6.5L23 10"/></>,
+  };
+  return <svg {...props}>{paths[name] || null}</svg>;
+};
+
+window.Icon = Icon;

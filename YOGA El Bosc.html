@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+<title>YOGA · El Bosc</title>
+
+<!-- PWA -->
+<meta name="theme-color" content="#F5EFE3"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+<meta name="apple-mobile-web-app-title" content="El Bosc"/>
+<link rel="manifest" href="manifest.webmanifest"/>
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png"/>
+
+<!-- Fonts locals (offline) -->
+<link rel="stylesheet" href="vendor/fonts/fonts-local.css"/>
+
+<link rel="stylesheet" href="styles/tokens.css"/>
+
+<template id="__bundler_thumbnail">
+  <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <rect width="100" height="100" fill="#F5EFE3"/>
+    <g stroke="#B8744A" stroke-width="2" fill="none" stroke-linecap="round">
+      <path d="M50 20 Q40 35 40 50 Q40 65 50 70 Q60 65 60 50 Q60 35 50 20z"/>
+      <line x1="50" y1="20" x2="50" y2="70"/>
+    </g>
+  </svg>
+</template>
+
+<style>
+  html, body { height: 100%; margin: 0; padding: 0; background: #2C2A24; }
+  body { display: flex; align-items: center; justify-content: center; }
+  #root { width: 100%; height: 100%; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Llibreries locals (funcionen sense internet) -->
+<script src="vendor/react.production.min.js"></script>
+<script src="vendor/react-dom.production.min.js"></script>
+<script src="vendor/babel.min.js"></script>
+
+<script type="text/babel" src="ios-frame.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="data/asanas.jsx"></script>
+<script type="text/babel" src="data/i18n.jsx"></script>
+<script type="text/babel" src="data/sequencer.jsx"></script>
+<script type="text/babel" src="components/Icons.jsx"></script>
+<script type="text/babel" src="components/PoseIllustrations.jsx"></script>
+<script type="text/babel" src="components/Onboarding.jsx"></script>
+<script type="text/babel" src="components/Practice.jsx"></script>
+<script type="text/babel" src="components/Screens.jsx"></script>
+<script type="text/babel" src="components/Auth.jsx"></script>
+<script type="text/babel" src="components/Chat.jsx"></script>
+<script type="text/babel" src="app.jsx"></script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>

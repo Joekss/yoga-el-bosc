@@ -1,0 +1,245 @@
+/* ─────────────────────────────────────────────────────────────
+   YOGA EL BOSC — Design tokens
+   Inspirat en: bosc mediterrani, terracotta, sorra, mar, paper
+   ──────────────────────────────────────────────────────────── */
+
+:root {
+  /* Paleta Bosc (default) */
+  --bosc-ink: #2C2A24;
+  --bosc-ink-soft: #4A463C;
+  --bosc-paper: #F5EFE3;
+  --bosc-paper-2: #EBE3D2;
+  --bosc-cream: #FAF6EC;
+  --bosc-sand: #D9CDB3;
+  --bosc-clay: #B8744A;       /* terracotta */
+  --bosc-clay-deep: #8C5232;
+  --bosc-moss: #5A6A3D;       /* verd bosc */
+  --bosc-moss-deep: #3D4A28;
+  --bosc-sage: #9AAA82;
+  --bosc-sky: #A8B8C0;
+  --bosc-stone: #6E6757;
+
+  /* Active (overridden by data-theme) */
+  --ink: var(--bosc-ink);
+  --ink-soft: var(--bosc-ink-soft);
+  --paper: var(--bosc-paper);
+  --paper-2: var(--bosc-paper-2);
+  --cream: var(--bosc-cream);
+  --sand: var(--bosc-sand);
+  --accent: var(--bosc-clay);
+  --accent-deep: var(--bosc-clay-deep);
+  --leaf: var(--bosc-moss);
+  --leaf-deep: var(--bosc-moss-deep);
+  --sage: var(--bosc-sage);
+  --sky: var(--bosc-sky);
+  --stone: var(--bosc-stone);
+
+  /* Tipografia */
+  --serif: "Cormorant Garamond", "EB Garamond", Georgia, serif;
+  --serif-display: "Cormorant Garamond", Georgia, serif;
+  --sans: "Inter", -apple-system, system-ui, sans-serif;
+  --hand: "Caveat", "Bradley Hand", cursive;
+
+  /* Espais (densitat normal) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
+
+  --shadow-1: 0 1px 2px rgba(44,42,36,0.06), 0 4px 12px rgba(44,42,36,0.04);
+  --shadow-2: 0 2px 8px rgba(44,42,36,0.08), 0 12px 32px rgba(44,42,36,0.08);
+  --shadow-warm: 0 6px 24px rgba(184,116,74,0.18);
+}
+
+/* ── Paletes alternatives ─────────────────────────────────── */
+
+[data-palette="sage"] {
+  --paper: #EFEFE3;
+  --paper-2: #E2E4CF;
+  --cream: #F7F7EE;
+  --sand: #C9CDB1;
+  --accent: #6B8259;
+  --accent-deep: #4A5C3C;
+  --leaf: #6B8259;
+  --leaf-deep: #3C4A2C;
+}
+
+[data-palette="ocean"] {
+  --paper: #EEF1F1;
+  --paper-2: #DCE4E4;
+  --cream: #F6F8F8;
+  --sand: #BDCBC9;
+  --accent: #4A7B8C;
+  --accent-deep: #2E5666;
+  --leaf: #6E8A82;
+  --leaf-deep: #3F564E;
+}
+
+/* ── Mode fosc ────────────────────────────────────────────── */
+[data-mode="dark"] {
+  --ink: #F0EAD8;
+  --ink-soft: #C9C2AE;
+  --paper: #1F1D17;
+  --paper-2: #2A2720;
+  --cream: #292620;
+  --sand: #4A4538;
+  --accent: #D2916C;
+  --accent-deep: #B8744A;
+  --leaf: #A4B58A;
+  --leaf-deep: #7A8F62;
+  --sage: #8A9B72;
+  --stone: #9A9482;
+  --shadow-1: 0 1px 2px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.25);
+  --shadow-2: 0 2px 8px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.35);
+}
+
+/* ── Densitat compacta ─────────────────────────────────────── */
+[data-density="compact"] {
+  --sp-3: 8px;
+  --sp-4: 12px;
+  --sp-5: 16px;
+  --sp-6: 18px;
+  --sp-8: 24px;
+  --sp-10: 32px;
+  --sp-12: 40px;
+}
+
+/* ── Tipografia opcional ──────────────────────────────────── */
+[data-typeface="garamond"] {
+  --serif: "EB Garamond", Georgia, serif;
+  --serif-display: "EB Garamond", Georgia, serif;
+}
+[data-typeface="fraunces"] {
+  --serif: "Fraunces", Georgia, serif;
+  --serif-display: "Fraunces", Georgia, serif;
+}
+
+/* ── Reset i base ─────────────────────────────────────────── */
+* { box-sizing: border-box; }
+body, html { margin: 0; padding: 0; }
+
+.yb-app {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "liga", "kern";
+}
+
+.yb-app h1, .yb-app h2, .yb-app h3 {
+  font-family: var(--serif-display);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.yb-app .label, .yb-app .meta, .yb-app button, .yb-app input, .yb-app select {
+  font-family: var(--sans);
+}
+
+/* Scrollbar discret */
+.yb-scroll::-webkit-scrollbar { width: 0; height: 0; }
+.yb-scroll { scrollbar-width: none; }
+
+/* Fons texturat sutil (paper) */
+.yb-paper-bg {
+  background-color: var(--paper);
+  background-image:
+    radial-gradient(ellipse at 20% 0%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 60%),
+    radial-gradient(ellipse at 100% 100%, color-mix(in srgb, var(--leaf) 6%, transparent), transparent 60%);
+}
+
+/* Botó base */
+.yb-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 14px 22px; border: none; cursor: pointer;
+  border-radius: var(--r-pill); font-size: 15px; font-weight: 500;
+  letter-spacing: 0.02em; transition: transform .15s, box-shadow .15s, background .15s;
+  font-family: var(--sans);
+}
+.yb-btn:active { transform: scale(0.97); }
+.yb-btn-primary {
+  background: var(--ink);
+  color: var(--cream);
+}
+.yb-btn-primary:hover { background: var(--accent-deep); }
+.yb-btn-clay {
+  background: var(--accent);
+  color: var(--cream);
+  box-shadow: var(--shadow-warm);
+}
+.yb-btn-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent);
+}
+
+/* Chip */
+.yb-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px; border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+  border: 1px solid transparent;
+  font-family: var(--sans); font-size: 13px;
+  color: var(--ink-soft);
+  cursor: pointer; transition: all .15s;
+  user-select: none;
+}
+.yb-chip:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); }
+.yb-chip.active {
+  background: var(--ink);
+  color: var(--cream);
+  border-color: var(--ink);
+}
+.yb-chip.clay.active {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+/* Card */
+.yb-card {
+  background: var(--cream);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  box-shadow: var(--shadow-1);
+  border: 1px solid color-mix(in srgb, var(--ink) 5%, transparent);
+}
+
+/* Divider amb adorn */
+.yb-divider-leaf {
+  display: flex; align-items: center; gap: 10px;
+  color: var(--accent);
+  font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase;
+  font-family: var(--sans);
+}
+.yb-divider-leaf::before, .yb-divider-leaf::after {
+  content: ''; flex: 1; height: 1px;
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+/* Animacions */
+@keyframes ybFadeUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ybBreathe {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+@keyframes ybPulse {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); }
+  50% { box-shadow: 0 0 0 12px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+.yb-fade-up { animation: ybFadeUp .4s ease both; }

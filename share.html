@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>El Bosc · Ioga personalitzat</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    background: #F5EFE3;
+    font-family: system-ui, -apple-system, Georgia, serif;
+    color: #2C2A24;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 40px 20px 60px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 400px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+
+  .logo-wrap {
+    margin-bottom: 20px;
+  }
+
+  .heading {
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 32px;
+    font-weight: normal;
+    color: #2C2A24;
+    letter-spacing: -0.01em;
+    margin: 0 0 6px;
+    text-align: center;
+  }
+
+  .subhead {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.28em;
+    text-transform: uppercase;
+    color: #B8744A;
+    margin: 0 0 36px;
+    text-align: center;
+  }
+
+  .cta {
+    display: block;
+    width: 100%;
+    padding: 18px 24px;
+    background: #B8744A;
+    color: #FAF6EC;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 17px;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 999px;
+    box-shadow: 0 6px 24px rgba(184,116,74,0.30);
+    transition: background 0.15s, transform 0.12s;
+    letter-spacing: 0.01em;
+    margin-bottom: 40px;
+  }
+  .cta:active {
+    background: #8C5232;
+    transform: scale(0.97);
+  }
+
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    margin-bottom: 24px;
+    color: #B8744A;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: rgba(184,116,74,0.3);
+  }
+
+  .install-section {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .install-block {
+    background: #EBE3D2;
+    border-radius: 16px;
+    padding: 18px 20px;
+  }
+
+  .install-block h3 {
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #B8744A;
+    margin: 0 0 10px;
+  }
+
+  .install-block ol {
+    margin: 0;
+    padding: 0 0 0 18px;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 14px;
+    color: #4A463C;
+    line-height: 1.7;
+  }
+
+  .install-block ol li {
+    margin-bottom: 2px;
+  }
+
+  .footer {
+    margin-top: 40px;
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 12px;
+    color: #9A9482;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+
+  <div class="logo-wrap">
+    <svg viewBox="0 0 80 80" width="80" height="80" xmlns="http://www.w3.org/2000/svg"
+         style="filter: drop-shadow(0 4px 14px rgba(184,116,74,0.28))">
+      <circle cx="40" cy="40" r="40" fill="#F5EDE0"/>
+      <g stroke="#B8744A" stroke-width="1.5" fill="none" stroke-linecap="round">
+        <path d="M40 20 Q32 34 32 44 Q32 54 40 58 Q48 54 48 44 Q48 34 40 20z"/>
+        <line x1="40" y1="20" x2="40" y2="58"/>
+        <path d="M32 36 Q24 30 22 22 Q28 24 32 36z"/>
+        <path d="M48 38 Q56 32 58 24 Q52 26 48 38z"/>
+      </g>
+    </svg>
+  </div>
+
+  <h1 class="heading">El Bosc</h1>
+  <p class="subhead">Ioga personalitzat</p>
+
+  <a class="cta" href="./index.html">Obrir la app &rarr;</a>
+
+  <div class="divider">Instal·la-la al teu mòbil</div>
+
+  <div class="install-section">
+    <div class="install-block">
+      <h3>iPhone · Safari</h3>
+      <ol>
+        <li>Obre el link amb <strong>Safari</strong></li>
+        <li>Toca la icona de <strong>compartir</strong> (quadrat amb fletxa ↑)</li>
+        <li>Selecciona <strong>"Afegir a la pantalla d'inici"</strong></li>
+        <li>Confirma tocant <strong>"Afegir"</strong></li>
+      </ol>
+    </div>
+
+    <div class="install-block">
+      <h3>Android · Chrome</h3>
+      <ol>
+        <li>Obre el link amb <strong>Chrome</strong></li>
+        <li>Toca el menú <strong>⋮</strong> (tres punts, dalt a la dreta)</li>
+        <li>Selecciona <strong>"Instal·lar app"</strong> o <strong>"Afegir a la pantalla d'inici"</strong></li>
+        <li>Confirma tocant <strong>"Instal·lar"</strong></li>
+      </ol>
+    </div>
+  </div>
+
+  <p class="footer">El Bosc · Ioga personalitzat &middot; Cèlia</p>
+
+</div>
+</body>
+</html>
