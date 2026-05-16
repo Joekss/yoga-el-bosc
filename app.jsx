@@ -2,6 +2,25 @@
 
 const { useState: uSA, useEffect: uEA, useMemo: uMA } = React;
 
+// ── Processa l'enllaç d'invitació (?inv=base64) ─────────────────────────────
+(function () {
+  try {
+    const inv = new URLSearchParams(window.location.search).get('inv');
+    if (inv) {
+      const dec = atob(inv);
+      const i = dec.indexOf(':');
+      const email = dec.slice(0, i).toLowerCase().trim();
+      const code  = dec.slice(i + 1).trim();
+      if (email && code) {
+        localStorage.setItem('elbosc-credential', JSON.stringify({ email, code }));
+        localStorage.setItem('elbosc-session', JSON.stringify({ email, role: 'student' }));
+        window.__elBoscInvite = { email, code };
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  } catch (e) {}
+})();
+
 const DEFAULT_PROFILE = {
   name: 'Núria',
   age: 38, gender: 'Dona', height: 165, weight: 60,
@@ -33,13 +52,29 @@ function App() {
   const lang = tweaks.lang || 'ca';
   const t = I18N[lang];
 
-  const [stage, setStage] = uSA(tweaks.stage || 'auth'); // auth | welcome | quiz | app | practice
+  const [stage, setStage] = uSA(() => {
+    if (window.__elBoscInvite) return 'welcome'; // enllaç d'invitació: accés directe
+    try {
+      const sess = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
+      if (sess?.role) return sess.role === 'teacher' ? 'app' : 'app';
+    } catch (e) {}
+    return tweaks.stage || 'auth';
+  }); // auth | welcome | quiz | app | practice
   const [tab, setTab] = uSA('home');
   const [profile, setProfile] = uSA(DEFAULT_PROFILE);
   const [poseDetail, setPoseDetail] = uSA(null);
 
-  // React to tweak stage change
-  uEA(() => { if (tweaks.stage) setStage(tweaks.stage); }, [tweaks.stage]);
+  // React to tweak stage change (only in dev mode)
+  uEA(() => { if (!isProd && tweaks.stage) setStage(tweaks.stage); }, [tweaks.stage]);
+
+  // Restaura el rol de sessió guardada
+  uEA(() => {
+    try {
+      const sess = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
+      if (sess?.role) setTweak('role', sess.role);
+      if (window.__elBoscInvite) { setTweak('role', 'student'); window.__elBoscInvite = null; }
+    } catch (e) {}
+  }, []);
 
   const sequence = uMA(() => generateSequence(profile, ASANAS), [profile]);
 
@@ -59,6 +94,7 @@ function App() {
       {stage === 'auth' && (
         <AuthGate lang={lang} adminPin="1234"
           onSuccess={(email, role) => {
+            localStorage.setItem('elbosc-session', JSON.stringify({ email, role }));
             if (role === 'teacher') {
               setTweak('role', 'teacher');
               setStage('app'); setTab('messages');

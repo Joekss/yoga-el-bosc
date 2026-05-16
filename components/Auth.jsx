@@ -569,7 +569,7 @@ const AdminPanel = ({ t, lang, onClose, onEnterAsTeacher, roster, setRoster }) =
                     <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6 }}>
                       <span style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)' }}>{({ca:'Codi:',es:'Código:',en:'Code:'})[lang]}</span>
                       <span style={{ fontFamily:'var(--serif)', fontSize:16, letterSpacing:'0.25em', color:'var(--ink)', fontStyle:'italic' }}>{s.code}</span>
-                      <button onClick={()=>{ const msg = `El Bosc Ioga 🌿\nURL: ${window.location.href}\nCorreu: ${s.email}\nCodi: ${s.code}`; navigator.clipboard?.writeText(msg).catch(()=>{}); }}
+                      <button onClick={()=>{ const base=window.location.origin+window.location.pathname; const inv=btoa(`${s.email}:${s.code}`); const url=`${base}?inv=${inv}`; const msg=`El Bosc Ioga 🌿\nEnllaç d'accés personal:\n${url}`; navigator.clipboard?.writeText(msg).catch(()=>{}); }}
                         style={{ padding:'3px 8px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', background:'color-mix(in srgb, var(--accent) 8%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:10, cursor:'pointer' }}>
                         {({ca:'Copiar per WhatsApp',es:'Copiar para WhatsApp',en:'Copy for WhatsApp'})[lang]}
                       </button>
@@ -710,15 +710,33 @@ const AuthGate = ({ lang = 'ca', adminPin = '1234', onSuccess }) => {
   };
 
   const checkEmail = (email) => {
-    const s = roster.find(x => x.email.toLowerCase() === email.trim().toLowerCase());
+    const em = email.trim().toLowerCase();
+    // 1. Credencial local (guardada quan es va obrir l'enllaç d'invitació)
+    try {
+      const cred = JSON.parse(localStorage.getItem('elbosc-credential') || 'null');
+      if (cred && cred.email === em) return { ok: true };
+    } catch (e) {}
+    // 2. Roster local de l'admin (funciona al dispositiu de la Cèlia)
+    const s = roster.find(x => x.email.toLowerCase() === em);
     if (!s) return { ok: false, reason: 'not_found' };
     if (s.status === 'revoked') return { ok: false, reason: 'revoked' };
     return { ok: true };
   };
 
   const handleSend = (email) => {
-    const s = roster.find(x => x.email.toLowerCase() === email.trim().toLowerCase());
-    setStudentCode(s?.code || '');
+    const em = email.trim().toLowerCase();
+    let code = '';
+    // 1. Credencial local
+    try {
+      const cred = JSON.parse(localStorage.getItem('elbosc-credential') || 'null');
+      if (cred && cred.email === em) code = cred.code;
+    } catch (e) {}
+    // 2. Roster local de l'admin
+    if (!code) {
+      const s = roster.find(x => x.email.toLowerCase() === em);
+      code = s?.code || '';
+    }
+    setStudentCode(code);
     setSentEmail(email);
     setScreen('code');
   };
