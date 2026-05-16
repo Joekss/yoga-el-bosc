@@ -294,12 +294,26 @@ const Calendar = ({ t, lang, profile }) => {
   const today = new Date();
   const month = today.getMonth();
   const year = today.getFullYear();
+  const locale = lang === 'ca' ? 'ca-ES' : lang === 'es' ? 'es-ES' : 'en-US';
   const first = new Date(year, month, 1).getDay() || 7;
   const days = new Date(year, month+1, 0).getDate();
-  const days_lang = { ca: ['Dl','Dt','Dc','Dj','Dv','Ds','Dg'], es: ['Lu','Ma','Mi','Ju','Vi','Sá','Do'], en: ['Mo','Tu','We','Th','Fr','Sa','Su'] }[lang];
-  const monthName = today.toLocaleDateString(lang === 'ca' ? 'ca-ES' : lang, { month: 'long', year: 'numeric' });
-  // Mock practice days
-  const practiced = [3, 5, 6, 9, 11, 13, 14, 17, 18, 20].filter(d => d <= today.getDate());
+  const days_lang = ({ ca: ['Dl','Dt','Dc','Dj','Dv','Ds','Dg'], es: ['Lu','Ma','Mi','Ju','Vi','Sá','Do'], en: ['Mo','Tu','We','Th','Fr','Sa','Su'] })[lang] || ['Mo','Tu','We','Th','Fr','Sa','Su'];
+  const monthName = (() => { try { return today.toLocaleDateString(locale, { month: 'long', year: 'numeric' }); } catch(e) { return today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); } })();
+  const PRACTICED_KEY = `elbosc-practiced-${year}-${month}`;
+  const [practiced, setPracticed] = uS(() => {
+    try { const s = JSON.parse(localStorage.getItem(PRACTICED_KEY)); if (Array.isArray(s)) return s; } catch(e) {}
+    return [3, 5, 6, 9, 11, 13, 14, 17, 18, 20].filter(d => d <= today.getDate());
+  });
+  const toggleDay = (d) => {
+    if (d > today.getDate()) return;
+    setPracticed(prev => {
+      const next = prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d];
+      try { localStorage.setItem(PRACTICED_KEY, JSON.stringify(next)); } catch(e) {}
+      return next;
+    });
+  };
+  // Upcoming dates as real Date objects
+  const upcoming = [1, 2, 3].map(n => { const d = new Date(today); d.setDate(today.getDate() + n); return d; });
 
   return (
     <div className="yb-scroll" style={{ height: '100%', overflowY: 'auto', background: 'var(--paper)' }}>
@@ -321,12 +335,15 @@ const Calendar = ({ t, lang, profile }) => {
               const d = i+1;
               const isToday = d === today.getDate();
               const did = practiced.includes(d);
+              const isFuture = d > today.getDate();
               return (
-                <div key={d} style={{
+                <div key={d} onClick={() => toggleDay(d)}
+                  style={{
                   aspectRatio: '1', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
                   borderRadius: 10, fontFamily:'var(--sans)', fontSize: 13, position:'relative',
                   background: isToday ? 'var(--ink)' : did ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'transparent',
-                  color: isToday ? 'var(--cream)' : 'var(--ink)',
+                  color: isToday ? 'var(--cream)' : isFuture ? 'color-mix(in srgb, var(--ink) 35%, transparent)' : 'var(--ink)',
+                  cursor: isFuture ? 'default' : 'pointer',
                 }}>
                   {d}
                   {did && !isToday && (
@@ -340,11 +357,11 @@ const Calendar = ({ t, lang, profile }) => {
 
         <div style={{ marginTop: 20, paddingBottom: 100 }}>
           <div className="yb-divider-leaf" style={{ marginBottom: 14 }}>{{ca:'Pròximes sessions', es:'Próximas sesiones', en:'Upcoming sessions'}[lang]}</div>
-          {[1,2,3].map(i => (
+          {upcoming.map((d, i) => (
             <div key={i} className="yb-card" style={{ marginBottom: 10, display:'flex', gap: 14, alignItems:'center' }}>
               <div style={{ textAlign:'center', minWidth: 50 }}>
-                <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', color:'var(--accent)' }}>{today.getDate()+i}</div>
-                <div style={{ fontFamily:'var(--sans)', fontSize: 10, color:'var(--ink-soft)', textTransform:'uppercase' }}>{monthName.slice(0,3)}</div>
+                <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', color:'var(--accent)' }}>{d.getDate()}</div>
+                <div style={{ fontFamily:'var(--sans)', fontSize: 10, color:'var(--ink-soft)', textTransform:'uppercase' }}>{(() => { try { return d.toLocaleDateString(locale, { month: 'short' }); } catch(e) { return d.toLocaleDateString('en-US', { month: 'short' }); } })()}</div>
               </div>
               <div style={{ flex:1 }}>
                 <div style={{ fontFamily:'var(--serif)', fontSize: 15 }}>{{ca:'Pràctica diària', es:'Práctica diaria', en:'Daily practice'}[lang]}</div>

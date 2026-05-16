@@ -299,6 +299,23 @@ const seedConversations = (lang) => {
 // ── Bombolla d'un missatge ──────────────────────────────────────────────────
 const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
   const [showActions, setShowActions] = uSC(false);
+  const [audioPlaying, setAudioPlaying] = uSC(false);
+  const audioElRef = uRC(null);
+  const toggleAudio = () => {
+    const url = msg.body?.url;
+    if (!url) return;
+    if (audioPlaying) {
+      audioElRef.current?.pause();
+      setAudioPlaying(false);
+    } else {
+      if (!audioElRef.current) {
+        audioElRef.current = new Audio(url);
+        audioElRef.current.onended = () => { setAudioPlaying(false); audioElRef.current = null; };
+      }
+      audioElRef.current.play().catch(() => setAudioPlaying(false));
+      setAudioPlaying(true);
+    }
+  };
   const bg = mine
     ? 'var(--accent)'
     : 'color-mix(in srgb, var(--ink) 5%, var(--cream))';
@@ -313,10 +330,12 @@ const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
     );
     if (msg.kind === 'audio') {
       const wf = msg.body.waveform || [];
+      const hasUrl = !!msg.body?.url;
       return (
         <div style={{ display:'flex', alignItems:'center', gap: 10, minWidth: 180 }}>
-          <button style={{ width: 32, height: 32, borderRadius:'50%', border:'none', background: mine ? 'var(--cream)':'var(--accent)', color: mine ? 'var(--accent)':'var(--cream)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <Icon name="play" size={14} color={mine ? 'var(--accent)':'var(--cream)'}/>
+          <button onClick={toggleAudio} disabled={!hasUrl}
+            style={{ width: 32, height: 32, borderRadius:'50%', border:'none', background: mine ? 'var(--cream)':'var(--accent)', color: mine ? 'var(--accent)':'var(--cream)', cursor: hasUrl ? 'pointer' : 'default', opacity: hasUrl ? 1 : 0.5, display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <Icon name={audioPlaying ? 'pause' : 'play'} size={14} color={mine ? 'var(--accent)':'var(--cream)'}/>
           </button>
           <div style={{ display:'flex', alignItems:'center', gap: 2, height: 24 }}>
             {wf.map((v,i)=>(
@@ -507,14 +526,13 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
   const [privateMode, setPrivateMode] = uSC(false);
   const [scheduled, setScheduled] = uSC(null); // timestamp or null
   const recTimer = uRC(null);
+  const recTRef = uRC(0);
+  const mediaRecRef = uRC(null);
   const inputRef = uRC(null);
 
   uEC(() => {
-    if (recording) {
-      setRecT(0);
-      recTimer.current = setInterval(()=>setRecT(s=>s+1), 1000);
-    } else if (recTimer.current) {
-      clearInterval(recTimer.current); recTimer.current = null;
+    if (!recording) {
+      if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
     }
     return () => { if (recTimer.current) clearInterval(recTimer.current); };
   }, [recording]);
@@ -538,13 +556,45 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
     inputRef.current?.focus();
   };
 
+  const startRecording = () => {
+    recTRef.current = 0;
+    setRecT(0);
+    recTimer.current = setInterval(() => { recTRef.current++; setRecT(recTRef.current); }, 1000);
+    setRecording(true);
+    navigator.mediaDevices?.getUserMedia({ audio: true }).then(stream => {
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.start();
+      mediaRecRef.current = { recorder, stream, chunks };
+    }).catch(() => { mediaRecRef.current = null; });
+  };
+
   const handleRecordingEnd = () => {
-    if (recT >= 1) {
-      // simula waveform aleatoria
-      const wf = Array.from({length: Math.min(20, recT*2)}, ()=>0.2 + Math.random()*0.7);
-      sendMsg('audio', { duration: recT, waveform: wf });
-    }
+    clearInterval(recTimer.current);
+    recTimer.current = null;
     setRecording(false);
+    const duration = recTRef.current;
+    if (duration < 1) {
+      mediaRecRef.current?.stream?.getTracks().forEach(t => t.stop());
+      mediaRecRef.current = null;
+      return;
+    }
+    const wf = Array.from({length: Math.min(20, Math.max(4, duration*2))}, () => 0.2 + Math.random()*0.7);
+    const ctx = mediaRecRef.current;
+    mediaRecRef.current = null;
+    if (ctx?.recorder && ctx.recorder.state !== 'inactive') {
+      ctx.recorder.onstop = () => {
+        const blob = new Blob(ctx.chunks, { type: ctx.recorder.mimeType || 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        ctx.stream.getTracks().forEach(t => t.stop());
+        sendMsg('audio', { duration, waveform: wf, url });
+      };
+      ctx.recorder.stop();
+    } else {
+      ctx?.stream?.getTracks().forEach(t => t.stop());
+      sendMsg('audio', { duration, waveform: wf, url: null });
+    }
   };
 
   const ATTACH_OPTS = [
@@ -628,8 +678,8 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
               </button>
             ) : (
               <button
-                onMouseDown={()=>setRecording(true)} onMouseUp={handleRecordingEnd} onMouseLeave={()=> recording && handleRecordingEnd()}
-                onTouchStart={()=>setRecording(true)} onTouchEnd={handleRecordingEnd}
+                onMouseDown={startRecording} onMouseUp={handleRecordingEnd} onMouseLeave={()=> recording && handleRecordingEnd()}
+                onTouchStart={startRecording} onTouchEnd={handleRecordingEnd}
                 aria-label={t.audio}
                 style={{ width: 42, height: 42, borderRadius:'50%', background:'var(--ink)', border:'none', cursor:'pointer', flexShrink: 0,
                          display:'flex', alignItems:'center', justifyContent:'center' }}>

@@ -24,13 +24,13 @@ const { useState: uSAuth, useEffect: uEAuth, useRef: uRAuth, useCallback: uCAuth
 const AUTH_T = {
   ca: {
     headline: 'Entra a El Bosc',
-    sub: 'Introdueix el teu correu electrònic per rebre l\'accés.',
+    sub: 'Introdueix el teu correu per continuar.',
     emailLabel: 'Correu electrònic',
     emailPh: 'el.teu@correu.cat',
-    sendBtn: 'Enviar accés',
-    sending: 'Enviant…',
-    codeTitle: 'Comprova el teu correu',
-    codeSub: 'Hem enviat un codi de 6 dígits a',
+    sendBtn: 'Continuar',
+    sending: 'Verificant…',
+    codeTitle: 'Codi d\'accés personal',
+    codeSub: 'Introdueix el codi que la Cèlia t\'ha donat',
     codeLabel: 'Codi d\'accés',
     codePh: '— — — — — —',
     verify: 'Verificar',
@@ -75,13 +75,13 @@ const AUTH_T = {
   },
   es: {
     headline: 'Entra en El Bosc',
-    sub: 'Introduce tu correo electrónico para recibir el acceso.',
+    sub: 'Introduce tu correo para continuar.',
     emailLabel: 'Correo electrónico',
     emailPh: 'tu@correo.es',
-    sendBtn: 'Enviar acceso',
-    sending: 'Enviando…',
-    codeTitle: 'Revisa tu correo',
-    codeSub: 'Hemos enviado un código de 6 dígitos a',
+    sendBtn: 'Continuar',
+    sending: 'Verificando…',
+    codeTitle: 'Código de acceso personal',
+    codeSub: 'Introduce el código que Cèlia te ha dado',
     codeLabel: 'Código de acceso',
     codePh: '— — — — — —',
     verify: 'Verificar',
@@ -126,13 +126,13 @@ const AUTH_T = {
   },
   en: {
     headline: 'Enter El Bosc',
-    sub: 'Enter your email to receive access.',
+    sub: 'Enter your email to continue.',
     emailLabel: 'Email address',
     emailPh: 'your@email.com',
-    sendBtn: 'Send access',
-    sending: 'Sending…',
-    codeTitle: 'Check your inbox',
-    codeSub: 'We sent a 6-digit code to',
+    sendBtn: 'Continue',
+    sending: 'Checking…',
+    codeTitle: 'Personal access code',
+    codeSub: 'Enter the access code that Cèlia gave you',
     codeLabel: 'Access code',
     codePh: '— — — — — —',
     verify: 'Verify',
@@ -178,38 +178,42 @@ const AUTH_T = {
 };
 
 // ── Llista inicial d'alumnes (el panell admin la edita) ──────────────────────
+const ROSTER_KEY = 'elbosc-roster-v1';
+const genCode = () => String(Math.floor(100000 + Math.random()*900000));
+const loadRoster = () => { try { const s=localStorage.getItem(ROSTER_KEY); if(s) return JSON.parse(s); } catch(e){} return null; };
+const saveRoster = (r) => { try { localStorage.setItem(ROSTER_KEY, JSON.stringify(r)); } catch(e){} };
+
 const INITIAL_ROSTER = [
-  { id:'nuria',  name:'Núria Prat',    initials:'N', accent:'#B8744A', email:'nuria@example.com',  level:'principiant', status:'active',  invitedAt:'12 abr 2025', lastAccess:'Avui' },
-  { id:'marta',  name:'Marta Vidal',   initials:'M', accent:'#5A8C42', email:'marta@example.com',  level:'intermedi',   status:'active',  invitedAt:'5 abr 2025',  lastAccess:'Ahir' },
-  { id:'joana',  name:'Joana Ferrer',  initials:'J', accent:'#3F7AAA', email:'joana@example.com',  level:'avancat',     status:'active',  invitedAt:'1 mar 2025',  lastAccess:'Fa 2 dies' },
-  { id:'aina',   name:'Aina Bosch',    initials:'A', accent:'#D97A2A', email:'aina@example.com',   level:'principiant', status:'invited', invitedAt:'28 abr 2025', lastAccess:'—' },
-  { id:'laia',   name:'Laia Tort',     initials:'L', accent:'#7A4A8A', email:'laia@example.com',   level:'intermedi',   status:'active',  invitedAt:'20 mar 2025', lastAccess:'Avui' },
-  { id:'roser',  name:'Roser Camps',   initials:'R', accent:'#3D3D8A', email:'roser@example.com',  level:'principiant', status:'revoked', invitedAt:'1 abr 2025',  lastAccess:'Fa 7 dies' },
+  { id:'nuria',  name:'Núria Prat',    initials:'N', accent:'#B8744A', email:'nuria@example.com',  level:'principiant', status:'active',  code:'847293', invitedAt:'12 abr 2025', lastAccess:'Avui' },
+  { id:'marta',  name:'Marta Vidal',   initials:'M', accent:'#5A8C42', email:'marta@example.com',  level:'intermedi',   status:'active',  code:'362815', invitedAt:'5 abr 2025',  lastAccess:'Ahir' },
+  { id:'joana',  name:'Joana Ferrer',  initials:'J', accent:'#3F7AAA', email:'joana@example.com',  level:'avancat',     status:'active',  code:'591472', invitedAt:'1 mar 2025',  lastAccess:'Fa 2 dies' },
+  { id:'aina',   name:'Aina Bosch',    initials:'A', accent:'#D97A2A', email:'aina@example.com',   level:'principiant', status:'invited', code:'743068', invitedAt:'28 abr 2025', lastAccess:'—' },
+  { id:'laia',   name:'Laia Tort',     initials:'L', accent:'#7A4A8A', email:'laia@example.com',   level:'intermedi',   status:'active',  code:'219854', invitedAt:'20 mar 2025', lastAccess:'Avui' },
+  { id:'roser',  name:'Roser Camps',   initials:'R', accent:'#3D3D8A', email:'roser@example.com',  level:'principiant', status:'revoked', code:'638247', invitedAt:'1 abr 2025',  lastAccess:'Fa 7 dies' },
 ];
 
 // ── Paleta d'accents per a noves alumnes ────────────────────────────────────
 const ACCENT_PALETTE = ['#B8744A','#5A8C42','#3F7AAA','#D97A2A','#7A4A8A','#3D3D8A','#9AAA82','#6E6757'];
 
 // ── Pantalla 1: Introducció del correu ───────────────────────────────────────
-const EmailScreen = ({ t, onSend, onAdminTrigger }) => {
+const EmailScreen = ({ t, lang, onSend, onAdminTrigger, checkEmail }) => {
   const [email, setEmail] = uSAuth('');
-  const [busy, setBusy] = uSAuth(false);
   const [err, setErr] = uSAuth('');
   const tapCount = uRAuth(0);
   const tapTimer = uRAuth(null);
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  const handleSend = async () => {
+  const handleSend = () => {
     if (!isValid) return;
-    setBusy(true); setErr('');
-    // ── Real integration point ──────────────────────────────────────────
-    // Resend:   await fetch('https://api.resend.com/emails', { method:'POST', headers:{'Authorization':'Bearer RE_xxx','Content-Type':'application/json'}, body: JSON.stringify({ from:'noreply@elbosc.cat', to: email, subject:'El teu accés a El Bosc', html:`<p>El teu codi és: <b>123456</b></p>` }) });
-    // Supabase: await supabase.auth.signInWithOtp({ email });
-    // EmailJS:  await emailjs.send('service_id','template_id',{ to_email:email, code:'123456' });
-    // ───────────────────────────────────────────────────────────────────
-    await new Promise(r => setTimeout(r, 900)); // simula latència
-    setBusy(false);
+    const result = checkEmail ? checkEmail(email) : { ok: true };
+    if (!result.ok) {
+      setErr(result.reason === 'revoked'
+        ? { ca:'El teu accés ha estat suspès. Contacta amb la Cèlia.', es:'Tu acceso ha sido suspendido. Contacta con Cèlia.', en:'Your access has been revoked. Contact Cèlia.' }[lang]
+        : { ca:'Correu no registrat. Contacta amb la Cèlia.', es:'Correo no registrado. Contacta con Cèlia.', en:'Email not registered. Contact Cèlia.' }[lang]
+      );
+      return;
+    }
     onSend(email);
   };
 
@@ -262,35 +266,25 @@ const EmailScreen = ({ t, onSend, onAdminTrigger }) => {
         </div>
         {err && <div style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--accent)', marginBottom: 10 }}>{err}</div>}
 
-        <button onClick={handleSend} disabled={!isValid || busy}
-          className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: (!isValid || busy) ? 0.55 : 1, marginBottom: 12 }}>
-          {busy ? t.sending : t.sendBtn}
+        <button onClick={handleSend} disabled={!isValid}
+          className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: !isValid ? 0.55 : 1, marginBottom: 12 }}>
+          {t.sendBtn}
         </button>
 
-        {/* Demo shortcut */}
-        <button onClick={() => onSend('demo@elbosc.cat')}
-          style={{ background:'transparent', border:'none', cursor:'pointer', fontFamily:'var(--sans)', fontSize: 12, color:'var(--ink-soft)', textDecoration:'underline', padding: 4 }}>
-          {t.demoAccess}
-        </button>
       </div>
 
-      <div style={{ padding:'16px 0 36px', textAlign:'center', fontFamily:'var(--sans)', fontSize: 10, color:'var(--ink-soft)', letterSpacing:'0.1em' }}>
-        {t.demoNote}
-      </div>
+      <div style={{ height: 36 }}/>
     </div>
   );
 };
 
 // ── Pantalla 2: Verificació del codi ─────────────────────────────────────────
-const CodeScreen = ({ t, lang, email, onVerified, onBack }) => {
+const CodeScreen = ({ t, lang, email, correctCode, onVerified, onBack }) => {
   const [digits, setDigits] = uSAuth(['','','','','','']);
-  const [busy, setBusy] = uSAuth(false);
   const [err, setErr] = uSAuth('');
   const [resent, setResent] = uSAuth(false);
   const [role, setRole] = uSAuth('student');
   const refs = Array.from({length:6}, () => uRAuth(null));
-
-  const DEMO_CODE = '123456';
 
   const handleDigit = (i, val) => {
     const v = val.replace(/\D/g,'').slice(-1);
@@ -314,18 +308,16 @@ const CodeScreen = ({ t, lang, email, onVerified, onBack }) => {
     }
   };
 
-  const handleVerify = async () => {
+  const handleVerify = () => {
     const code = digits.join('');
     if (code.length < 6) return;
-    setBusy(true); setErr('');
-    await new Promise(r => setTimeout(r, 700)); // simula verificació
-    // ── Real: verify OTP with backend ──────────────────────────────────
-    // Supabase: const { error } = await supabase.auth.verifyOtp({ email, token: code, type:'email' });
-    // ──────────────────────────────────────────────────────────────────
-    const ok = code === DEMO_CODE || code.length === 6; // accepta qualsevol 6 dígits en demo
-    setBusy(false);
-    if (ok) onVerified(email, role);
-    else setErr(t.wrongCode);
+    if (code === (correctCode || '')) {
+      onVerified(email, role);
+    } else {
+      setErr(t.wrongCode);
+      setDigits(['','','','','','']);
+      refs[0].current?.focus();
+    }
   };
 
   const handleResend = async () => {
@@ -375,16 +367,11 @@ const CodeScreen = ({ t, lang, email, onVerified, onBack }) => {
 
       {err && <div style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--accent)', textAlign:'center', marginBottom: 10 }}>{err}</div>}
 
-      {/* Demo hint */}
-      <div style={{ textAlign:'center', marginBottom: 20 }}>
-        <span style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)' }}>
-          {t.demoHint} <span style={{ fontFamily:'var(--serif)', fontSize: 15, letterSpacing:'0.2em', color:'var(--ink)', fontStyle:'italic' }}>123456</span>
-        </span>
-      </div>
+      <div style={{ marginBottom: 20 }}/>
 
-      <button onClick={handleVerify} disabled={digits.join('').length < 6 || busy}
-        className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: digits.join('').length < 6 || busy ? 0.55 : 1, marginBottom: 16 }}>
-        {busy ? t.verifying : t.verify}
+      <button onClick={handleVerify} disabled={digits.join('').length < 6}
+        className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: digits.join('').length < 6 ? 0.55 : 1, marginBottom: 16 }}>
+        {t.verify}
       </button>
 
       {/* Rol selector (student / teacher visual) */}
@@ -482,8 +469,7 @@ const PinScreen = ({ t, adminPin, onSuccess, onClose }) => {
 };
 
 // ── Panell d'administració ────────────────────────────────────────────────────
-const AdminPanel = ({ t, lang, onClose, onEnterAsTeacher }) => {
-  const [roster, setRoster] = uSAuth(INITIAL_ROSTER);
+const AdminPanel = ({ t, lang, onClose, onEnterAsTeacher, roster, setRoster }) => {
   const [addOpen, setAddOpen] = uSAuth(false);
   const [newName, setNewName] = uSAuth('');
   const [newEmail, setNewEmail] = uSAuth('');
@@ -504,6 +490,7 @@ const AdminPanel = ({ t, lang, onClose, onEnterAsTeacher }) => {
       initials: newName.trim().charAt(0).toUpperCase(),
       accent, email: newEmail.trim(),
       level: newLevel, status:'invited',
+      code: genCode(),
       invitedAt: new Date().toLocaleDateString('ca-ES',{day:'numeric',month:'short',year:'numeric'}),
       lastAccess:'—',
     }]);
@@ -577,6 +564,17 @@ const AdminPanel = ({ t, lang, onClose, onEnterAsTeacher }) => {
                     <span>{t.invitedAt} {s.invitedAt}</span>
                     <span>{t.lastAccess}: {s.lastAccess}</span>
                   </div>
+                  {/* Code */}
+                  {s.code && (
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6 }}>
+                      <span style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)' }}>{({ca:'Codi:',es:'Código:',en:'Code:'})[lang]}</span>
+                      <span style={{ fontFamily:'var(--serif)', fontSize:16, letterSpacing:'0.25em', color:'var(--ink)', fontStyle:'italic' }}>{s.code}</span>
+                      <button onClick={()=>{ const msg = `El Bosc Ioga 🌿\nURL: ${window.location.href}\nCorreu: ${s.email}\nCodi: ${s.code}`; navigator.clipboard?.writeText(msg).catch(()=>{}); }}
+                        style={{ padding:'3px 8px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', background:'color-mix(in srgb, var(--accent) 8%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:10, cursor:'pointer' }}>
+                        {({ca:'Copiar per WhatsApp',es:'Copiar para WhatsApp',en:'Copy for WhatsApp'})[lang]}
+                      </button>
+                    </div>
+                  )}
                   {/* Actions */}
                   <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
                     {s.status==='active' && (
@@ -699,8 +697,31 @@ const AuthGate = ({ lang = 'ca', adminPin = '1234', onSuccess }) => {
   const t = AUTH_T[lang] || AUTH_T.ca;
   const [screen, setScreen] = uSAuth('email'); // email | code | pin | admin
   const [sentEmail, setSentEmail] = uSAuth('');
+  const [studentCode, setStudentCode] = uSAuth('');
 
-  const handleSend = (email) => { setSentEmail(email); setScreen('code'); };
+  // Roster persistent en localStorage
+  const [roster, setRosterState] = uSAuth(() => loadRoster() || INITIAL_ROSTER);
+  const setRoster = (updater) => {
+    setRosterState(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      saveRoster(next);
+      return next;
+    });
+  };
+
+  const checkEmail = (email) => {
+    const s = roster.find(x => x.email.toLowerCase() === email.trim().toLowerCase());
+    if (!s) return { ok: false, reason: 'not_found' };
+    if (s.status === 'revoked') return { ok: false, reason: 'revoked' };
+    return { ok: true };
+  };
+
+  const handleSend = (email) => {
+    const s = roster.find(x => x.email.toLowerCase() === email.trim().toLowerCase());
+    setStudentCode(s?.code || '');
+    setSentEmail(email);
+    setScreen('code');
+  };
   const handleVerified = (email, role) => onSuccess(email, role);
   const handleAdminTrigger = () => setScreen('pin');
   const handlePinSuccess = () => setScreen('admin');
@@ -709,16 +730,16 @@ const AuthGate = ({ lang = 'ca', adminPin = '1234', onSuccess }) => {
   return (
     <div style={{ height:'100%', position:'relative', overflow:'hidden', background:'var(--paper)' }}>
       {screen === 'email' && (
-        <EmailScreen t={t} onSend={handleSend} onAdminTrigger={handleAdminTrigger}/>
+        <EmailScreen t={t} lang={lang} onSend={handleSend} onAdminTrigger={handleAdminTrigger} checkEmail={checkEmail}/>
       )}
       {screen === 'code' && (
-        <CodeScreen t={t} lang={lang} email={sentEmail} onVerified={handleVerified} onBack={()=>setScreen('email')}/>
+        <CodeScreen t={t} lang={lang} email={sentEmail} correctCode={studentCode} onVerified={handleVerified} onBack={()=>setScreen('email')}/>
       )}
       {screen === 'pin' && (
         <PinScreen t={t} adminPin={adminPin} onSuccess={handlePinSuccess} onClose={()=>setScreen('email')}/>
       )}
       {screen === 'admin' && (
-        <AdminPanel t={t} lang={lang} onClose={()=>setScreen('email')} onEnterAsTeacher={handleEnterAsTeacher}/>
+        <AdminPanel t={t} lang={lang} roster={roster} setRoster={setRoster} onClose={()=>setScreen('email')} onEnterAsTeacher={handleEnterAsTeacher}/>
       )}
     </div>
   );
