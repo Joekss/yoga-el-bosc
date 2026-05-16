@@ -15,7 +15,7 @@ const { useState: uSA, useEffect: uEA, useMemo: uMA } = React;
         localStorage.setItem('elbosc-credential', JSON.stringify({ email, code }));
         localStorage.setItem('elbosc-session', JSON.stringify({ email, role: 'student' }));
         window.__elBoscInvite = { email, code };
-        window.history.replaceState({}, '', window.location.pathname);
+        // NO netegem l'URL: el link guardat als marcadors funciona sempre
       }
     }
   } catch (e) {}

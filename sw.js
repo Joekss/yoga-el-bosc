@@ -1,4 +1,4 @@
-const CACHE = 'elbosc-v6';
+const CACHE = 'elbosc-v7';
 
 const SHELL = [
   './',
@@ -128,7 +128,24 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  const req = e.request;
+  // Navegació HTML: sempre des de xarxa (garanteix el codi més nou).
+  // Això és crític per al processament del ?inv= i per a les actualitzacions.
+  if (req.mode === 'navigate') {
+    e.respondWith(
+      fetch(req).then(res => {
+        // Actualitza la caché amb la versió nova
+        caches.open(CACHE).then(c => c.put(req, res.clone()));
+        return res;
+      }).catch(() =>
+        // Sense xarxa: serveix des de caché
+        caches.match(req).then(c => c || caches.match('./index.html'))
+      )
+    );
+    return;
+  }
+  // Recursos estàtics (JS, CSS, fonts, imatges): cache-first
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    caches.match(req).then(cached => cached || fetch(req))
   );
 });
