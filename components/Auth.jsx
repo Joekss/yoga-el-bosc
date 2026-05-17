@@ -687,15 +687,12 @@ const AuthGate = ({ lang = 'ca', adminPin = '1234', onSuccess }) => {
 
   const checkEmail = (email) => {
     const em = email.trim().toLowerCase();
-    // 1. Credencial local (guardada quan es va obrir l'enllaç d'invitació)
-    try {
-      const cred = JSON.parse(localStorage.getItem('elbosc-credential') || 'null');
-      if (cred && cred.email === em) return { ok: true };
-    } catch (e) {}
-    // 2. Roster local de l'admin (funciona al dispositiu de la Cèlia)
+    // Únic cas de bloqueig: accés revocat per la Cèlia al panell admin
+    // (el roster NOMÉS existeix al dispositiu de la Cèlia, per la resta d'alumnes
+    //  el roster estarà buit i NO s'ha de bloquejar l'entrada)
     const s = roster.find(x => x.email.toLowerCase() === em);
-    if (!s) return { ok: false, reason: 'not_found' };
-    if (s.status === 'revoked') return { ok: false, reason: 'revoked' };
+    if (s && s.status === 'revoked') return { ok: false, reason: 'revoked' };
+    // Qualsevol correu vàlid pot entrar → el codi es calcula deterministament
     return { ok: true };
   };
 
