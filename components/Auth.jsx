@@ -29,16 +29,13 @@ const AUTH_T = {
     emailPh: 'el.teu@correu.cat',
     sendBtn: 'Continuar',
     sending: 'Verificant…',
-    codeTitle: 'Codi d\'accés personal',
-    codeSub: 'Introdueix el codi que la Cèlia t\'ha donat',
+    codeTitle: 'Benvinguda!',
+    codeSub: 'El teu codi d\'accés personal és:',
+    saveCode: 'Guarda aquest codi per a accessos futurs',
     codeLabel: 'Codi d\'accés',
     codePh: '— — — — — —',
-    verify: 'Verificar',
+    verify: 'Entrar',
     verifying: 'Verificant…',
-    demoHint: 'Demo: utilitza el codi',
-    resend: 'No has rebut el codi?',
-    resendLink: 'Torna a enviar',
-    resent: 'Reenviat! ✓',
     wrongCode: 'Codi incorrecte. Torna a intentar-ho.',
     changeEmail: '← Canviar correu',
     demoAccess: 'Accés ràpid (demo)',
@@ -80,16 +77,13 @@ const AUTH_T = {
     emailPh: 'tu@correo.es',
     sendBtn: 'Continuar',
     sending: 'Verificando…',
-    codeTitle: 'Código de acceso personal',
-    codeSub: 'Introduce el código que Cèlia te ha dado',
+    codeTitle: '¡Bienvenida!',
+    codeSub: 'Tu código de acceso personal es:',
+    saveCode: 'Guarda este código para futuros accesos',
     codeLabel: 'Código de acceso',
     codePh: '— — — — — —',
-    verify: 'Verificar',
+    verify: 'Entrar',
     verifying: 'Verificando…',
-    demoHint: 'Demo: usa el código',
-    resend: '¿No has recibido el código?',
-    resendLink: 'Volver a enviar',
-    resent: '¡Reenviado! ✓',
     wrongCode: 'Código incorrecto. Inténtalo de nuevo.',
     changeEmail: '← Cambiar correo',
     demoAccess: 'Acceso rápido (demo)',
@@ -131,16 +125,13 @@ const AUTH_T = {
     emailPh: 'your@email.com',
     sendBtn: 'Continue',
     sending: 'Checking…',
-    codeTitle: 'Personal access code',
-    codeSub: 'Enter the access code that Cèlia gave you',
+    codeTitle: 'Welcome!',
+    codeSub: 'Your personal access code is:',
+    saveCode: 'Save this code for future access',
     codeLabel: 'Access code',
     codePh: '— — — — — —',
-    verify: 'Verify',
+    verify: 'Enter',
     verifying: 'Verifying…',
-    demoHint: 'Demo: use the code',
-    resend: 'Didn\'t receive the code?',
-    resendLink: 'Resend',
-    resent: 'Resent! ✓',
     wrongCode: 'Wrong code. Please try again.',
     changeEmail: '← Change email',
     demoAccess: 'Quick access (demo)',
@@ -179,9 +170,19 @@ const AUTH_T = {
 
 // ── Llista inicial d'alumnes (el panell admin la edita) ──────────────────────
 const ROSTER_KEY = 'elbosc-roster-v1';
-const genCode = () => String(Math.floor(100000 + Math.random()*900000));
 const loadRoster = () => { try { const s=localStorage.getItem(ROSTER_KEY); if(s) return JSON.parse(s); } catch(e){} return null; };
 const saveRoster = (r) => { try { localStorage.setItem(ROSTER_KEY, JSON.stringify(r)); } catch(e){} };
+
+// ── Codi determinista: igual en QUALSEVOL dispositiu per al mateix correu ─────
+// L'alumna posa el correu → l'app calcula el codi → el mostra → accés automàtic
+const _APP_KEY = 'el-bosc-yoga-2025';
+const computeCode = (email) => {
+  const s = _APP_KEY + email.toLowerCase().trim();
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) & 0x7fffffff;
+  return String(100000 + (h % 900000));
+};
+const genCode = computeCode; // per als registres nous, usa el codi determinista
 
 const INITIAL_ROSTER = [
   { id:'nuria',  name:'Núria Prat',    initials:'N', accent:'#B8744A', email:'nuria@example.com',  level:'principiant', status:'active',  code:'847293', invitedAt:'12 abr 2025', lastAccess:'Avui' },
@@ -278,122 +279,86 @@ const EmailScreen = ({ t, lang, onSend, onAdminTrigger, checkEmail }) => {
   );
 };
 
-// ── Pantalla 2: Verificació del codi ─────────────────────────────────────────
+// ── Pantalla 2: Mostra el codi i accés automàtic ─────────────────────────────
 const CodeScreen = ({ t, lang, email, correctCode, onVerified, onBack }) => {
   const [digits, setDigits] = uSAuth(['','','','','','']);
-  const [err, setErr] = uSAuth('');
-  const [resent, setResent] = uSAuth(false);
-  const [role, setRole] = uSAuth('student');
-  const refs = Array.from({length:6}, () => uRAuth(null));
+  const [ready, setReady] = uSAuth(false);
 
-  const handleDigit = (i, val) => {
-    const v = val.replace(/\D/g,'').slice(-1);
-    const next = [...digits]; next[i] = v;
-    setDigits(next); setErr('');
-    if (v && i < 5) refs[i+1].current?.focus();
-  };
-
-  const handleKey = (i, e) => {
-    if (e.key === 'Backspace' && !digits[i] && i > 0) {
-      refs[i-1].current?.focus();
-    }
-    if (e.key === 'Enter') handleVerify();
-  };
-
-  const handlePaste = (e) => {
-    const p = e.clipboardData.getData('text').replace(/\D/g,'').slice(0,6);
-    if (p.length === 6) {
-      setDigits(p.split(''));
-      refs[5].current?.focus();
-    }
-  };
-
-  const handleVerify = () => {
-    const code = digits.join('');
-    if (code.length < 6) return;
-    if (code === (correctCode || '')) {
-      onVerified(email, role);
-    } else {
-      setErr(t.wrongCode);
-      setDigits(['','','','','','']);
-      refs[0].current?.focus();
-    }
-  };
-
-  const handleResend = async () => {
-    setResent(true);
-    await new Promise(r => setTimeout(r, 600));
-    setTimeout(() => setResent(false), 2500);
-  };
+  // Auto-omple els quadres dígit a dígit i entra automàticament
+  uEAuth(() => {
+    if (!correctCode || correctCode.length < 6) return;
+    const chars = correctCode.split('');
+    let i = 0;
+    const iv = setInterval(() => {
+      if (i < chars.length) {
+        const idx = i++;
+        setDigits(prev => { const next = [...prev]; next[idx] = chars[idx]; return next; });
+      } else {
+        clearInterval(iv);
+        setReady(true);
+        setTimeout(() => onVerified(email, 'student'), 600);
+      }
+    }, 90);
+    return () => clearInterval(iv);
+  }, []);
 
   return (
     <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--paper)', padding:'0 28px' }}>
-      {/* Back + header */}
-      <div style={{ paddingTop: 56, display:'flex', alignItems:'center', gap: 12, marginBottom: 32 }}>
-        <button onClick={onBack} style={{ background:'transparent', border:'none', cursor:'pointer', color:'var(--ink)', padding: 4 }}>
+      {/* Back */}
+      <div style={{ paddingTop: 56, marginBottom: 20 }}>
+        <button onClick={onBack} style={{ background:'transparent', border:'none', cursor:'pointer', padding: 4 }}>
           <Icon name="back" size={22} color="var(--ink)"/>
         </button>
       </div>
 
-      <div style={{ display:'flex', justifyContent:'center', marginBottom: 24 }}>
+      {/* Icon */}
+      <div style={{ display:'flex', justifyContent:'center', marginBottom: 20 }}>
         <div style={{ width: 64, height: 64, borderRadius:'50%', background:'color-mix(in srgb, var(--leaf) 18%, var(--cream))',
                       display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <Icon name="mail" size={28} color="var(--leaf-deep)"/>
+          <Icon name="shield" size={28} color="var(--leaf-deep)"/>
         </div>
       </div>
 
-      <h1 style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize: 28, color:'var(--ink)', textAlign:'center', marginBottom: 8 }}>
+      <h1 style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize: 32, color:'var(--ink)', textAlign:'center', marginBottom: 6 }}>
         {t.codeTitle}
       </h1>
-      <p style={{ fontFamily:'var(--sans)', fontSize: 13, color:'var(--ink-soft)', textAlign:'center', marginBottom: 6, lineHeight: 1.5 }}>
-        {t.codeSub}
-      </p>
       <p style={{ fontFamily:'var(--sans)', fontSize: 13, color:'var(--accent)', textAlign:'center', marginBottom: 28, fontWeight: 500 }}>
         {email}
       </p>
 
-      {/* Boxes */}
-      <div style={{ display:'flex', gap: 8, justifyContent:'center', marginBottom: 16 }} onPaste={handlePaste}>
+      {/* Codi en gran */}
+      <div style={{ textAlign:'center', marginBottom: 6 }}>
+        <div style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--ink-soft)', marginBottom: 10 }}>
+          {t.codeSub}
+        </div>
+        <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize: 46, letterSpacing:'0.22em', color:'var(--ink)', lineHeight: 1 }}>
+          {correctCode}
+        </div>
+        <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)', marginTop: 8 }}>
+          {t.saveCode}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: 24 }}/>
+
+      {/* Quadres animats */}
+      <div style={{ display:'flex', gap: 8, justifyContent:'center', marginBottom: 28 }}>
         {digits.map((d, i) => (
-          <input key={i} ref={refs[i]} value={d}
-            onChange={e => handleDigit(i, e.target.value)}
-            onKeyDown={e => handleKey(i, e)}
-            maxLength={1} inputMode="numeric"
-            style={{ width: 44, height: 54, textAlign:'center', border:'2px solid ' + (err ? 'var(--accent)' : d ? 'var(--ink)' : 'color-mix(in srgb, var(--ink) 14%, transparent)'),
+          <div key={i}
+            style={{ width: 44, height: 54, display:'flex', alignItems:'center', justifyContent:'center',
+                     border: '2px solid ' + (d ? 'var(--leaf-deep)' : 'color-mix(in srgb, var(--ink) 10%, transparent)'),
                      borderRadius: 14, fontFamily:'var(--serif)', fontSize: 26, color:'var(--ink)',
-                     background: d ? 'var(--cream)' : 'var(--paper)', outline:'none', transition:'border .15s' }}/>
+                     background: d ? 'color-mix(in srgb, var(--leaf) 10%, var(--cream))' : 'var(--paper)',
+                     transition:'all .12s' }}>
+            {d}
+          </div>
         ))}
       </div>
 
-      {err && <div style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--accent)', textAlign:'center', marginBottom: 10 }}>{err}</div>}
-
-      <div style={{ marginBottom: 20 }}/>
-
-      <button onClick={handleVerify} disabled={digits.join('').length < 6}
-        className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: digits.join('').length < 6 ? 0.55 : 1, marginBottom: 16 }}>
-        {t.verify}
+      <button onClick={() => onVerified(email, 'student')}
+        className="yb-btn yb-btn-clay" style={{ width:'100%' }}>
+        {ready ? t.verify : t.verifying}
       </button>
-
-      {/* Rol selector (student / teacher visual) */}
-      <div style={{ display:'flex', gap: 8, marginBottom: 20 }}>
-        {['student','teacher'].map(r => (
-          <button key={r} onClick={()=>setRole(r)}
-            style={{ flex:1, padding:'10px 6px', borderRadius: 14, border:'2px solid ' + (role===r ? 'var(--ink)':'color-mix(in srgb, var(--ink) 10%, transparent)'),
-                     background: role===r ? 'var(--ink)':'transparent', color: role===r ? 'var(--cream)':'var(--ink-soft)',
-                     cursor:'pointer', fontFamily:'var(--sans)', fontSize: 12, display:'flex', alignItems:'center', justifyContent:'center', gap: 6, transition:'all .15s' }}>
-            <Icon name={r==='teacher'?'shield':'user'} size={14} color="currentColor"/>
-            {r==='student' ? t.studentEnter.split(' ').slice(-1)[0] : t.teacherEnter.split(' ').slice(-1)[0]}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ textAlign:'center' }}>
-        <span style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--ink-soft)' }}>{t.resend} </span>
-        <button onClick={handleResend} style={{ background:'transparent', border:'none', cursor:'pointer',
-                fontFamily:'var(--sans)', fontSize: 12, color: resent ? 'var(--leaf-deep)':'var(--accent)', textDecoration:'underline' }}>
-          {resent ? t.resent : t.resendLink}
-        </button>
-      </div>
     </div>
   );
 };
@@ -490,7 +455,7 @@ const AdminPanel = ({ t, lang, onClose, onEnterAsTeacher, roster, setRoster }) =
       initials: newName.trim().charAt(0).toUpperCase(),
       accent, email: newEmail.trim(),
       level: newLevel, status:'invited',
-      code: genCode(),
+      code: genCode(newEmail.trim().toLowerCase()),
       invitedAt: new Date().toLocaleDateString('ca-ES',{day:'numeric',month:'short',year:'numeric'}),
       lastAccess:'—',
     }]);
@@ -565,13 +530,24 @@ const AdminPanel = ({ t, lang, onClose, onEnterAsTeacher, roster, setRoster }) =
                     <span>{t.lastAccess}: {s.lastAccess}</span>
                   </div>
                   {/* Code */}
-                  {s.code && (
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6 }}>
+                  {s.email && (
+                    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6, flexWrap:'wrap' }}>
                       <span style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)' }}>{({ca:'Codi:',es:'Código:',en:'Code:'})[lang]}</span>
-                      <span style={{ fontFamily:'var(--serif)', fontSize:16, letterSpacing:'0.25em', color:'var(--ink)', fontStyle:'italic' }}>{s.code}</span>
-                      <button onClick={()=>{ const base=window.location.origin+window.location.pathname; const inv=btoa(`${s.email}|${s.code}|${s.name}`); const url=`${base}?inv=${inv}`; const msg=`El Bosc Ioga 🌿\nEnllaç d'accés personal:\n${url}`; navigator.clipboard?.writeText(msg).catch(()=>{}); }}
-                        style={{ padding:'3px 8px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', background:'color-mix(in srgb, var(--accent) 8%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:10, cursor:'pointer' }}>
-                        {({ca:'Copiar per WhatsApp',es:'Copiar para WhatsApp',en:'Copy for WhatsApp'})[lang]}
+                      <span style={{ fontFamily:'var(--serif)', fontSize:16, letterSpacing:'0.25em', color:'var(--ink)', fontStyle:'italic' }}>{computeCode(s.email.toLowerCase())}</span>
+                      <button onClick={()=>{
+                        const base = window.location.origin + window.location.pathname;
+                        const code = computeCode(s.email.toLowerCase());
+                        const inv  = btoa(`${s.email}|${code}|${s.name}`);
+                        const url  = `${base}?inv=${inv}`;
+                        const msg  = {
+                          ca:`El Bosc Ioga 🌿\n\nHola ${s.name}!\nPer entrar a l'app:\n1. Obre: ${base}\n2. Posa el teu correu: ${s.email}\nEl teu codi: ${code}\n\nAccés directe: ${url}`,
+                          es:`El Bosc Ioga 🌿\n\n¡Hola ${s.name}!\nPara entrar en la app:\n1. Abre: ${base}\n2. Pon tu correo: ${s.email}\nTu código: ${code}\n\nAcceso directo: ${url}`,
+                          en:`El Bosc Ioga 🌿\n\nHi ${s.name}!\nTo enter the app:\n1. Open: ${base}\n2. Enter your email: ${s.email}\nYour code: ${code}\n\nDirect link: ${url}`,
+                        }[lang] || '';
+                        window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+                      }}
+                        style={{ padding:'3px 10px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', background:'color-mix(in srgb, var(--accent) 8%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:10, cursor:'pointer' }}>
+                        {({ca:'Enviar per WhatsApp',es:'Enviar por WhatsApp',en:'Send via WhatsApp'})[lang]}
                       </button>
                     </div>
                   )}
@@ -725,17 +701,8 @@ const AuthGate = ({ lang = 'ca', adminPin = '1234', onSuccess }) => {
 
   const handleSend = (email) => {
     const em = email.trim().toLowerCase();
-    let code = '';
-    // 1. Credencial local
-    try {
-      const cred = JSON.parse(localStorage.getItem('elbosc-credential') || 'null');
-      if (cred && cred.email === em) code = cred.code;
-    } catch (e) {}
-    // 2. Roster local de l'admin
-    if (!code) {
-      const s = roster.find(x => x.email.toLowerCase() === em);
-      code = s?.code || '';
-    }
+    // Codi determinista: sempre el mateix per al mateix correu, en qualsevol dispositiu
+    const code = computeCode(em);
     setStudentCode(code);
     setSentEmail(email);
     setScreen('code');
