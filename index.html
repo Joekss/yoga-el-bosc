@@ -50,13 +50,24 @@
     var inv = new URLSearchParams(window.location.search).get('inv');
     if (inv) {
       var dec = atob(inv);
-      var sep = dec.indexOf(':');
-      var email = dec.slice(0, sep).toLowerCase().trim();
-      var code  = dec.slice(sep + 1).trim();
+      var email, code, name;
+      if (dec.indexOf('|') !== -1) {
+        // Format nou: email|code|nom
+        var parts = dec.split('|');
+        email = parts[0].toLowerCase().trim();
+        code  = (parts[1] || '').trim();
+        name  = (parts[2] || '').trim();
+      } else {
+        // Format antic: email:code
+        var sep = dec.indexOf(':');
+        email = dec.slice(0, sep).toLowerCase().trim();
+        code  = dec.slice(sep + 1).trim();
+        name  = '';
+      }
       if (email && code) {
-        localStorage.setItem('elbosc-credential', JSON.stringify({ email: email, code: code }));
-        localStorage.setItem('elbosc-session',    JSON.stringify({ email: email, role: 'student' }));
-        window.__elBoscInvite = { email: email, code: code };
+        localStorage.setItem('elbosc-credential', JSON.stringify({ email: email, code: code, name: name }));
+        localStorage.setItem('elbosc-session',    JSON.stringify({ email: email, role: 'student', name: name }));
+        window.__elBoscInvite = { email: email, code: code, name: name };
         // NO netegem l'URL: el link guardat als marcadors funciona sempre
       }
     }

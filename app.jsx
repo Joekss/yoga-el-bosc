@@ -61,7 +61,16 @@ function App() {
     return tweaks.stage || 'auth';
   }); // auth | welcome | quiz | app | practice
   const [tab, setTab] = uSA('home');
-  const [profile, setProfile] = uSA(DEFAULT_PROFILE);
+  const [profile, setProfile] = uSA(() => {
+    // Nom real de l'alumna: de l'invite link o de la sessió guardada
+    try {
+      const inv  = window.__elBoscInvite;
+      if (inv?.name) return { ...DEFAULT_PROFILE, name: inv.name };
+      const sess = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
+      if (sess?.name) return { ...DEFAULT_PROFILE, name: sess.name };
+    } catch (e) {}
+    return DEFAULT_PROFILE;
+  });
   const [poseDetail, setPoseDetail] = uSA(null);
 
   // React to tweak stage change (only in dev mode)

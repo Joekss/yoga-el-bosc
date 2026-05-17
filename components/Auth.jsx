@@ -569,7 +569,7 @@ const AdminPanel = ({ t, lang, onClose, onEnterAsTeacher, roster, setRoster }) =
                     <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6 }}>
                       <span style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)' }}>{({ca:'Codi:',es:'Código:',en:'Code:'})[lang]}</span>
                       <span style={{ fontFamily:'var(--serif)', fontSize:16, letterSpacing:'0.25em', color:'var(--ink)', fontStyle:'italic' }}>{s.code}</span>
-                      <button onClick={()=>{ const base=window.location.origin+window.location.pathname; const inv=btoa(`${s.email}:${s.code}`); const url=`${base}?inv=${inv}`; const msg=`El Bosc Ioga 🌿\nEnllaç d'accés personal:\n${url}`; navigator.clipboard?.writeText(msg).catch(()=>{}); }}
+                      <button onClick={()=>{ const base=window.location.origin+window.location.pathname; const inv=btoa(`${s.email}|${s.code}|${s.name}`); const url=`${base}?inv=${inv}`; const msg=`El Bosc Ioga 🌿\nEnllaç d'accés personal:\n${url}`; navigator.clipboard?.writeText(msg).catch(()=>{}); }}
                         style={{ padding:'3px 8px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', background:'color-mix(in srgb, var(--accent) 8%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:10, cursor:'pointer' }}>
                         {({ca:'Copiar per WhatsApp',es:'Copiar para WhatsApp',en:'Copy for WhatsApp'})[lang]}
                       </button>
