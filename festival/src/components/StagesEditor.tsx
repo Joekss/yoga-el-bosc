@@ -8,16 +8,20 @@ export default function StagesEditor({ festival }: { festival: Festival }) {
   const addStage = useStore((s) => s.addStage);
   const updateStage = useStore((s) => s.updateStage);
   const removeStage = useStore((s) => s.removeStage);
+  const moveStage = useStore((s) => s.moveStage);
   const [name, setName] = useState('');
 
   return (
     <div className="space-y-2">
       <ul className="space-y-2">
-        {festival.stages.map((stage) => (
+        {festival.stages.map((stage, i) => (
           <StageRow
             key={stage.id}
             stage={stage}
+            canMoveUp={i > 0}
+            canMoveDown={i < festival.stages.length - 1}
             onUpdate={(patch) => updateStage(festival.id, stage.id, patch)}
+            onMove={(dir) => moveStage(festival.id, stage.id, dir)}
             onDelete={() => {
               if (confirm(`¿Borrar "${stage.name}" y sus sets?`)) removeStage(festival.id, stage.id);
             }}
@@ -49,15 +53,39 @@ export default function StagesEditor({ festival }: { festival: Festival }) {
 
 function StageRow({
   stage,
+  canMoveUp,
+  canMoveDown,
   onUpdate,
+  onMove,
   onDelete,
 }: {
   stage: Stage;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
   onUpdate: (patch: Partial<Stage>) => void;
+  onMove: (direction: -1 | 1) => void;
   onDelete: () => void;
 }) {
   return (
     <li className="flex items-center gap-2 bg-ink-800 border border-ink-700 rounded-lg px-3 py-2">
+      <div className="flex flex-col -my-1">
+        <button
+          onClick={() => onMove(-1)}
+          disabled={!canMoveUp}
+          className="text-ink-400 hover:text-ink-100 disabled:opacity-20 leading-none px-1"
+          aria-label="Subir"
+        >
+          ▲
+        </button>
+        <button
+          onClick={() => onMove(1)}
+          disabled={!canMoveDown}
+          className="text-ink-400 hover:text-ink-100 disabled:opacity-20 leading-none px-1"
+          aria-label="Bajar"
+        >
+          ▼
+        </button>
+      </div>
       <input
         type="color"
         value={stage.color}

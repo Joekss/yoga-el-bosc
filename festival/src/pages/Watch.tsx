@@ -1,6 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store/store';
 import type { ArtistSet, Festival } from '../types';
+
+type WakeLockSentinelLike = { release: () => Promise<void> } | null;
+interface WakeLockApi {
+  request(type: 'screen'): Promise<NonNullable<WakeLockSentinelLike>>;
+}
 
 interface ItemView {
   set: ArtistSet;
@@ -12,11 +17,63 @@ interface ItemView {
 export default function Watch() {
   const festivals = useStore((s) => s.festivals);
   const [now, setNow] = useState(Date.now());
+  const [keepAwake, setKeepAwake] = useState(false);
+  const sentinelRef = useRef<WakeLockSentinelLike>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(t);
   }, []);
+
+  useEffect(() => {
+    const navWithLock = navigator as Navigator & { wakeLock?: WakeLockApi };
+    if (!('wakeLock' in navigator) || !navWithLock.wakeLock) return;
+
+    const acquire = async () => {
+      if (!keepAwake || document.visibilityState !== 'visible') return;
+      try {
+        sentinelRef.current = await navWithLock.wakeLock!.request('screen');
+      } catch {
+        // ignore
+      }
+    };
+    const release = async () => {
+      try {
+        await sentinelRef.current?.release();
+      } catch {
+        // ignore
+      }
+      sentinelRef.current = null;
+    };
+
+    if (keepAwake) acquire();
+    else release();
+
+    const onVisibility = () => {
+      if (keepAwake && document.visibilityState === 'visible' && !sentinelRef.current) acquire();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      release();
+    };
+  }, [keepAwake]);
+
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen();
+      } catch {
+        // ignore
+      }
+    } else {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        // ignore
+      }
+    }
+  };
 
   const { current, upcoming } = useMemo(() => {
     const all: ItemView[] = [];
@@ -40,6 +97,22 @@ export default function Watch() {
 
   return (
     <div className="watch-compact px-4 py-5 max-w-md mx-auto">
+      <div className="flex items-center gap-2 mb-3 text-xs">
+        <button
+          onClick={() => setKeepAwake((v) => !v)}
+          className={`px-2.5 py-1 rounded-full border transition ${
+            keepAwake ? 'bg-emerald-500 border-emerald-500 text-black' : 'border-ink-700 text-ink-200'
+          }`}
+        >
+          {keepAwake ? '● Pantalla ON' : '○ Pantalla OFF'}
+        </button>
+        <button
+          onClick={toggleFullscreen}
+          className="px-2.5 py-1 rounded-full border border-ink-700 text-ink-200"
+        >
+          ⛶ Pantalla completa
+        </button>
+      </div>
       <h1 className="text-lg font-semibold mb-3">Ahora</h1>
       {current.length === 0 && <p className="text-ink-400 text-sm mb-4">Nada en curso.</p>}
       <ul className="space-y-2 mb-6">

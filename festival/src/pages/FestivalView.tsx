@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useStore } from '../store/store';
 import Timetable from '../components/Timetable';
+import WeekView from '../components/WeekView';
 import ImportDialog from '../components/ImportDialog';
 import StagesEditor from '../components/StagesEditor';
 import { ensurePermission, scheduleAlarmsForFestival } from '../lib/notifications';
@@ -17,8 +18,10 @@ export default function FestivalView() {
   const addSet = useStore((s) => s.addSet);
 
   const [tab, setTab] = useState<'schedule' | 'settings'>('schedule');
+  const [view, setView] = useState<'day' | 'week'>('day');
   const [day, setDay] = useState(festival?.startDate || '');
   const [showImport, setShowImport] = useState(false);
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     if (festival && !day) setDay(festival.startDate);
@@ -38,6 +41,13 @@ export default function FestivalView() {
     }
     return out;
   }, [festival]);
+
+  const filteredFestival = useMemo(() => {
+    if (!festival) return festival;
+    if (!query.trim()) return festival;
+    const q = query.toLowerCase();
+    return { ...festival, sets: festival.sets.filter((s) => s.artist.toLowerCase().includes(q)) };
+  }, [festival, query]);
 
   if (!festival) {
     return (
@@ -84,24 +94,38 @@ export default function FestivalView() {
 
       {tab === 'schedule' && (
         <>
-          <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
-            {days.map((d) => (
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <div className="flex bg-ink-800 rounded-full p-0.5">
               <button
-                key={d}
-                onClick={() => setDay(d)}
-                className={`px-3 py-1.5 rounded-full whitespace-nowrap text-sm transition ${
-                  day === d ? 'bg-ink-700 text-ink-100' : 'bg-ink-800 text-ink-300'
+                onClick={() => setView('day')}
+                className={`px-3 py-1 rounded-full text-sm transition ${
+                  view === 'day' ? 'bg-ink-600 text-ink-100' : 'text-ink-300'
                 }`}
               >
-                {format(new Date(`${d}T00:00:00`), 'EEE d MMM')}
+                Día
               </button>
-            ))}
+              <button
+                onClick={() => setView('week')}
+                className={`px-3 py-1 rounded-full text-sm transition ${
+                  view === 'week' ? 'bg-ink-600 text-ink-100' : 'text-ink-300'
+                }`}
+              >
+                Semana
+              </button>
+            </div>
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar artista…"
+              className="flex-1 min-w-[140px] bg-ink-800 border border-ink-700 rounded-full px-3 py-1.5 text-sm placeholder:text-ink-400"
+            />
             <button
               onClick={async () => {
                 const stage = festival.stages[0];
                 if (!stage) return alert('Crea un escenario primero.');
-                const start = new Date(`${day}T22:00:00`).toISOString();
-                const end = new Date(`${day}T23:00:00`).toISOString();
+                const targetDay = view === 'day' ? day : days[0];
+                const start = new Date(`${targetDay}T22:00:00`).toISOString();
+                const end = new Date(`${targetDay}T23:00:00`).toISOString();
                 await addSet(festival.id, {
                   id: crypto.randomUUID(),
                   festivalId: festival.id,
@@ -112,12 +136,32 @@ export default function FestivalView() {
                   status: null,
                 });
               }}
-              className="ml-auto px-3 py-1.5 rounded-full border border-ink-700 text-sm whitespace-nowrap"
+              className="px-3 py-1.5 rounded-full border border-ink-700 text-sm whitespace-nowrap"
             >
               + Set
             </button>
           </div>
-          {day && <Timetable festival={festival} day={day} />}
+
+          {view === 'day' && (
+            <>
+              <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1">
+                {days.map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setDay(d)}
+                    className={`px-3 py-1.5 rounded-full whitespace-nowrap text-sm transition ${
+                      day === d ? 'bg-ink-700 text-ink-100' : 'bg-ink-800 text-ink-300'
+                    }`}
+                  >
+                    {format(new Date(`${d}T00:00:00`), 'EEE d MMM')}
+                  </button>
+                ))}
+              </div>
+              {day && filteredFestival && <Timetable festival={filteredFestival} day={day} />}
+            </>
+          )}
+
+          {view === 'week' && filteredFestival && <WeekView festival={filteredFestival} days={days} />}
         </>
       )}
 

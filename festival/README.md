@@ -10,11 +10,14 @@ App PWA independiente para gestionar timetables de festivales (música electrón
   - Texto pegado (parser local con regex/heurística, sin conexión)
   - Foto del flyer (Claude API con visión)
   - PDF de la web (extracción local con pdf.js o Claude API si quieres más precisión)
-  - HTML de la web (limpieza local + parser, o Claude API)
-- **Timetable visual** con escenarios en columnas y horas en filas, con línea de "ahora".
+  - HTML pegado (limpieza local + parser, o Claude API)
+  - URL directa de la web del festival (descarga vía proxy CORS configurable)
+- **Vista Día y Vista Semana** del timetable, con búsqueda de artista.
+- **Reordenar escenarios** con flechas en el editor.
 - **Highlight por celdas**: marca cada set como ★ Imprescindible / ◐ Quizá / ✕ Paso o aplica un color libre.
 - **Alarmas** locales por set vía Notification API + Service Worker (los sets `must` reciben aviso por defecto).
-- **Vista Watch** compacta pensada para Apple Watch / Wear OS vía notificaciones del móvil emparejado y UI minimal.
+- **Vista Watch** compacta para Apple Watch / Wear OS, con **Wake Lock** para mantener la pantalla encendida y modo pantalla completa.
+- **Backup/Restore** vía JSON: exporta desde un dispositivo, importa en otro (sincronización manual).
 - **Offline-first**: todo se guarda en IndexedDB; sin servidor.
 
 ## Stack

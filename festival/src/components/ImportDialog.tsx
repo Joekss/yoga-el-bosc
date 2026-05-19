@@ -11,7 +11,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Tab = 'text' | 'image' | 'pdf' | 'html';
+type Tab = 'text' | 'image' | 'pdf' | 'html' | 'url';
 
 export default function ImportDialog({ festival, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('text');
@@ -24,9 +24,18 @@ export default function ImportDialog({ festival, onClose }: Props) {
   const [preview, setPreview] = useState<ParsedSchedule | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [url, setUrl] = useState('');
 
   const settings = useStore((s) => s.settings);
   const upsertFestival = useStore((s) => s.upsertFestival);
+
+  async function fetchUrlViaProxy(target: string): Promise<string> {
+    const proxy = settings.corsProxy || '';
+    const finalUrl = proxy + encodeURIComponent(target);
+    const res = await fetch(finalUrl);
+    if (!res.ok) throw new Error(`Fetch ${res.status}: ${res.statusText}`);
+    return await res.text();
+  }
 
   const run = async () => {
     setError(null);
@@ -68,6 +77,16 @@ export default function ImportDialog({ festival, onClose }: Props) {
               baseDate,
             )
           : parseScheduleText(plain, baseDate);
+      } else if (tab === 'url') {
+        if (!url.trim()) throw new Error('Introduce una URL.');
+        const html = await fetchUrlViaProxy(url.trim());
+        const plain = await htmlToText(html);
+        parsed = useClaude
+          ? await extractScheduleWithClaude(
+              { apiKey: settings.anthropicApiKey!, text: plain },
+              baseDate,
+            )
+          : parseScheduleText(plain, baseDate);
       } else {
         if (!text.trim()) throw new Error('Pega el lineup.');
         parsed = useClaude
@@ -100,8 +119,8 @@ export default function ImportDialog({ festival, onClose }: Props) {
           <button onClick={onClose} className="text-ink-300 hover:text-ink-100">✕</button>
         </div>
 
-        <div className="flex gap-1 mb-4 text-sm">
-          {(['text', 'image', 'pdf', 'html'] as Tab[]).map((t) => (
+        <div className="flex gap-1 mb-4 text-sm flex-wrap">
+          {(['text', 'image', 'pdf', 'html', 'url'] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -109,7 +128,7 @@ export default function ImportDialog({ festival, onClose }: Props) {
                 tab === t ? 'bg-ink-700 text-ink-100' : 'bg-ink-800 text-ink-300'
               }`}
             >
-              {t === 'text' ? 'Texto' : t === 'image' ? 'Foto' : t === 'pdf' ? 'PDF' : 'HTML'}
+              {t === 'text' ? 'Texto' : t === 'image' ? 'Foto' : t === 'pdf' ? 'PDF' : t === 'html' ? 'HTML' : 'URL'}
             </button>
           ))}
         </div>
@@ -180,6 +199,20 @@ export default function ImportDialog({ festival, onClose }: Props) {
             onChange={(e) => setPdfFile(e.target.files?.[0] || null)}
             className="w-full text-sm"
           />
+        )}
+        {tab === 'url' && (
+          <div className="space-y-2">
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://festival.com/lineup"
+              className="w-full bg-ink-800 border border-ink-700 rounded-lg px-3 py-2 text-sm"
+            />
+            <p className="text-[11px] text-ink-400">
+              Se descarga vía proxy CORS (<code className="text-ink-300">{settings.corsProxy || '—'}</code>). Configúralo en Ajustes si falla.
+            </p>
+          </div>
         )}
 
         <button

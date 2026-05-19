@@ -16,7 +16,9 @@ interface AppState {
   addStage: (festivalId: string, stage: Stage) => Promise<void>;
   updateStage: (festivalId: string, stageId: string, patch: Partial<Stage>) => Promise<void>;
   removeStage: (festivalId: string, stageId: string) => Promise<void>;
+  moveStage: (festivalId: string, stageId: string, direction: -1 | 1) => Promise<void>;
   setSettings: (patch: Partial<AppSettings>) => Promise<void>;
+  importBackup: (data: { festivals?: Festival[]; settings?: Partial<AppSettings> }, mode: 'merge' | 'replace') => Promise<{ imported: number }>;
 }
 
 function bumpUpdated(f: Festival): Festival {
@@ -87,9 +89,41 @@ export const useStore = create<AppState>((setState, getState) => ({
     await getState().upsertFestival({ ...f, stages, sets });
   },
 
+  async moveStage(festivalId, stageId, direction) {
+    const f = getState().festivals.find((x) => x.id === festivalId);
+    if (!f) return;
+    const idx = f.stages.findIndex((s) => s.id === stageId);
+    const target = idx + direction;
+    if (idx < 0 || target < 0 || target >= f.stages.length) return;
+    const stages = [...f.stages];
+    [stages[idx], stages[target]] = [stages[target], stages[idx]];
+    await getState().upsertFestival({ ...f, stages });
+  },
+
   async setSettings(patch) {
     const next = { ...getState().settings, ...patch };
     await db.saveSettings(next);
     setState({ settings: next });
+  },
+
+  async importBackup(data, mode) {
+    const incoming = (data.festivals || []).filter((f): f is Festival => !!f?.id && !!f?.name);
+    const current = mode === 'replace' ? [] : getState().festivals;
+    const byId = new Map(current.map((f) => [f.id, f]));
+    for (const f of incoming) byId.set(f.id, f);
+    const merged = [...byId.values()].sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+    if (mode === 'replace') {
+      for (const f of current) await db.deleteFestival(f.id);
+    }
+    for (const f of incoming) await db.saveFestival(f);
+
+    let settings = getState().settings;
+    if (data.settings) {
+      settings = { ...settings, ...data.settings };
+      await db.saveSettings(settings);
+    }
+    setState({ festivals: merged, settings });
+    return { imported: incoming.length };
   },
 }));

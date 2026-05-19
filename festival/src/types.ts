@@ -44,12 +44,15 @@ export interface AppSettings {
   theme: 'dark' | 'light';
   /** Pixels per minute in timetable view */
   zoom: number;
+  /** CORS proxy used when fetching festival URLs from the browser */
+  corsProxy: string;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
   defaultAlarmMinutes: 10,
   theme: 'dark',
   zoom: 1.2,
+  corsProxy: 'https://corsproxy.io/?',
 };
 
 export const STATUS_COLORS: Record<NonNullable<SetStatus>, string> = {
