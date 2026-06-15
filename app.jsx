@@ -126,7 +126,14 @@ function App() {
           {tab === 'home' && <Dashboard t={t} profile={profile} sequence={sequence} lang={lang}
             onStartPractice={() => setStage('practice')}
             onOpenPose={(p) => setPoseDetail(p)}
-            illustrationStyle={tweaks.illustrationStyle}/>}
+            illustrationStyle={tweaks.illustrationStyle}
+            onLogout={() => {
+              try {
+                localStorage.removeItem('elbosc-session');
+                localStorage.removeItem('elbosc-credential');
+              } catch (e) {}
+              setStage('auth');
+            }}/>}
           {tab === 'library' && <Library t={t} lang={lang} asanas={ASANAS}
             onOpenPose={(p) => setPoseDetail(p)} illustrationStyle={tweaks.illustrationStyle}/>}
           {tab === 'calendar' && <Calendar t={t} lang={lang} profile={profile}/>}

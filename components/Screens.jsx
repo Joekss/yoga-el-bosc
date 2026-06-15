@@ -3,7 +3,7 @@
 const { useState: uS, useMemo: uM } = React;
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, illustrationStyle }) => {
+const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, illustrationStyle, onLogout }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -24,9 +24,13 @@ const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, il
             <span style={{ color: 'var(--accent)' }}>{profile.name || ''}</span>
           </h1>
         </div>
-        <div style={{ width: 44, height: 44, borderRadius:'50%', background:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center', border: '1px solid color-mix(in srgb, var(--ink) 8%, transparent)' }}>
+        <button onClick={() => {
+            const msg = { ca:'Tancar la sessió actual?', es:'¿Cerrar la sesión actual?', en:'Log out of the current session?' }[lang];
+            if (window.confirm(msg)) onLogout && onLogout();
+          }}
+          style={{ width: 44, height: 44, borderRadius:'50%', background:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center', border: '1px solid color-mix(in srgb, var(--ink) 8%, transparent)', cursor:'pointer', padding:0 }}>
           <Icon name="user" size={20} color="var(--ink-soft)"/>
-        </div>
+        </button>
       </div>
 
       {/* Hero — sessió d'avui */}
