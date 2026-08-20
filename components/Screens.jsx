@@ -557,17 +557,24 @@ const Calendar = ({ t, lang, profile }) => {
               );
             })}
 
-            <div style={{ display:'flex', gap:8, marginTop:14, alignItems:'center' }}>
-              <input type="time" value={draftTime} onChange={e => setDraftTime(e.target.value)}
-                style={{ border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'10px 12px', fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', color:'var(--ink)' }}/>
-              <input type="text" value={draftText} onChange={e => setDraftText(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addNote()}
-                placeholder={{ca:'Escriu la nota…', es:'Escribe la nota…', en:'Write the note…'}[lang]}
-                style={{ flex:1, border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'10px 12px', fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', color:'var(--ink)', outline:'none', minWidth:0 }}/>
-              <button onClick={addNote} disabled={!draftText.trim()}
-                style={{ background:'var(--accent)', border:'none', borderRadius:12, width:44, height:42, display:'flex', alignItems:'center', justifyContent:'center', cursor: draftText.trim()?'pointer':'default', opacity: draftText.trim()?1:0.5, flexShrink:0 }}>
-                <Icon name="plus" size={20} color="var(--cream)"/>
-              </button>
+            <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:14 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)', letterSpacing:'0.1em' }}>
+                  {{ca:'Hora:',es:'Hora:',en:'Time:'}[lang]}
+                </span>
+                <input type="time" value={draftTime} onChange={e => setDraftTime(e.target.value)}
+                  style={{ border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:10, padding:'8px 12px', fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', color:'var(--ink)', outline:'none' }}/>
+              </div>
+              <div style={{ display:'flex', gap:8 }}>
+                <textarea value={draftText} onChange={e => setDraftText(e.target.value)}
+                  placeholder={{ca:'Escriu la nota del dia…', es:'Escribe la nota del día…', en:'Write the day note…'}[lang]}
+                  rows={3}
+                  style={{ flex:1, border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'10px 12px', fontFamily:'var(--serif)', fontSize:15, background:'var(--cream)', color:'var(--ink)', outline:'none', resize:'none', lineHeight:1.4 }}/>
+                <button onClick={addNote} disabled={!draftText.trim()}
+                  style={{ background:'var(--accent)', border:'none', borderRadius:12, width:44, alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center', cursor: draftText.trim()?'pointer':'default', opacity: draftText.trim()?1:0.5, flexShrink:0 }}>
+                  <Icon name="plus" size={20} color="var(--cream)"/>
+                </button>
+              </div>
             </div>
           </div>
         )}
