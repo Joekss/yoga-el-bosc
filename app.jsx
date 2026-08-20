@@ -80,6 +80,8 @@ function App() {
   const [theme, setTheme] = uSA(() => { try { return localStorage.getItem('elbosc-theme') || 'bosc'; } catch (e) { return 'bosc'; } });
   const changeTheme = (v) => { try { localStorage.setItem('elbosc-theme', v); } catch (e) {} setTheme(v); };
   const [posesVersion, setPosesVersion] = uSA(0);
+  const [textSize, setTextSize] = uSA(() => { try { return localStorage.getItem('elbosc-textsize') || 'm'; } catch (e) { return 'm'; } });
+  const changeTextSize = (v) => { try { localStorage.setItem('elbosc-textsize', v); } catch (e) {} setTextSize(v); };
 
   // React to tweak stage change (only in dev mode)
   uEA(() => { if (!isProd && tweaks.stage) setStage(tweaks.stage); }, [tweaks.stage]);
@@ -126,7 +128,8 @@ function App() {
     root.setAttribute('data-mode', tweaks.mode || 'light');
     root.setAttribute('data-typeface', tweaks.typeface || 'cormorant');
     root.setAttribute('data-density', tweaks.density || 'normal');
-  }, [theme, tweaks.mode, tweaks.typeface, tweaks.density]);
+    root.setAttribute('data-textsize', textSize || 'm');
+  }, [theme, textSize, tweaks.mode, tweaks.typeface, tweaks.density]);
 
   const setLang = (l) => setTweak('lang', l);
 
@@ -158,6 +161,7 @@ function App() {
           {tab === 'home' && <Dashboard t={t} profile={profile} sequence={sequence} lang={lang}
             role={tweaks.role || 'student'}
             theme={theme} onChangeTheme={changeTheme}
+            textSize={textSize} onChangeTextSize={changeTextSize}
             adminPin={adminPin} onChangePin={changeAdminPin}
             asanas={asanas} onPosesChanged={() => setPosesVersion(v => v + 1)}
             onStartPractice={() => setStage('practice')}

@@ -12,7 +12,7 @@ const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, adminPin, onChangePin, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, adminPin, onChangePin, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -251,6 +251,19 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, adm
                 <div style={{ width:42, height:42, borderRadius:'50%', background:th.color, boxShadow: theme===th.id ? ('0 0 0 3px var(--paper), 0 0 0 5px '+th.color) : 'none' }}/>
                 <span style={{ fontFamily:'var(--sans)', fontSize:12, color: theme===th.id ? 'var(--ink)' : 'var(--ink-soft)' }}>{th.label}</span>
               </button>
+            ))}
+          </div>
+
+          {/* Mida del text (accessibilitat) */}
+          <label style={{ ...themeLabelStyle, marginTop:18 }}>{{ca:'Mida del text',es:'Tamaño del texto',en:'Text size'}[lang]}</label>
+          <div style={{ display:'flex', gap:8, marginTop:10 }}>
+            {[{id:'m',l:'A'},{id:'l',l:'A+'},{id:'xl',l:'A++'}].map(o => (
+              <button key={o.id} onClick={() => onChangeTextSize && onChangeTextSize(o.id)}
+                style={{ flex:1, padding:'10px', borderRadius:12, cursor:'pointer', fontFamily:'var(--serif)', fontWeight:500,
+                         fontSize: o.id==='m'?15:o.id==='l'?18:22,
+                         border:'1px solid ' + ((textSize||'m')===o.id ? 'var(--accent)' : 'color-mix(in srgb, var(--ink) 12%, transparent)'),
+                         background: (textSize||'m')===o.id ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
+                         color: (textSize||'m')===o.id ? 'var(--accent)' : 'var(--ink)' }}>{o.l}</button>
             ))}
           </div>
 

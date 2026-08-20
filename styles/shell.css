@@ -57,3 +57,20 @@ body {
   flex: 1;
   height: 100%;
 }
+
+/* Mida del text (accessibilitat) — escala el contingut de les pantalles.
+   No toca la barra inferior, així res queda tallat. */
+:root[data-textsize="l"]  .yb-scroll { zoom: 1.12; }
+:root[data-textsize="xl"] .yb-scroll { zoom: 1.24; }
+
+/* Textura de paper molt subtil (toc professional, es manté minimalista) */
+.yb-shell-wrap::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 40;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='150' height='150'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+}
+:root[data-mode="dark"] .yb-shell-wrap::after { mix-blend-mode: screen; opacity: 0.5; }
