@@ -1,4 +1,4 @@
-const CACHE = 'elbosc-v16';
+const CACHE = 'elbosc-v17';
 
 const SHELL = [
   './',
