@@ -3,8 +3,13 @@
   "version": "0.1.0",
   "description": "El Bosc · Ioga personalitzat — PWA",
   "scripts": {
-    "start": "npx serve -l 5000 ."
+    "start": "npx serve -l 5000 .",
+    "map:svg": "mmdc -i ELBOSC-MAP.md -o ELBOSC-MAP.svg -w 1200 -H 800",
+    "map:png": "mmdc -i ELBOSC-MAP.md -o ELBOSC-MAP.png -w 1600 -H 1000"
   },
   "author": "Joekss",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@mermaid-js/mermaid-cli": "^10.0.0"
+  }
 }
