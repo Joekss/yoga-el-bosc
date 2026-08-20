@@ -75,6 +75,20 @@
 })();
 window.IS_PROD = true;
 </script>
+
+<!-- Supabase (backend) — client global a window.sb -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  window.SUPABASE_URL = 'https://nvyjdjznmavukxhesiqd.supabase.co';
+  window.SUPABASE_KEY = 'sb_publishable_XUvv0NDwAzaGhaO1MSRQSg_gaejJaBr';
+  try {
+    if (window.supabase && window.supabase.createClient) {
+      window.sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY, {
+        auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+      });
+    }
+  } catch (e) { console.warn('Supabase init failed', e); }
+</script>
 <script type="text/babel" src="tweaks-panel.jsx"></script>
 <script type="text/babel" src="data/asanas.jsx"></script>
 <script type="text/babel" src="data/i18n.jsx"></script>

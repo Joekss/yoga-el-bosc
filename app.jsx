@@ -77,6 +77,8 @@ function App() {
   const [adminPin, setAdminPin] = uSA(() => { try { return localStorage.getItem('elbosc-admin-pin') || '1234'; } catch (e) { return '1234'; } });
   const changeAdminPin = (p) => { try { localStorage.setItem('elbosc-admin-pin', p); } catch (e) {} setAdminPin(p); };
   const [dueNotes, setDueNotes] = uSA([]);
+  const [theme, setTheme] = uSA(() => { try { return localStorage.getItem('elbosc-theme') || 'bosc'; } catch (e) { return 'bosc'; } });
+  const changeTheme = (v) => { try { localStorage.setItem('elbosc-theme', v); } catch (e) {} setTheme(v); };
 
   // React to tweak stage change (only in dev mode)
   uEA(() => { if (!isProd && tweaks.stage) setStage(tweaks.stage); }, [tweaks.stage]);
@@ -111,18 +113,18 @@ function App() {
   }, []);
 
   // Desa el nom al dispositiu perquè no es perdi en recarregar
-  uEA(() => { try { if (profile.name) localStorage.setItem('elbosc-name', profile.name); } catch (e) {} }, [profile.name]);
+  uEA(() => { try { if (profile.name && profile.name !== DEFAULT_PROFILE.name) localStorage.setItem('elbosc-name', profile.name); } catch (e) {} }, [profile.name]);
 
   const sequence = uMA(() => generateSequence(profile, ASANAS), [profile]);
 
   // Apply theme attributes to root
   uEA(() => {
     const root = document.documentElement;
-    root.setAttribute('data-palette', tweaks.palette || 'bosc');
+    root.setAttribute('data-palette', theme || 'bosc');
     root.setAttribute('data-mode', tweaks.mode || 'light');
     root.setAttribute('data-typeface', tweaks.typeface || 'cormorant');
     root.setAttribute('data-density', tweaks.density || 'normal');
-  }, [tweaks.palette, tweaks.mode, tweaks.typeface, tweaks.density]);
+  }, [theme, tweaks.mode, tweaks.typeface, tweaks.density]);
 
   const setLang = (l) => setTweak('lang', l);
 
@@ -152,6 +154,9 @@ function App() {
       {stage === 'app' && (
         <>
           {tab === 'home' && <Dashboard t={t} profile={profile} sequence={sequence} lang={lang}
+            role={tweaks.role || 'student'}
+            theme={theme} onChangeTheme={changeTheme}
+            adminPin={adminPin} onChangePin={changeAdminPin}
             onStartPractice={() => setStage('practice')}
             onOpenPose={(p) => setPoseDetail(p)}
             illustrationStyle={tweaks.illustrationStyle}
@@ -168,7 +173,6 @@ function App() {
           {tab === 'calendar' && <Calendar t={t} lang={lang} profile={profile}/>}
           {tab === 'journal' && <Journal t={t} lang={lang}/>}
           {tab === 'messages' && <Chat t={t} lang={lang} role={tweaks.role || 'student'} asanas={ASANAS}/>}
-          {tab === 'config' && <ConfigScreen t={t} lang={lang} currentPin={adminPin} onChangePin={changeAdminPin}/>}
           <TabBar active={tab} setActive={setTab} t={t} role={tweaks.role || 'student'}/>
           {poseDetail && <PoseDetail t={t} lang={lang} asana={poseDetail} onClose={() => setPoseDetail(null)} illustrationStyle={tweaks.illustrationStyle}/>}
         </>

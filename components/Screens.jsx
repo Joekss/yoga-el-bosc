@@ -12,7 +12,7 @@ const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, adminPin, onChangePin, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -23,6 +23,8 @@ const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, il
 
   const [avatar, setAvatar] = uS(() => { try { return localStorage.getItem('elbosc-avatar') || null; } catch(e){ return null; } });
   const [showProfile, setShowProfile] = uS(false);
+  const [pinDraft, setPinDraft] = uS('');
+  const [pinMsg, setPinMsg] = uS(null);
   const onPickPhoto = (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = ''; // permet tornar a triar el mateix fitxer
@@ -54,6 +56,25 @@ const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, il
     logout: {ca:'Tancar sessió', es:'Cerrar sesión', en:'Log out'}[lang],
     nameLabel: {ca:'El teu nom', es:'Tu nombre', en:'Your name'}[lang],
     namePh: {ca:'El teu nom', es:'Tu nombre', en:'Your name'}[lang],
+    theme: {ca:'Tema', es:'Tema', en:'Theme'}[lang],
+    teacherZone: {ca:'Zona professora', es:'Zona profesora', en:'Teacher zone'}[lang],
+    pinPh: {ca:'PIN nou (4–8, lletres o números)', es:'PIN nuevo (4–8, letras o números)', en:'New PIN (4–8, letters or numbers)'}[lang],
+    pinCurrent: {ca:'PIN actual', es:'PIN actual', en:'Current PIN'}[lang],
+    pinSave: {ca:'Desar', es:'Guardar', en:'Save'}[lang],
+    pinOk: {ca:'PIN actualitzat.', es:'PIN actualizado.', en:'PIN updated.'}[lang],
+    pinErr: {ca:'Ha de tenir 4–8 lletres o números.', es:'Debe tener 4–8 letras o números.', en:'Must be 4–8 letters or numbers.'}[lang],
+  };
+  const themeLabelStyle = { fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', display:'block' };
+  const THEMES = [
+    { id:'bosc',  label:{ca:'Bosc',es:'Bosc',en:'Forest'}[lang], color:'#B8744A' },
+    { id:'sage',  label:{ca:'Sàlvia',es:'Salvia',en:'Sage'}[lang], color:'#6B8259' },
+    { id:'ocean', label:{ca:'Oceà',es:'Océano',en:'Ocean'}[lang], color:'#4A7B8C' },
+  ];
+  const pinValid = /^[A-Za-z0-9]{4,8}$/.test(pinDraft);
+  const savePin = () => {
+    if (!pinValid) { setPinMsg({ type:'err', text: PT.pinErr }); return; }
+    onChangePin && onChangePin(pinDraft);
+    setPinDraft(''); setPinMsg({ type:'ok', text: PT.pinOk });
   };
 
   return (
@@ -70,10 +91,8 @@ const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, il
           </h1>
         </div>
         <button onClick={() => setShowProfile(true)} aria-label={PT.title}
-          style={{ width: 44, height: 44, borderRadius:'50%', background:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center', border: '1px solid color-mix(in srgb, var(--ink) 8%, transparent)', cursor:'pointer', padding:0, overflow:'hidden' }}>
-          {avatar
-            ? <img src={avatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-            : <Icon name="user" size={20} color="var(--ink-soft)"/>}
+          style={{ width: 44, height: 44, borderRadius:'50%', background:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center', border: '1px solid color-mix(in srgb, var(--ink) 8%, transparent)', cursor:'pointer', padding:0 }}>
+          <Icon name="settings" size={20} color="var(--ink-soft)"/>
         </button>
       </div>
 
@@ -199,7 +218,40 @@ const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, il
             <button onClick={removePhoto} style={{ width:'100%', padding:'12px', borderRadius:14, background:'transparent', border:'1px solid color-mix(in srgb, var(--ink) 12%, transparent)', color:'var(--ink)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', marginBottom:10, boxSizing:'border-box' }}>{PT.remove}</button>
           )}
 
-          <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'8px 0 12px' }}/>
+          {/* Tema */}
+          <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'10px 0 14px' }}/>
+          <label style={themeLabelStyle}>{PT.theme}</label>
+          <div style={{ display:'flex', gap:10, marginTop:12, marginBottom:4 }}>
+            {THEMES.map(th => (
+              <button key={th.id} onClick={() => onChangeTheme && onChangeTheme(th.id)}
+                style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:8, background:'transparent', border:'none', cursor:'pointer', padding:'6px 0' }}>
+                <div style={{ width:42, height:42, borderRadius:'50%', background:th.color, boxShadow: theme===th.id ? ('0 0 0 3px var(--paper), 0 0 0 5px '+th.color) : 'none' }}/>
+                <span style={{ fontFamily:'var(--sans)', fontSize:12, color: theme===th.id ? 'var(--ink)' : 'var(--ink-soft)' }}>{th.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {role === 'teacher' && (
+            <div style={{ marginTop:16 }}>
+              <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'6px 0 14px' }}/>
+              <label style={themeLabelStyle}>{PT.teacherZone} · PIN</label>
+              <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)', margin:'8px 0 10px' }}>
+                {PT.pinCurrent}: <span style={{ fontFamily:'var(--serif)', fontSize:15, letterSpacing:'0.2em', color:'var(--ink)' }}>{adminPin}</span>
+              </div>
+              <div style={{ display:'flex', gap:8, alignItems:'stretch' }}>
+                <input type="text" value={pinDraft} maxLength={8} placeholder={PT.pinPh}
+                  autoCapitalize="none" autoCorrect="off" spellCheck="false"
+                  onChange={e => { setPinDraft(e.target.value.replace(/[^A-Za-z0-9]/g,'').slice(0,8)); setPinMsg(null); }}
+                  onKeyDown={e => e.key === 'Enter' && savePin()}
+                  style={{ flex:1, minWidth:0, border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'11px 12px', fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', color:'var(--ink)', outline:'none', boxSizing:'border-box' }}/>
+                <button onClick={savePin} disabled={!pinValid}
+                  style={{ flexShrink:0, padding:'0 16px', borderRadius:12, border:'none', background:'var(--accent)', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor: pinValid?'pointer':'default', opacity: pinValid?1:0.5 }}>{PT.pinSave}</button>
+              </div>
+              {pinMsg && <div style={{ fontFamily:'var(--sans)', fontSize:12, color: pinMsg.type==='ok' ? 'var(--leaf-deep)' : 'var(--accent)', marginTop:8 }}>{pinMsg.text}</div>}
+            </div>
+          )}
+
+          <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
           <button onClick={() => { setShowProfile(false); onLogout && onLogout(); }}
             style={{ width:'100%', padding:'13px', borderRadius:14, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:15, cursor:'pointer', boxSizing:'border-box' }}>
             {PT.logout}
@@ -223,7 +275,7 @@ const Library = ({ t, lang, asanas, onOpenPose, illustrationStyle }) => {
     <div className="yb-scroll" style={{ height: '100%', overflowY: 'auto', background: 'var(--paper)' }}>
       <div style={{ padding: '60px 24px 16px' }}>
         <div style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.25em', color:'var(--accent)', marginBottom: 4 }}>
-          {{ ca:'88 ĀSANES', es:'88 ĀSANAS', en:'88 ĀSANAS' }[lang]}
+          {(asanas ? asanas.length : 0)} {{ ca:'ĀSANES', es:'ĀSANAS', en:'ĀSANAS' }[lang]}
         </div>
         <h1 style={{ fontSize: 36, fontStyle:'italic', color:'var(--ink)' }}>
           {{ ca:'Biblioteca', es:'Biblioteca', en:'Library' }[lang]}
@@ -527,16 +579,32 @@ const Calendar = ({ t, lang, profile }) => {
 };
 
 // ── Journal ─────────────────────────────────────────────────
-const Journal = ({ t, lang }) => {
+const JOURNAL_KEY = 'elbosc-journal';
+const jLoad = () => { try { const s = JSON.parse(localStorage.getItem(JOURNAL_KEY)); if (Array.isArray(s)) return s; } catch(e){} return []; };
+const jSave = (arr) => { try { localStorage.setItem(JOURNAL_KEY, JSON.stringify(arr)); } catch(e){} };
+const MOOD_EMOJI = ['◔','◑','◐','●','✦'];
+
+const Journal = ({ t, lang, onShare }) => {
+  const [entries, setEntries] = uS(jLoad);
   const [mood, setMood] = uS(3);
   const [note, setNote] = uS('');
-  const moodEmoji = ['◔','◑','◐','●','✦'];
+  const locale = lang === 'ca' ? 'ca-ES' : lang === 'es' ? 'es-ES' : 'en-US';
+
+  const save = () => {
+    if (!note.trim()) return;
+    const entry = { id:'j'+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), mood, text: note.trim() };
+    const next = [entry, ...jLoad()];
+    jSave(next); setEntries(next); setNote('');
+  };
+  const remove = (id) => { const next = jLoad().filter(e => e.id !== id); jSave(next); setEntries(next); };
+  const sorted = [...entries].sort((a,b) => b.ts - a.ts);
+  const fmt = (ts) => { try { return new Date(ts).toLocaleDateString(locale, { weekday:'short', day:'numeric', month:'long' }); } catch(e){ return ''; } };
 
   return (
     <div className="yb-scroll" style={{ height: '100%', overflowY: 'auto', background: 'var(--paper)' }}>
       <div style={{ padding: '60px 24px 16px' }}>
         <div style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.25em', color:'var(--accent)', marginBottom: 4 }}>
-          {{ca:'AVUI', es:'HOY', en:'TODAY'}[lang]} · {new Date().toLocaleDateString(lang, { day:'numeric', month:'long' })}
+          {{ca:'AVUI', es:'HOY', en:'TODAY'}[lang]} · {new Date().toLocaleDateString(locale, { day:'numeric', month:'long' })}
         </div>
         <h1 style={{ fontSize: 36, fontStyle:'italic', color:'var(--ink)' }}>{t.journal_.title}</h1>
       </div>
@@ -551,7 +619,7 @@ const Journal = ({ t, lang }) => {
                 padding: 8, borderRadius: 12, opacity: mood === i ? 1 : 0.4,
                 transform: mood === i ? 'scale(1.15)' : 'scale(1)', transition:'all .2s',
               }}>
-                <div style={{ fontSize: 28, color: mood === i ? 'var(--accent)' : 'var(--ink)' }}>{moodEmoji[i]}</div>
+                <div style={{ fontSize: 28, color: mood === i ? 'var(--accent)' : 'var(--ink)' }}>{MOOD_EMOJI[i]}</div>
                 <div style={{ fontFamily:'var(--sans)', fontSize: 10, color:'var(--ink-soft)', marginTop: 4 }}>{m}</div>
               </button>
             ))}
@@ -565,23 +633,34 @@ const Journal = ({ t, lang }) => {
               fontFamily:'var(--serif)', fontSize: 16, lineHeight: 1.5, color:'var(--ink)', background:'transparent' }}/>
         </div>
 
-        <button className="yb-btn yb-btn-primary" style={{ width:'100%', marginTop: 16 }}>
+        <button onClick={save} disabled={!note.trim()} className="yb-btn yb-btn-primary" style={{ width:'100%', marginTop: 16, opacity: note.trim() ? 1 : 0.55 }}>
           {t.journal_.save}
         </button>
 
-        {/* Past entries */}
+        {/* Anotacions guardades, ordenades per data (més recent a dalt) */}
         <div style={{ marginTop: 32 }}>
           <div className="yb-divider-leaf" style={{ marginBottom: 14 }}>{{ca:'Anteriors', es:'Anteriores', en:'Earlier'}[lang]}</div>
-          {[
-            { date:'29 abr', mood: 4, txt:'Sessió tranquil·la, esquena alleujada' },
-            { date:'27 abr', mood: 3, txt:'M\'ha costat concentrar-me al principi' },
-            { date:'25 abr', mood: 4, txt:'Equilibri millor que mai' },
-          ].map((e,i) => (
-            <div key={i} className="yb-card" style={{ marginBottom: 10, display:'flex', gap: 14, alignItems:'flex-start', padding: 14 }}>
-              <div style={{ width: 36, height: 36, borderRadius:'50%', background:'color-mix(in srgb, var(--accent) 18%, transparent)', color:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', fontSize: 18, flexShrink:0 }}>{moodEmoji[e.mood]}</div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)', textTransform:'uppercase' }}>{e.date}</div>
-                <div style={{ fontFamily:'var(--serif)', fontSize: 14, color:'var(--ink)', marginTop: 2, fontStyle:'italic' }}>"{e.txt}"</div>
+          {sorted.length === 0 && (
+            <div style={{ fontFamily:'var(--sans)', fontSize: 13, color:'var(--ink-soft)', textAlign:'center', padding:'8px 0 4px' }}>
+              {{ca:'Encara no has escrit cap anotació.', es:'Aún no has escrito ninguna anotación.', en:'No entries yet.'}[lang]}
+            </div>
+          )}
+          {sorted.map(e => (
+            <div key={e.id} className="yb-card" style={{ marginBottom: 10, display:'flex', gap: 14, alignItems:'flex-start', padding: 14 }}>
+              <div style={{ width: 36, height: 36, borderRadius:'50%', background:'color-mix(in srgb, var(--accent) 18%, transparent)', color:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', fontSize: 18, flexShrink:0 }}>{MOOD_EMOJI[e.mood]}</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)', textTransform:'uppercase' }}>{fmt(e.ts)}</div>
+                <div style={{ fontFamily:'var(--serif)', fontSize: 14, color:'var(--ink)', marginTop: 2, fontStyle:'italic', wordBreak:'break-word' }}>"{e.text}"</div>
+              </div>
+              <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                {onShare && (
+                  <button onClick={() => onShare({ kind:'journal', mood:e.mood, emoji:MOOD_EMOJI[e.mood], date:fmt(e.ts), text:e.text })} title="Compartir" style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
+                    <Icon name="send" size={15} color="var(--ink-soft)"/>
+                  </button>
+                )}
+                <button onClick={() => remove(e.id)} title="Eliminar" style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
+                  <Icon name="trash" size={15} color="var(--ink-soft)"/>
+                </button>
               </div>
             </div>
           ))}
@@ -694,7 +773,6 @@ const TabBar = ({ active, setActive, t, role }) => {
     { id:'journal', icon:'journal', label: t.nav.journal },
     { id:'messages', icon:'chat', label: t.nav.messages },
   ];
-  if (role === 'teacher') tabs.push({ id:'config', icon:'settings', label: 'Config' });
   return (
     <div style={{
       position: 'absolute', bottom: 0, left: 0, right: 0,
