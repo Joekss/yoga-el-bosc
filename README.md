@@ -109,7 +109,7 @@ La propietat i ús Aquesta aplicació, el seu codi, dissenys, continguts i tots 
 
 Per a consultes o per sol·licitar permisos d’ús: contacta amb Joelreintegra@gmail.com
 
-Peu de pàgina / copyright (breu) © 2026 La Cèliua. Tots els drets reservats. L’ús, la modificació o la distribució no autoritzats poden donar lloc a accions legals.
+Peu de pàgina / copyright (breu) © 2026 La Cèlia. Tots els drets reservats. L’ús, la modificació o la distribució no autoritzats poden donar lloc a accions legals.
 
 ---
 
