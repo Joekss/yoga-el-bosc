@@ -118,6 +118,26 @@ function App() {
   // Desa el nom al dispositiu perquè no es perdi en recarregar
   uEA(() => { try { if (profile.name && profile.name !== DEFAULT_PROFILE.name) localStorage.setItem('elbosc-name', profile.name); } catch (e) {} }, [profile.name]);
 
+  // Supabase: si l'usuària torna d'un enllaç màgic (o ja té sessió), entra a l'app
+  uEA(() => {
+    if (!window.sb) return;
+    const enter = (session) => {
+      if (!session || !session.user) return;
+      const email = session.user.email || '';
+      try {
+        const existing = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
+        if (!(existing && existing.role)) localStorage.setItem('elbosc-session', JSON.stringify({ email, role: 'student' }));
+      } catch (e) {}
+      setTweak('role', 'student');
+      setStage('app'); setTab('home');
+      try { if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search); } catch (e) {}
+    };
+    window.sb.auth.getSession().then(({ data }) => enter(data && data.session)).catch(() => {});
+    let sub;
+    try { sub = window.sb.auth.onAuthStateChange((_e, session) => enter(session)).data; } catch (e) {}
+    return () => { try { sub && sub.subscription && sub.subscription.unsubscribe(); } catch (e) {} };
+  }, []);
+
   const asanas = uMA(() => (window.EBPoses ? window.EBPoses.effective() : ASANAS), [posesVersion]);
   const sequence = uMA(() => generateSequence(profile, asanas), [profile, asanas]);
 
