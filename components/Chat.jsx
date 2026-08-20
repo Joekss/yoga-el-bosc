@@ -557,17 +557,26 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
   };
 
   const startRecording = () => {
-    recTRef.current = 0;
-    setRecT(0);
-    recTimer.current = setInterval(() => { recTRef.current++; setRecT(recTRef.current); }, 1000);
-    setRecording(true);
+    if (mediaRecRef.current) return;
+    // getUserMedia ha d'estar en el handler directe (iOS exigeix gesture directe)
     navigator.mediaDevices?.getUserMedia({ audio: true }).then(stream => {
-      const recorder = new MediaRecorder(stream);
+      // Detecta el millor MIME: iOS només suporta audio/mp4
+      const mimeType = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find(
+        m => { try { return MediaRecorder.isTypeSupported(m); } catch(e) { return false; } }
+      ) || '';
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
       const chunks = [];
       recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
       recorder.start();
-      mediaRecRef.current = { recorder, stream, chunks };
-    }).catch(() => { mediaRecRef.current = null; });
+      mediaRecRef.current = { recorder, stream, chunks, mimeType };
+      recTRef.current = 0;
+      setRecT(0);
+      recTimer.current = setInterval(() => { recTRef.current++; setRecT(recTRef.current); }, 1000);
+      setRecording(true);
+    }).catch(() => {
+      mediaRecRef.current = null;
+      alert({ ca:'Cal permís de micròfon. Ves a Ajustaments > Safari > Micròfon i activa\'l.', es:'Necesitas permiso de micrófono. Ve a Ajustes > Safari > Micrófono y actívalo.', en:'Microphone permission needed. Go to Settings > Safari > Microphone.' }[lang] || 'Microphone permission needed.');
+    });
   };
 
   const handleRecordingEnd = () => {
@@ -575,25 +584,21 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
     recTimer.current = null;
     setRecording(false);
     const duration = recTRef.current;
-    if (duration < 1) {
-      mediaRecRef.current?.stream?.getTracks().forEach(t => t.stop());
-      mediaRecRef.current = null;
-      return;
-    }
-    const wf = Array.from({length: Math.min(20, Math.max(4, duration*2))}, () => 0.2 + Math.random()*0.7);
+    const wf = Array.from({length: Math.min(20, Math.max(4, Math.max(duration, 1)*2))}, () => 0.2 + Math.random()*0.7);
     const ctx = mediaRecRef.current;
     mediaRecRef.current = null;
-    if (ctx?.recorder && ctx.recorder.state !== 'inactive') {
+    if (!ctx) return;
+    if (ctx.recorder && ctx.recorder.state !== 'inactive') {
       ctx.recorder.onstop = () => {
-        const blob = new Blob(ctx.chunks, { type: ctx.recorder.mimeType || 'audio/webm' });
+        const blobType = ctx.mimeType || ctx.recorder.mimeType || 'audio/mp4';
+        const blob = new Blob(ctx.chunks, { type: blobType });
         const url = URL.createObjectURL(blob);
         ctx.stream.getTracks().forEach(t => t.stop());
-        sendMsg('audio', { duration, waveform: wf, url });
+        sendMsg('audio', { duration: Math.max(duration, 1), waveform: wf, url });
       };
       ctx.recorder.stop();
     } else {
-      ctx?.stream?.getTracks().forEach(t => t.stop());
-      sendMsg('audio', { duration, waveform: wf, url: null });
+      ctx.stream?.getTracks().forEach(t => t.stop());
     }
   };
 
@@ -678,8 +683,7 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
               </button>
             ) : (
               <button
-                onMouseDown={startRecording} onMouseUp={handleRecordingEnd} onMouseLeave={()=> recording && handleRecordingEnd()}
-                onTouchStart={startRecording} onTouchEnd={handleRecordingEnd}
+                onClick={startRecording}
                 aria-label={t.audio}
                 style={{ width: 42, height: 42, borderRadius:'50%', background:'var(--ink)', border:'none', cursor:'pointer', flexShrink: 0,
                          display:'flex', alignItems:'center', justifyContent:'center' }}>

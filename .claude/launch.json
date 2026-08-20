@@ -4,8 +4,8 @@
     {
       "name": "yoga-el-bosc",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "cd '/Users/joekss/Downloads/Yoga El Bosc' && python3 -m http.server ${PORT:-7788}"],
-      "port": 7788,
+      "runtimeArgs": ["-c", "cd '/Users/joekss/Downloads/Yoga El Bosc' && python3 -m http.server ${PORT:-7798}"],
+      "port": 7798,
       "autoPort": true
     }
   ]

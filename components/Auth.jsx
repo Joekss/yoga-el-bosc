@@ -364,25 +364,14 @@ const CodeScreen = ({ t, lang, email, correctCode, onVerified, onBack }) => {
 };
 
 // ── Pantalla PIN (trigger ocult → admin) ─────────────────────────────────────
-const PinScreen = ({ t, adminPin, onSuccess, onClose }) => {
+const PinScreen = ({ t, lang = 'ca', adminPin, onSuccess, onClose }) => {
   const [input, setInput] = uSAuth('');
   const [shake, setShake] = uSAuth(false);
 
-  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
-
-  const press = (k) => {
-    if (k === '⌫') { setInput(s => s.slice(0,-1)); return; }
-    if (!k) return;
-    const next = (input + k).slice(0, 4);
-    setInput(next);
-    if (next.length === 4) {
-      if (next === adminPin) {
-        setTimeout(() => onSuccess(), 200);
-      } else {
-        setShake(true);
-        setTimeout(() => { setShake(false); setInput(''); }, 700);
-      }
-    }
+  const submit = () => {
+    if (input.length < 4) return;
+    if (input === adminPin) { setTimeout(() => onSuccess(), 150); }
+    else { setShake(true); setTimeout(() => { setShake(false); setInput(''); }, 700); }
   };
 
   return (
@@ -397,31 +386,21 @@ const PinScreen = ({ t, adminPin, onSuccess, onClose }) => {
       <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:26, color:'var(--cream)', marginBottom:6 }}>{t.pinTitle}</div>
       <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'color-mix(in srgb, var(--cream) 55%, transparent)', marginBottom:32, letterSpacing:'0.05em' }}>{t.pinSub}</div>
 
-      {/* Dots */}
-      <div style={{ display:'flex', gap:16, marginBottom:36,
-                    animation: shake ? 'ybShake 0.5s ease' : 'none' }}>
-        {[0,1,2,3].map(i=>(
-          <div key={i} style={{ width:14, height:14, borderRadius:'50%',
-                                background: i < input.length ? 'var(--accent)' : 'color-mix(in srgb, var(--cream) 20%, transparent)',
-                                border:'2px solid color-mix(in srgb, var(--cream) 30%, transparent)',
-                                transition:'background .15s' }}/>
-        ))}
-      </div>
-
-      {/* Keypad */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, width:230 }}>
-        {keys.map((k,i)=>(
-          <button key={i} onClick={()=>press(k)} disabled={!k && k!=='0'}
-            style={{ height:62, borderRadius:16, border:'none', cursor: !k ? 'default':'pointer',
-                     background: !k ? 'transparent' : k==='⌫' ? 'color-mix(in srgb, var(--cream) 10%, transparent)' : 'color-mix(in srgb, var(--cream) 12%, transparent)',
-                     color:'var(--cream)', fontFamily:'var(--serif)', fontSize: k==='⌫'?18:28, fontStyle:'italic',
-                     display:'flex', alignItems:'center', justifyContent:'center',
-                     transition:'background .1s', opacity: !k ? 0 : 1 }}
-            onMouseDown={e=>{ e.currentTarget.style.background='color-mix(in srgb, var(--cream) 22%, transparent)'; }}
-            onMouseUp={e=>{ e.currentTarget.style.background = k==='⌫' ? 'color-mix(in srgb, var(--cream) 10%, transparent)':'color-mix(in srgb, var(--cream) 12%, transparent)'; }}>
-            {k==='⌫' ? <Icon name="back" size={16} color="var(--cream)"/> : k}
-          </button>
-        ))}
+      {/* Camp de PIN — alfanumèric, fins a 8 caràcters */}
+      <div style={{ width:'100%', maxWidth:280, animation: shake ? 'ybShake 0.5s ease' : 'none' }}>
+        <input type="text" inputMode="text" autoCapitalize="none" autoCorrect="off" spellCheck="false" autoFocus
+          value={input} maxLength={8}
+          onChange={e => setInput(e.target.value.replace(/[^A-Za-z0-9]/g,'').slice(0,8))}
+          onKeyDown={e => e.key === 'Enter' && submit()}
+          placeholder="••••••"
+          style={{ width:'100%', textAlign:'center', letterSpacing:'0.35em', fontFamily:'var(--serif)', fontSize:24,
+                   padding:'14px 16px', borderRadius:16, boxSizing:'border-box', outline:'none',
+                   border:'2px solid color-mix(in srgb, var(--cream) 25%, transparent)',
+                   background:'color-mix(in srgb, var(--cream) 8%, transparent)', color:'var(--cream)' }}/>
+        <button onClick={submit} disabled={input.length < 4}
+          className="yb-btn yb-btn-clay" style={{ width:'100%', marginTop:16, opacity: input.length < 4 ? 0.5 : 1 }}>
+          {({ca:'Entrar',es:'Entrar',en:'Enter'})[lang]}
+        </button>
       </div>
 
       <div style={{ marginTop:24, fontFamily:'var(--sans)', fontSize:11, color:'color-mix(in srgb, var(--cream) 35%, transparent)' }}>
@@ -527,7 +506,6 @@ const AdminPanel = ({ t, lang, onClose, onEnterAsTeacher, roster, setRoster }) =
                   <div style={{ fontFamily:'var(--sans)', fontSize:10, color:'var(--ink-soft)', marginTop:3, display:'flex', gap:10, flexWrap:'wrap' }}>
                     <span>{s.level}</span>
                     <span>{t.invitedAt} {s.invitedAt}</span>
-                    <span>{t.lastAccess}: {s.lastAccess}</span>
                   </div>
                   {/* Code */}
                   {s.email && (
@@ -622,43 +600,14 @@ const AdminPanel = ({ t, lang, onClose, onEnterAsTeacher, roster, setRoster }) =
 
       {tab === 'settings' && (
         <div className="yb-scroll" style={{ flex:1, overflowY:'auto', padding:'14px 18px' }}>
-          <div className="yb-card" style={{ marginBottom:14 }}>
-            <div className="yb-divider-leaf" style={{ marginBottom:12 }}>
-              {({ca:'Serveis d\'email',es:'Servicios de email',en:'Email services'})[lang]}
-            </div>
-            <p style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)', lineHeight:1.55 }}>
-              {({
-                ca:'Integra un servei d\'enviament d\'emails per activar els magic links reals:',
-                es:'Integra un servicio de envío de emails para activar los magic links reales:',
-                en:'Connect an email sending service to enable real magic links:',
-              })[lang]}
-            </p>
-            {[
-              { name:'Resend', url:'resend.com', note:{ca:'Gratuït fins 3.000/mes',es:'Gratis hasta 3.000/mes',en:'Free up to 3,000/month'}[lang] },
-              { name:'EmailJS', url:'emailjs.com', note:{ca:'Gratuït fins 200/mes',es:'Gratis hasta 200/mes',en:'Free up to 200/month'}[lang] },
-              { name:'Supabase Auth', url:'supabase.com', note:{ca:'Gratuït fins 50.000 usuaris',es:'Gratis hasta 50.000 usuarios',en:'Free up to 50,000 users'}[lang] },
-            ].map(svc => (
-              <div key={svc.name} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 0', borderBottom:'1px solid color-mix(in srgb, var(--ink) 5%, transparent)' }}>
-                <div style={{ width:36, height:36, borderRadius:10, background:'color-mix(in srgb, var(--accent) 14%, transparent)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  <Icon name="mail" size={16} color="var(--accent)"/>
-                </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontFamily:'var(--sans)', fontSize:13, fontWeight:500 }}>{svc.name}</div>
-                  <div style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)' }}>{svc.note}</div>
-                </div>
-                <span style={{ fontFamily:'var(--sans)', fontSize:10, color:'var(--ink-soft)' }}>{svc.url}</span>
-              </div>
-            ))}
-          </div>
-
           <div className="yb-card">
             <div className="yb-divider-leaf" style={{ marginBottom:12 }}>PIN</div>
             <p style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)', lineHeight:1.55, margin:0 }}>
               {({ca:'PIN actual: ',es:'PIN actual: ',en:'Current PIN: '})[lang]}
-              <span style={{ fontFamily:'var(--serif)', fontSize:18, letterSpacing:'0.3em', color:'var(--ink)' }}>1234</span>
+              <span style={{ fontFamily:'var(--serif)', fontSize:18, letterSpacing:'0.3em', color:'var(--ink)' }}>{(function(){try{return localStorage.getItem('elbosc-admin-pin')||'1234';}catch(e){return '1234';}})()}</span>
             </p>
             <p style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)', marginTop:8, lineHeight:1.5 }}>
-              {({ca:'Canvia\'l via la prop adminPin="XXXX" a l\'app.',es:'Cámbialo via la prop adminPin="XXXX" en la app.',en:'Change it via the adminPin="XXXX" prop in the app.'})[lang]}
+              {({ca:'Canvia el PIN des de ⚙ Configuració (pestanya Inici).',es:'Cambia el PIN desde ⚙ Configuración (pestaña Inicio).',en:'Change the PIN from ⚙ Settings (Home tab).'})[lang]}
             </p>
           </div>
           <div style={{ height:80 }}/>
@@ -718,7 +667,7 @@ const AuthGate = ({ lang = 'ca', adminPin = '1234', onSuccess }) => {
         <CodeScreen t={t} lang={lang} email={sentEmail} correctCode={studentCode} onVerified={handleVerified} onBack={()=>setScreen('email')}/>
       )}
       {screen === 'pin' && (
-        <PinScreen t={t} adminPin={adminPin} onSuccess={handlePinSuccess} onClose={()=>setScreen('email')}/>
+        <PinScreen t={t} lang={lang} adminPin={adminPin} onSuccess={handlePinSuccess} onClose={()=>setScreen('email')}/>
       )}
       {screen === 'admin' && (
         <AdminPanel t={t} lang={lang} roster={roster} setRoster={setRoster} onClose={()=>setScreen('email')} onEnterAsTeacher={handleEnterAsTeacher}/>
