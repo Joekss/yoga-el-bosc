@@ -11,6 +11,13 @@ const ebDayKey = (y, m, d) => `${y}-${ebPad(m+1)}-${ebPad(d)}`;
 const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number); const [h,mi] = String(n.time||'00:00').split(':').map(Number); return new Date(Y, (M||1)-1, D||1, h||0, mi||0, 0, 0); };
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
+// ── Compartir al xat (bústia local: Diari/Calendari → xat) ──────────────────
+const EB_SHARE_KEY = 'elbosc-chat-shared';
+if (typeof window !== 'undefined') window.EBShare = {
+  load: () => { try { return JSON.parse(localStorage.getItem(EB_SHARE_KEY)) || []; } catch (e) { return []; } },
+  add: (text) => { try { const a = JSON.parse(localStorage.getItem(EB_SHARE_KEY)) || []; a.push({ id: 's' + Date.now() + Math.random().toString(36).slice(2,5), text: String(text), time: Date.now() }); localStorage.setItem(EB_SHARE_KEY, JSON.stringify(a)); } catch (e) {} },
+};
+
 // ── Dashboard ───────────────────────────────────────────────
 const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, adminPin, onChangePin, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
@@ -568,6 +575,7 @@ const Calendar = ({ t, lang, profile }) => {
   const [now, setNow] = uS(() => Date.now());
   const [draftTime, setDraftTime] = uS('09:00');
   const [draftText, setDraftText] = uS('');
+  const [sharedIds, setSharedIds] = uS([]);
   const RED = '#C2493B';
 
   // Rellotge: refresca cada 30s perquè els dies passin de verd a vermell sols
@@ -595,6 +603,11 @@ const Calendar = ({ t, lang, profile }) => {
     ebSaveNotes(next); setNotes(next); setDraftText('');
   };
   const removeNote = (id) => { const next = ebLoadNotes().filter(n => n.id !== id); ebSaveNotes(next); setNotes(next); };
+  const shareCalNote = (n) => {
+    const label = { ca:'Calendari', es:'Calendario', en:'Calendar' }[lang];
+    if (window.EBShare) window.EBShare.add(`📅 ${label} · ${selDateLabel} ${n.time}\n${n.text}`);
+    setSharedIds(prev => prev.includes(n.id) ? prev : [...prev, n.id]);
+  };
 
   const selDateLabel = selected != null ? (() => { try { return new Date(view.y, view.m, selected).toLocaleDateString(locale, { weekday:'long', day:'numeric', month:'long' }); } catch(e){ return String(selected); } })() : '';
   const selNotes = selected != null ? notesForDay(selected) : [];
@@ -678,6 +691,9 @@ const Calendar = ({ t, lang, profile }) => {
                 <div key={n.id} style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 0', borderBottom:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)' }}>
                   <div style={{ minWidth:52, fontFamily:'var(--serif)', fontStyle:'italic', fontSize:16, color: due ? RED : 'var(--leaf-deep)' }}>{n.time}</div>
                   <div style={{ flex:1, fontFamily:'var(--sans)', fontSize:14, color:'var(--ink)', wordBreak:'break-word' }}>{n.text}</div>
+                  <button onClick={() => shareCalNote(n)} title="Compartir al xat" style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
+                    <Icon name={sharedIds.includes(n.id) ? 'check' : 'send'} size={15} color={sharedIds.includes(n.id) ? 'var(--leaf-deep)' : 'var(--ink-soft)'}/>
+                  </button>
                   <button onClick={() => removeNote(n.id)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
                     <Icon name="trash" size={15} color="var(--ink-soft)"/>
                   </button>
@@ -734,6 +750,12 @@ const Journal = ({ t, lang, onShare }) => {
   const remove = (id) => { const next = jLoad().filter(e => e.id !== id); jSave(next); setEntries(next); };
   const sorted = [...entries].sort((a,b) => b.ts - a.ts);
   const fmt = (ts) => { try { return new Date(ts).toLocaleDateString(locale, { weekday:'short', day:'numeric', month:'long' }); } catch(e){ return ''; } };
+  const [sharedIds, setSharedIds] = uS([]);
+  const shareEntry = (e) => {
+    const label = { ca:'Diari', es:'Diario', en:'Journal' }[lang];
+    if (window.EBShare) window.EBShare.add(`📔 ${label} · ${fmt(e.ts)} ${MOOD_EMOJI[e.mood]}\n"${e.text}"`);
+    setSharedIds(prev => prev.includes(e.id) ? prev : [...prev, e.id]);
+  };
 
   return (
     <div className="yb-scroll" style={{ height: '100%', overflowY: 'auto', background: 'var(--paper)' }}>
@@ -788,11 +810,9 @@ const Journal = ({ t, lang, onShare }) => {
                 <div style={{ fontFamily:'var(--serif)', fontSize: 14, color:'var(--ink)', marginTop: 2, fontStyle:'italic', wordBreak:'break-word' }}>"{e.text}"</div>
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                {onShare && (
-                  <button onClick={() => onShare({ kind:'journal', mood:e.mood, emoji:MOOD_EMOJI[e.mood], date:fmt(e.ts), text:e.text })} title="Compartir" style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
-                    <Icon name="send" size={15} color="var(--ink-soft)"/>
-                  </button>
-                )}
+                <button onClick={() => shareEntry(e)} title="Compartir al xat" style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
+                  <Icon name={sharedIds.includes(e.id) ? 'check' : 'send'} size={15} color={sharedIds.includes(e.id) ? 'var(--leaf-deep)' : 'var(--ink-soft)'}/>
+                </button>
                 <button onClick={() => remove(e.id)} title="Eliminar" style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
                   <Icon name="trash" size={15} color="var(--ink-soft)"/>
                 </button>

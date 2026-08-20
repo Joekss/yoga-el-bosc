@@ -1272,6 +1272,19 @@ const Chat = ({ t: globalT, lang, role = 'student', asanas }) => {
   // Re-sembra els missatges quan canvia la llengua per actualitzar textos mock
   uEC(() => { setConversations(seedConversations(lang)); }, [lang]);
 
+  // Afegeix a la conversa el que s'ha compartit des del Diari/Calendari (bústia local)
+  uEC(() => {
+    try {
+      const shared = (window.EBShare && window.EBShare.load()) || [];
+      if (!shared.length) return;
+      setConversations(prev => {
+        const key = 'nuria';
+        const extra = shared.map(s => ({ id: newId(), from: 'student', kind: 'text', body: s.text, time: s.time || Date.now(), status: 'sent', reactions: [] }));
+        return { ...prev, [key]: [...(prev[key] || []), ...extra] };
+      });
+    } catch (e) {}
+  }, [lang]);
+
   // En obrir una conversa, marca els missatges entrants com llegits
   uEC(() => {
     if (!activeStudentId) return;
