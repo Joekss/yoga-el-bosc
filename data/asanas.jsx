@@ -559,3 +559,18 @@ const ASANAS = [
 
 // Export per global window
 window.ASANAS = ASANAS;
+
+// ── Gestió de postures de la professora (afegir/treure, local) ──────────────
+const EB_CUSTOM_KEY = 'elbosc-custom-poses';
+const EB_REMOVED_KEY = 'elbosc-removed-poses';
+window.EBPoses = {
+  custom: () => { try { return JSON.parse(localStorage.getItem(EB_CUSTOM_KEY)) || []; } catch (e) { return []; } },
+  removed: () => { try { return JSON.parse(localStorage.getItem(EB_REMOVED_KEY)) || []; } catch (e) { return []; } },
+  effective: function () { const rm = this.removed(); return [...ASANAS.filter(a => rm.indexOf(a.id) === -1), ...this.custom()]; },
+  add: function (pose) { const c = this.custom(); c.push(pose); try { localStorage.setItem(EB_CUSTOM_KEY, JSON.stringify(c)); } catch (e) {} },
+  remove: function (id) {
+    const c = this.custom();
+    if (c.some(p => p.id === id)) { try { localStorage.setItem(EB_CUSTOM_KEY, JSON.stringify(c.filter(p => p.id !== id))); } catch (e) {} }
+    else { const rm = this.removed(); if (rm.indexOf(id) === -1) rm.push(id); try { localStorage.setItem(EB_REMOVED_KEY, JSON.stringify(rm)); } catch (e) {} }
+  },
+};

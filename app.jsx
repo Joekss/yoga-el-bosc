@@ -79,6 +79,7 @@ function App() {
   const [dueNotes, setDueNotes] = uSA([]);
   const [theme, setTheme] = uSA(() => { try { return localStorage.getItem('elbosc-theme') || 'bosc'; } catch (e) { return 'bosc'; } });
   const changeTheme = (v) => { try { localStorage.setItem('elbosc-theme', v); } catch (e) {} setTheme(v); };
+  const [posesVersion, setPosesVersion] = uSA(0);
 
   // React to tweak stage change (only in dev mode)
   uEA(() => { if (!isProd && tweaks.stage) setStage(tweaks.stage); }, [tweaks.stage]);
@@ -115,7 +116,8 @@ function App() {
   // Desa el nom al dispositiu perquè no es perdi en recarregar
   uEA(() => { try { if (profile.name && profile.name !== DEFAULT_PROFILE.name) localStorage.setItem('elbosc-name', profile.name); } catch (e) {} }, [profile.name]);
 
-  const sequence = uMA(() => generateSequence(profile, ASANAS), [profile]);
+  const asanas = uMA(() => (window.EBPoses ? window.EBPoses.effective() : ASANAS), [posesVersion]);
+  const sequence = uMA(() => generateSequence(profile, asanas), [profile, asanas]);
 
   // Apply theme attributes to root
   uEA(() => {
@@ -157,6 +159,7 @@ function App() {
             role={tweaks.role || 'student'}
             theme={theme} onChangeTheme={changeTheme}
             adminPin={adminPin} onChangePin={changeAdminPin}
+            asanas={asanas} onPosesChanged={() => setPosesVersion(v => v + 1)}
             onStartPractice={() => setStage('practice')}
             onOpenPose={(p) => setPoseDetail(p)}
             illustrationStyle={tweaks.illustrationStyle}
@@ -168,11 +171,11 @@ function App() {
               } catch (e) {}
               setStage('auth');
             }}/>}
-          {tab === 'library' && <Library t={t} lang={lang} asanas={ASANAS}
+          {tab === 'library' && <Library t={t} lang={lang} asanas={asanas}
             onOpenPose={(p) => setPoseDetail(p)} illustrationStyle={tweaks.illustrationStyle}/>}
           {tab === 'calendar' && <Calendar t={t} lang={lang} profile={profile}/>}
           {tab === 'journal' && <Journal t={t} lang={lang}/>}
-          {tab === 'messages' && <Chat t={t} lang={lang} role={tweaks.role || 'student'} asanas={ASANAS}/>}
+          {tab === 'messages' && <Chat t={t} lang={lang} role={tweaks.role || 'student'} asanas={asanas}/>}
           <TabBar active={tab} setActive={setTab} t={t} role={tweaks.role || 'student'}/>
           {poseDetail && <PoseDetail t={t} lang={lang} asana={poseDetail} onClose={() => setPoseDetail(null)} illustrationStyle={tweaks.illustrationStyle}/>}
         </>
