@@ -1,9 +1,18 @@
 // components/Screens.jsx — Dashboard, Library, PoseDetail, Calendar, Journal, Progress, Messages
 
-const { useState: uS, useMemo: uM } = React;
+const { useState: uS, useMemo: uM, useEffect: uE } = React;
+
+// ── Notes del calendari (compartides amb l'App per als avisos) ──
+const EB_NOTES_KEY = 'elbosc-calendar-notes';
+const ebLoadNotes = () => { try { const s = JSON.parse(localStorage.getItem(EB_NOTES_KEY)); if (Array.isArray(s)) return s; } catch(e){} return []; };
+const ebSaveNotes = (arr) => { try { localStorage.setItem(EB_NOTES_KEY, JSON.stringify(arr)); } catch(e){} };
+const ebPad = (n) => String(n).padStart(2, '0');
+const ebDayKey = (y, m, d) => `${y}-${ebPad(m+1)}-${ebPad(d)}`;
+const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number); const [h,mi] = String(n.time||'00:00').split(':').map(Number); return new Date(Y, (M||1)-1, D||1, h||0, mi||0, 0, 0); };
+if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, illustrationStyle, onLogout }) => {
+const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -12,7 +21,43 @@ const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, il
     return { ca: 'Bona nit', es: 'Buenas noches', en: 'Good evening' }[lang];
   })();
 
+  const [avatar, setAvatar] = uS(() => { try { return localStorage.getItem('elbosc-avatar') || null; } catch(e){ return null; } });
+  const [showProfile, setShowProfile] = uS(false);
+  const onPickPhoto = (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = ''; // permet tornar a triar el mateix fitxer
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const size = 256, s = Math.min(img.width, img.height);
+        const canvas = document.createElement('canvas');
+        canvas.width = size; canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, (img.width - s)/2, (img.height - s)/2, s, s, 0, 0, size, size);
+        let dataUrl;
+        try { dataUrl = canvas.toDataURL('image/jpeg', 0.82); } catch(err) { dataUrl = ev.target.result; }
+        try { localStorage.setItem('elbosc-avatar', dataUrl); } catch(err) {}
+        setAvatar(dataUrl);
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+  const removePhoto = () => { try { localStorage.removeItem('elbosc-avatar'); } catch(e){} setAvatar(null); };
+  const PT = {
+    title:  {ca:'El teu perfil', es:'Tu perfil', en:'Your profile'}[lang],
+    change: {ca:'Canviar foto', es:'Cambiar foto', en:'Change photo'}[lang],
+    hint:   {ca:'Fes una foto o tria-la de la galeria', es:'Haz una foto o elígela de la galería', en:'Take a photo or pick from gallery'}[lang],
+    remove: {ca:'Treure foto', es:'Quitar foto', en:'Remove photo'}[lang],
+    logout: {ca:'Tancar sessió', es:'Cerrar sesión', en:'Log out'}[lang],
+    nameLabel: {ca:'El teu nom', es:'Tu nombre', en:'Your name'}[lang],
+    namePh: {ca:'El teu nom', es:'Tu nombre', en:'Your name'}[lang],
+  };
+
   return (
+    <>
     <div className="yb-scroll" style={{ height: '100%', overflowY: 'auto', background: 'var(--paper)' }}>
       <div style={{ padding: '60px 24px 16px', display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
         <div>
@@ -24,12 +69,11 @@ const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, il
             <span style={{ color: 'var(--accent)' }}>{profile.name || ''}</span>
           </h1>
         </div>
-        <button onClick={() => {
-            const msg = { ca:'Tancar la sessió actual?', es:'¿Cerrar la sesión actual?', en:'Log out of the current session?' }[lang];
-            if (window.confirm(msg)) onLogout && onLogout();
-          }}
-          style={{ width: 44, height: 44, borderRadius:'50%', background:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center', border: '1px solid color-mix(in srgb, var(--ink) 8%, transparent)', cursor:'pointer', padding:0 }}>
-          <Icon name="user" size={20} color="var(--ink-soft)"/>
+        <button onClick={() => setShowProfile(true)} aria-label={PT.title}
+          style={{ width: 44, height: 44, borderRadius:'50%', background:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center', border: '1px solid color-mix(in srgb, var(--ink) 8%, transparent)', cursor:'pointer', padding:0, overflow:'hidden' }}>
+          {avatar
+            ? <img src={avatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+            : <Icon name="user" size={20} color="var(--ink-soft)"/>}
         </button>
       </div>
 
@@ -123,6 +167,47 @@ const Dashboard = ({ t, profile, sequence, lang, onStartPractice, onOpenPose, il
         </div>
       </div>
     </div>
+
+    {showProfile && (
+      <div onClick={() => setShowProfile(false)}
+        style={{ position:'fixed', inset:0, zIndex:9998, background:'rgba(20,18,14,0.5)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+        <div onClick={e => e.stopPropagation()}
+          style={{ width:'100%', maxWidth:430, background:'var(--paper)', borderTopLeftRadius:24, borderTopRightRadius:24, padding:'22px 24px calc(28px + env(safe-area-inset-bottom, 0px))', boxShadow:'0 -10px 40px rgba(0,0,0,0.25)' }}>
+          <div style={{ width:40, height:4, borderRadius:2, background:'color-mix(in srgb, var(--ink) 15%, transparent)', margin:'0 auto 18px' }}/>
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, marginBottom:20 }}>
+            <div style={{ width:96, height:96, borderRadius:'50%', overflow:'hidden', background:'var(--cream)', border:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              {avatar
+                ? <img src={avatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                : <Icon name="user" size={40} color="var(--ink-soft)"/>}
+            </div>
+            <div style={{ width:'100%' }}>
+              <label style={{ fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', display:'block', marginBottom:8, textAlign:'center' }}>{PT.nameLabel}</label>
+              <input type="text" value={profile.name || ''} onChange={e => onChangeName && onChangeName(e.target.value)}
+                placeholder={PT.namePh}
+                style={{ width:'100%', border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:14, padding:'12px 16px', fontFamily:'var(--serif)', fontStyle:'italic', fontSize:20, background:'var(--cream)', color:'var(--ink)', outline:'none', textAlign:'center', boxSizing:'border-box' }}/>
+            </div>
+          </div>
+
+          <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, width:'100%', padding:'13px', borderRadius:14, background:'var(--accent)', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:15, cursor:'pointer', marginBottom:4, boxSizing:'border-box' }}>
+            <Icon name="image" size={18} color="var(--cream)"/>
+            {PT.change}
+            <input type="file" accept="image/*" onChange={onPickPhoto} style={{ display:'none' }}/>
+          </label>
+          <div style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)', textAlign:'center', marginBottom:14 }}>{PT.hint}</div>
+
+          {avatar && (
+            <button onClick={removePhoto} style={{ width:'100%', padding:'12px', borderRadius:14, background:'transparent', border:'1px solid color-mix(in srgb, var(--ink) 12%, transparent)', color:'var(--ink)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', marginBottom:10, boxSizing:'border-box' }}>{PT.remove}</button>
+          )}
+
+          <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'8px 0 12px' }}/>
+          <button onClick={() => { setShowProfile(false); onLogout && onLogout(); }}
+            style={{ width:'100%', padding:'13px', borderRadius:14, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:15, cursor:'pointer', boxSizing:'border-box' }}>
+            {PT.logout}
+          </button>
+        </div>
+      </div>
+    )}
+    </>
   );
 };
 
@@ -295,63 +380,96 @@ const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle }) => {
 
 // ── Calendar ────────────────────────────────────────────────
 const Calendar = ({ t, lang, profile }) => {
-  const today = new Date();
-  const month = today.getMonth();
-  const year = today.getFullYear();
+  const realToday = new Date();
   const locale = lang === 'ca' ? 'ca-ES' : lang === 'es' ? 'es-ES' : 'en-US';
-  const first = new Date(year, month, 1).getDay() || 7;
-  const days = new Date(year, month+1, 0).getDate();
-  const days_lang = ({ ca: ['Dl','Dt','Dc','Dj','Dv','Ds','Dg'], es: ['Lu','Ma','Mi','Ju','Vi','Sá','Do'], en: ['Mo','Tu','We','Th','Fr','Sa','Su'] })[lang] || ['Mo','Tu','We','Th','Fr','Sa','Su'];
-  const monthName = (() => { try { return today.toLocaleDateString(locale, { month: 'long', year: 'numeric' }); } catch(e) { return today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }); } })();
-  const PRACTICED_KEY = `elbosc-practiced-${year}-${month}`;
-  const [practiced, setPracticed] = uS(() => {
-    try { const s = JSON.parse(localStorage.getItem(PRACTICED_KEY)); if (Array.isArray(s)) return s; } catch(e) {}
-    return [3, 5, 6, 9, 11, 13, 14, 17, 18, 20].filter(d => d <= today.getDate());
-  });
-  const toggleDay = (d) => {
-    if (d > today.getDate()) return;
-    setPracticed(prev => {
-      const next = prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d];
-      try { localStorage.setItem(PRACTICED_KEY, JSON.stringify(next)); } catch(e) {}
-      return next;
-    });
+  const [view, setView] = uS(() => ({ y: realToday.getFullYear(), m: realToday.getMonth() }));
+  const [selected, setSelected] = uS(null); // dia (número) seleccionat dins el mes vist
+  const [notes, setNotes] = uS(ebLoadNotes);
+  const [now, setNow] = uS(() => Date.now());
+  const [draftTime, setDraftTime] = uS('09:00');
+  const [draftText, setDraftText] = uS('');
+  const RED = '#C2493B';
+
+  // Rellotge: refresca cada 30s perquè els dies passin de verd a vermell sols
+  uE(() => { const iv = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(iv); }, []);
+  // Si un altre component (l'App) modifica les notes en una altra pestanya, re-sincronitza
+  uE(() => {
+    const onStorage = (e) => { if (e.key === EB_NOTES_KEY) setNotes(ebLoadNotes()); };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
+  const days_lang = ({ ca:['Dl','Dt','Dc','Dj','Dv','Ds','Dg'], es:['Lu','Ma','Mi','Ju','Vi','Sá','Do'], en:['Mo','Tu','We','Th','Fr','Sa','Su'] })[lang] || ['Mo','Tu','We','Th','Fr','Sa','Su'];
+  const first = new Date(view.y, view.m, 1).getDay() || 7;
+  const daysInMonth = new Date(view.y, view.m+1, 0).getDate();
+  const monthName = (() => { try { return new Date(view.y, view.m, 1).toLocaleDateString(locale, { month:'long', year:'numeric' }); } catch(e){ return new Date(view.y, view.m, 1).toLocaleDateString('en-US', { month:'long', year:'numeric' }); } })();
+  const isTodayCell = (d) => d === realToday.getDate() && view.m === realToday.getMonth() && view.y === realToday.getFullYear();
+
+  const notesForDay = (d) => notes.filter(n => n.date === ebDayKey(view.y, view.m, d)).sort((a,b) => String(a.time||'').localeCompare(String(b.time||'')));
+  const changeMonth = (delta) => { setSelected(null); setView(v => { const nd = new Date(v.y, v.m + delta, 1); return { y: nd.getFullYear(), m: nd.getMonth() }; }); };
+
+  const addNote = () => {
+    if (selected == null || !draftText.trim()) return;
+    const note = { id: 'n' + Date.now() + Math.random().toString(36).slice(2,6), date: ebDayKey(view.y, view.m, selected), time: draftTime || '09:00', text: draftText.trim(), notifiedAt: null };
+    const next = [...ebLoadNotes(), note];
+    ebSaveNotes(next); setNotes(next); setDraftText('');
   };
-  // Upcoming dates as real Date objects
-  const upcoming = [1, 2, 3].map(n => { const d = new Date(today); d.setDate(today.getDate() + n); return d; });
+  const removeNote = (id) => { const next = ebLoadNotes().filter(n => n.id !== id); ebSaveNotes(next); setNotes(next); };
+
+  const selDateLabel = selected != null ? (() => { try { return new Date(view.y, view.m, selected).toLocaleDateString(locale, { weekday:'long', day:'numeric', month:'long' }); } catch(e){ return String(selected); } })() : '';
+  const selNotes = selected != null ? notesForDay(selected) : [];
 
   return (
     <div className="yb-scroll" style={{ height: '100%', overflowY: 'auto', background: 'var(--paper)' }}>
       <div style={{ padding: '60px 24px 8px' }}>
         <div style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.25em', color:'var(--accent)', marginBottom: 4 }}>
-          {monthName.toUpperCase()}
+          {{ca:'EL TEU CALENDARI', es:'TU CALENDARIO', en:'YOUR CALENDAR'}[lang]}
         </div>
         <h1 style={{ fontSize: 36, fontStyle:'italic', color:'var(--ink)' }}>{{ ca:'Calendari', es:'Calendario', en:'Calendar' }[lang]}</h1>
       </div>
 
-      <div style={{ padding: '24px' }}>
+      <div style={{ padding: '16px 24px' }}>
         <div className="yb-card">
+          {/* Navegació de mes */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+            <button onClick={() => changeMonth(-1)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:6, transform:'rotate(180deg)' }}>
+              <Icon name="next" size={18} color="var(--ink-soft)"/>
+            </button>
+            <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:17, color:'var(--ink)', textTransform:'capitalize' }}>{monthName}</div>
+            <button onClick={() => changeMonth(1)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:6 }}>
+              <Icon name="next" size={18} color="var(--ink-soft)"/>
+            </button>
+          </div>
+
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap: 4, marginBottom: 8 }}>
             {days_lang.map(d => (<div key={d} style={{ textAlign:'center', fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)', padding: 4 }}>{d}</div>))}
           </div>
           <div style={{ display:'grid', gridTemplateColumns:'repeat(7, 1fr)', gap: 4 }}>
             {Array.from({length: first-1}).map((_,i) => (<div key={'b'+i}/>))}
-            {Array.from({length: days}).map((_,i) => {
+            {Array.from({length: daysInMonth}).map((_,i) => {
               const d = i+1;
-              const isToday = d === today.getDate();
-              const did = practiced.includes(d);
-              const isFuture = d > today.getDate();
+              const dayNotes = notesForDay(d);
+              const anyDue = dayNotes.some(n => ebNoteDate(n).getTime() <= now);
+              const anyPending = dayNotes.some(n => ebNoteDate(n).getTime() > now);
+              const today = isTodayCell(d);
+              const isSel = d === selected;
+              let bg = 'transparent', color = 'var(--ink)';
+              if (today) { bg = 'var(--ink)'; color = 'var(--cream)'; }
+              if (anyPending) { bg = 'var(--leaf)'; color = 'var(--cream)'; }
+              if (anyDue) { bg = RED; color = '#fff'; }
               return (
-                <div key={d} onClick={() => toggleDay(d)}
+                <div key={d} onClick={() => setSelected(d)}
                   style={{
                   aspectRatio: '1', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
-                  borderRadius: 10, fontFamily:'var(--sans)', fontSize: 13, position:'relative',
-                  background: isToday ? 'var(--ink)' : did ? 'color-mix(in srgb, var(--accent) 22%, transparent)' : 'transparent',
-                  color: isToday ? 'var(--cream)' : isFuture ? 'color-mix(in srgb, var(--ink) 35%, transparent)' : 'var(--ink)',
-                  cursor: isFuture ? 'default' : 'pointer',
+                  borderRadius: 10, fontFamily:'var(--sans)', fontSize: 13, position:'relative', cursor:'pointer',
+                  background: bg, color: color,
+                  boxShadow: isSel ? '0 0 0 2px var(--accent)' : (today && (anyPending||anyDue) ? '0 0 0 2px var(--ink)' : 'none'),
                 }}>
                   {d}
-                  {did && !isToday && (
-                    <div style={{ width: 4, height: 4, borderRadius:'50%', background:'var(--accent)', marginTop: 2 }}/>
+                  {dayNotes.length > 0 && (
+                    <div style={{ position:'absolute', bottom:4, display:'flex', gap:2 }}>
+                      {dayNotes.slice(0,3).map((n,idx) => (<div key={idx} style={{ width:4, height:4, borderRadius:'50%', background: (bg==='transparent') ? 'var(--accent)' : 'rgba(255,255,255,0.85)' }}/>))}
+                    </div>
                   )}
                 </div>
               );
@@ -359,22 +477,50 @@ const Calendar = ({ t, lang, profile }) => {
           </div>
         </div>
 
-        <div style={{ marginTop: 20, paddingBottom: 100 }}>
-          <div className="yb-divider-leaf" style={{ marginBottom: 14 }}>{{ca:'Pròximes sessions', es:'Próximas sesiones', en:'Upcoming sessions'}[lang]}</div>
-          {upcoming.map((d, i) => (
-            <div key={i} className="yb-card" style={{ marginBottom: 10, display:'flex', gap: 14, alignItems:'center' }}>
-              <div style={{ textAlign:'center', minWidth: 50 }}>
-                <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', color:'var(--accent)' }}>{d.getDate()}</div>
-                <div style={{ fontFamily:'var(--sans)', fontSize: 10, color:'var(--ink-soft)', textTransform:'uppercase' }}>{(() => { try { return d.toLocaleDateString(locale, { month: 'short' }); } catch(e) { return d.toLocaleDateString('en-US', { month: 'short' }); } })()}</div>
-              </div>
-              <div style={{ flex:1 }}>
-                <div style={{ fontFamily:'var(--serif)', fontSize: 15 }}>{{ca:'Pràctica diària', es:'Práctica diaria', en:'Daily practice'}[lang]}</div>
-                <div style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--ink-soft)' }}>{profile.timeOfDay} · {profile.duration} min</div>
-              </div>
-              <Icon name="next" size={18} color="var(--ink-soft)"/>
+        {/* Panell del dia seleccionat */}
+        {selected != null && (
+          <div className="yb-card" style={{ marginTop: 16 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
+              <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:18, color:'var(--ink)', textTransform:'capitalize' }}>{selDateLabel}</div>
+              <button onClick={() => setSelected(null)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
+                <Icon name="close" size={18} color="var(--ink-soft)"/>
+              </button>
             </div>
-          ))}
-        </div>
+
+            {selNotes.length === 0 && (
+              <div style={{ fontFamily:'var(--sans)', fontSize:13, color:'var(--ink-soft)', marginBottom:6 }}>
+                {{ca:'Cap nota per aquest dia. Afegeix-ne una a sota.', es:'Ninguna nota para este día. Añade una abajo.', en:'No notes for this day. Add one below.'}[lang]}
+              </div>
+            )}
+            {selNotes.map(n => {
+              const due = ebNoteDate(n).getTime() <= now;
+              return (
+                <div key={n.id} style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 0', borderBottom:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)' }}>
+                  <div style={{ minWidth:52, fontFamily:'var(--serif)', fontStyle:'italic', fontSize:16, color: due ? RED : 'var(--leaf-deep)' }}>{n.time}</div>
+                  <div style={{ flex:1, fontFamily:'var(--sans)', fontSize:14, color:'var(--ink)', wordBreak:'break-word' }}>{n.text}</div>
+                  <button onClick={() => removeNote(n.id)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
+                    <Icon name="trash" size={15} color="var(--ink-soft)"/>
+                  </button>
+                </div>
+              );
+            })}
+
+            <div style={{ display:'flex', gap:8, marginTop:14, alignItems:'center' }}>
+              <input type="time" value={draftTime} onChange={e => setDraftTime(e.target.value)}
+                style={{ border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'10px 12px', fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', color:'var(--ink)' }}/>
+              <input type="text" value={draftText} onChange={e => setDraftText(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && addNote()}
+                placeholder={{ca:'Escriu la nota…', es:'Escribe la nota…', en:'Write the note…'}[lang]}
+                style={{ flex:1, border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'10px 12px', fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', color:'var(--ink)', outline:'none', minWidth:0 }}/>
+              <button onClick={addNote} disabled={!draftText.trim()}
+                style={{ background:'var(--accent)', border:'none', borderRadius:12, width:44, height:42, display:'flex', alignItems:'center', justifyContent:'center', cursor: draftText.trim()?'pointer':'default', opacity: draftText.trim()?1:0.5, flexShrink:0 }}>
+                <Icon name="plus" size={20} color="var(--cream)"/>
+              </button>
+            </div>
+          </div>
+        )}
+
+        <div style={{ height: 100 }}/>
       </div>
     </div>
   );
@@ -540,7 +686,7 @@ const Messages = ({ t, lang }) => {
 };
 
 // ── Tab bar ──────────────────────────────────────────────────
-const TabBar = ({ active, setActive, t }) => {
+const TabBar = ({ active, setActive, t, role }) => {
   const tabs = [
     { id:'home', icon:'home', label: t.nav.home },
     { id:'library', icon:'library', label: t.nav.library },
@@ -548,6 +694,7 @@ const TabBar = ({ active, setActive, t }) => {
     { id:'journal', icon:'journal', label: t.nav.journal },
     { id:'messages', icon:'chat', label: t.nav.messages },
   ];
+  if (role === 'teacher') tabs.push({ id:'config', icon:'settings', label: 'Config' });
   return (
     <div style={{
       position: 'absolute', bottom: 0, left: 0, right: 0,
@@ -572,4 +719,67 @@ const TabBar = ({ active, setActive, t }) => {
   );
 };
 
-Object.assign(window, { Dashboard, Library, PoseDetail, Calendar, Journal, Progress, Messages, TabBar });
+// ── Config (professora): canvi de PIN d'accés ───────────────
+const ConfigScreen = ({ t, lang, currentPin, onChangePin }) => {
+  const [p1, setP1] = uS('');
+  const [p2, setP2] = uS('');
+  const [msg, setMsg] = uS(null); // { type:'ok'|'err', text }
+  const valid = /^\d{4}$/.test(p1) && /^\d{4}$/.test(p2);
+  const L = {
+    kicker: {ca:'PROFESSORA', es:'PROFESORA', en:'TEACHER'}[lang],
+    title:  {ca:'Configuració', es:'Configuración', en:'Settings'}[lang],
+    sec:    {ca:'PIN d\'accés', es:'PIN de acceso', en:'Access PIN'}[lang],
+    desc:   {ca:'Canvia el codi que et demana l\'app per entrar al panell de professora.', es:'Cambia el código que te pide la app para entrar al panel de profesora.', en:'Change the code the app asks to enter the teacher panel.'}[lang],
+    cur:    {ca:'PIN actual', es:'PIN actual', en:'Current PIN'}[lang],
+    l1:     {ca:'PIN nou (4 xifres)', es:'PIN nuevo (4 cifras)', en:'New PIN (4 digits)'}[lang],
+    l2:     {ca:'Repeteix el PIN nou', es:'Repite el PIN nuevo', en:'Repeat new PIN'}[lang],
+    save:   {ca:'Desar PIN', es:'Guardar PIN', en:'Save PIN'}[lang],
+  };
+  const save = () => {
+    if (!/^\d{4}$/.test(p1)) { setMsg({ type:'err', text:{ca:'El PIN ha de tenir 4 xifres.', es:'El PIN debe tener 4 cifras.', en:'PIN must be 4 digits.'}[lang] }); return; }
+    if (p1 !== p2) { setMsg({ type:'err', text:{ca:'Els PINs no coincideixen.', es:'Los PIN no coinciden.', en:'PINs do not match.'}[lang] }); return; }
+    onChangePin && onChangePin(p1);
+    setP1(''); setP2('');
+    setMsg({ type:'ok', text:{ca:'PIN actualitzat correctament.', es:'PIN actualizado correctamente.', en:'PIN updated successfully.'}[lang] });
+  };
+  const inputStyle = { width:'100%', border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:14, padding:'12px 16px', fontFamily:'var(--serif)', fontSize:20, background:'var(--cream)', color:'var(--ink)', outline:'none', letterSpacing:'0.35em', textAlign:'center', boxSizing:'border-box' };
+  const labelStyle = { fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', display:'block', marginBottom:8 };
+  return (
+    <div className="yb-scroll" style={{ height:'100%', overflowY:'auto', background:'var(--paper)' }}>
+      <div style={{ padding:'60px 24px 8px' }}>
+        <div style={{ fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.25em', color:'var(--accent)', marginBottom:4 }}>{L.kicker}</div>
+        <h1 style={{ fontSize:36, fontStyle:'italic', color:'var(--ink)' }}>{L.title}</h1>
+      </div>
+      <div style={{ padding:'16px 24px 100px' }}>
+        <div className="yb-card">
+          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
+            <Icon name="lock" size={18} color="var(--accent)"/>
+            <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:18, color:'var(--ink)' }}>{L.sec}</div>
+          </div>
+          <div style={{ fontFamily:'var(--sans)', fontSize:13, color:'var(--ink-soft)', marginBottom:18, lineHeight:1.5 }}>{L.desc}</div>
+
+          <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)', marginBottom:18 }}>
+            {L.cur}: <span style={{ fontFamily:'var(--serif)', fontSize:16, letterSpacing:'0.25em', color:'var(--ink)' }}>{currentPin}</span>
+          </div>
+
+          <label style={labelStyle}>{L.l1}</label>
+          <input type="tel" inputMode="numeric" maxLength={4} value={p1}
+            onChange={e => { setP1(e.target.value.replace(/\D/g,'').slice(0,4)); setMsg(null); }}
+            placeholder="————" style={{ ...inputStyle, marginBottom:16 }}/>
+
+          <label style={labelStyle}>{L.l2}</label>
+          <input type="tel" inputMode="numeric" maxLength={4} value={p2}
+            onChange={e => { setP2(e.target.value.replace(/\D/g,'').slice(0,4)); setMsg(null); }}
+            onKeyDown={e => e.key === 'Enter' && save()}
+            placeholder="————" style={{ ...inputStyle, marginBottom:16 }}/>
+
+          {msg && <div style={{ fontFamily:'var(--sans)', fontSize:13, color: msg.type==='ok' ? 'var(--leaf-deep)' : 'var(--accent)', marginBottom:12 }}>{msg.text}</div>}
+
+          <button onClick={save} disabled={!valid} className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: valid?1:0.55 }}>{L.save}</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+Object.assign(window, { Dashboard, Library, PoseDetail, Calendar, Journal, Progress, Messages, TabBar, ConfigScreen });
