@@ -77,6 +77,24 @@ const POSE_FALLBACK = { head:[100,36,11], neck:[100,52], hip:[100,108],
 
 const _pathOf = (pts) => 'M ' + pts[0][0] + ' ' + pts[0][1] + pts.slice(1).map(p => ' L ' + p[0] + ' ' + p[1]).join('');
 
+// Tronc amb forma real: espatlles amples → cintura estreta → maluc, orientat al llarg
+// de l'eix coll→maluc (funciona en qualsevol postura).
+const _torsoPath = (N, H) => {
+  const dx = H[0] - N[0], dy = H[1] - N[1];
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;      // al llarg de l'eix
+  const px = -uy, py = ux;                 // perpendicular
+  const at = (t) => [N[0] + ux * len * t, N[1] + uy * len * t];
+  const off = (p, w) => (p[0] + px * w).toFixed(1) + ' ' + (p[1] + py * w).toFixed(1);
+  const a = at(0.06), b = at(0.36), c = at(0.63), d = at(0.95);
+  const capTop = at(-0.06), capBot = at(1.05);
+  const SH = 16.5, CH = 14, WA = 9.5, HI = 13;
+  return 'M ' + off(a, SH) + ' L ' + off(b, CH) + ' L ' + off(c, WA) + ' L ' + off(d, HI) +
+         ' Q ' + off(capBot, 0) + ' ' + off(d, -HI) +
+         ' L ' + off(c, -WA) + ' L ' + off(b, -CH) + ' L ' + off(a, -SH) +
+         ' Q ' + off(capTop, 0) + ' ' + off(a, SH) + ' Z';
+};
+
 const PoseSVG = ({ id, style: drawStyle = 'line', size = 200, color = 'currentColor' }) => {
   const P = POSES[id] || POSE_FALLBACK;
   const C = POSE_COLORS;
@@ -95,12 +113,11 @@ const PoseSVG = ({ id, style: drawStyle = 'line', size = 200, color = 'currentCo
 
       {legs.map((lg, i) => seg(lg, C.leg, C.legEdge, 15, 'l' + i))}
       {arms.map((ar, i) => seg(ar, C.arm, C.armEdge, 12, 'a' + i))}
-      {seg([P.neck, P.hip], C.torso, C.torsoEdge, 24, 'torso')}
       {seg([[P.head[0], P.head[1]], P.neck], C.torso, C.torsoEdge, 9, 'neck')}
+      <path d={_torsoPath(P.neck, P.hip)} fill={C.torso} stroke={C.torsoEdge} strokeWidth="2.5" strokeLinejoin="round"/>
 
       <g fill={C.joint} stroke={C.jointEdge} strokeWidth="1.5">
-        <circle cx={P.neck[0]} cy={P.neck[1]} r="5"/>
-        <circle cx={P.hip[0]} cy={P.hip[1]} r="6"/>
+        <circle cx={P.neck[0]} cy={P.neck[1]} r="4.5"/>
         {arms.map((ar, i) => ar.map((pt, j) => (<circle key={'aj' + i + '_' + j} cx={pt[0]} cy={pt[1]} r="5"/>)))}
         {legs.map((lg, i) => lg.map((pt, j) => (<circle key={'lj' + i + '_' + j} cx={pt[0]} cy={pt[1]} r="5.5"/>)))}
       </g>
