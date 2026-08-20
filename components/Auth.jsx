@@ -271,23 +271,20 @@ const EmailScreen = ({ t, lang, onSend, onAdminTrigger, checkEmail }) => {
                       padding:'12px 16px', marginBottom: 16 }}>
           <Icon name="mail" size={18} color="var(--ink-soft)"/>
           <input type="email" value={email} onChange={e => { setEmail(e.target.value); setErr(''); }}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
+            onKeyDown={e => e.key === 'Enter' && sendMagic()}
             placeholder={t.emailPh} autoFocus
             style={{ flex:1, border:'none', outline:'none', background:'transparent',
                      fontFamily:'var(--sans)', fontSize: 16, color:'var(--ink)' }}/>
         </div>
         {err && <div style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--accent)', marginBottom: 10 }}>{err}</div>}
 
-        <button onClick={handleSend} disabled={!isValid}
+        <button onClick={sendMagic} disabled={!isValid}
           className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: !isValid ? 0.55 : 1, marginBottom: 10 }}>
           {t.sendBtn}
         </button>
-
-        <button onClick={sendMagic} disabled={!isValid}
-          style={{ width:'100%', padding:'12px', borderRadius:14, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:14, cursor: isValid?'pointer':'default', opacity: isValid?1:0.55, boxSizing:'border-box', marginBottom: 8 }}>
-          {{ca:'O rebre un enllaç al correu',es:'O recibir un enlace por correo',en:'Or get a link by email'}[lang]}
-        </button>
-        {magicMsg && <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)', textAlign:'center', lineHeight:1.5 }}>{magicMsg}</div>}
+        <div style={{ fontFamily:'var(--sans)', fontSize:12, color: magicMsg && magicMsg.indexOf('⚠')===0 ? 'var(--accent)' : 'var(--ink-soft)', textAlign:'center', lineHeight:1.5, minHeight:18 }}>
+          {magicMsg || { ca:'T\'enviarem un enllaç per entrar de forma segura.', es:'Te enviaremos un enlace para entrar de forma segura.', en:'We\'ll email you a secure sign-in link.' }[lang]}
+        </div>
 
       </div>
 
