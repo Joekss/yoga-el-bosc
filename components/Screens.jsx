@@ -36,6 +36,18 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, adm
     setNp({ name:'', sanskrit:'', level:'principiant', family:'peu' });
   };
   const removePose = (id) => { if (window.EBPoses) { window.EBPoses.remove(id); onPosesChanged && onPosesChanged(); } };
+  const [showRoutineMgr, setShowRoutineMgr] = uS(false);
+  const [rName, setRName] = uS('');
+  const [rPoses, setRPoses] = uS([]);
+  const [routinesV, setRoutinesV] = uS(0);
+  const routines = uM(() => (window.EBRoutines ? window.EBRoutines.load() : []), [routinesV, showRoutineMgr]);
+  const toggleRPose = (id) => setRPoses(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const saveRoutine = () => {
+    if (!rName.trim() || !rPoses.length || !window.EBRoutines) return;
+    window.EBRoutines.add({ id:'r' + Date.now().toString(36), name: rName.trim(), poseIds: rPoses });
+    setRoutinesV(v => v + 1); setRName(''); setRPoses([]);
+  };
+  const removeRoutine = (id) => { if (window.EBRoutines) { window.EBRoutines.remove(id); setRoutinesV(v => v + 1); } };
   const onPickPhoto = (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = ''; // permet tornar a triar el mateix fitxer
@@ -263,6 +275,10 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, adm
                 style={{ width:'100%', marginTop:14, padding:'12px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
                 {{ca:'Gestionar postures',es:'Gestionar posturas',en:'Manage poses'}[lang]}
               </button>
+              <button onClick={() => { setShowProfile(false); setShowRoutineMgr(true); }}
+                style={{ width:'100%', marginTop:8, padding:'12px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
+                {{ca:'Crear rutines',es:'Crear rutinas',en:'Create routines'}[lang]}
+              </button>
             </div>
           )}
 
@@ -310,6 +326,50 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, adm
                 <button onClick={()=>removePose(a.id)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:6 }}><Icon name="trash" size={16} color="var(--ink-soft)"/></button>
               </div>
             ))}
+          </div>
+        </div>
+      );
+    })()}
+
+    {showRoutineMgr && (() => {
+      const inp = { width:'100%', border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'11px 12px', fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', color:'var(--ink)', outline:'none', boxSizing:'border-box' };
+      const nameOf = (id) => { const a = (asanas||[]).find(x => x.id === id); return a ? ((a.name && (a.name[lang]||a.name.ca)) || a.id) : id; };
+      return (
+        <div style={{ position:'fixed', inset:0, zIndex:9999, background:'var(--paper)', display:'flex', flexDirection:'column' }}>
+          <div style={{ padding:'54px 20px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)' }}>
+            <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:22, color:'var(--ink)' }}>{{ca:'Rutines',es:'Rutinas',en:'Routines'}[lang]}</div>
+            <button onClick={() => setShowRoutineMgr(false)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}><Icon name="close" size={22} color="var(--ink)"/></button>
+          </div>
+          <div className="yb-scroll" style={{ flex:1, overflowY:'auto', padding:'16px 20px 40px' }}>
+            {routines.length === 0 && <div style={{ fontFamily:'var(--sans)', fontSize:13, color:'var(--ink-soft)', textAlign:'center', marginBottom:14 }}>{{ca:'Encara no hi ha rutines.',es:'Aún no hay rutinas.',en:'No routines yet.'}[lang]}</div>}
+            {routines.map(r => (
+              <div key={r.id} className="yb-card" style={{ marginBottom:8, display:'flex', alignItems:'center', gap:12, padding:'12px 14px' }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:'var(--serif)', fontSize:16, color:'var(--ink)' }}>{r.name}</div>
+                  <div style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)' }}>{r.poseIds.length} {{ca:'postures',es:'posturas',en:'poses'}[lang]} · {r.poseIds.map(nameOf).slice(0,3).join(', ')}{r.poseIds.length>3?'…':''}</div>
+                </div>
+                <button onClick={()=>removeRoutine(r.id)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:6 }}><Icon name="trash" size={16} color="var(--ink-soft)"/></button>
+              </div>
+            ))}
+
+            <div className="yb-card" style={{ marginTop:16 }}>
+              <div style={{ fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', marginBottom:12 }}>{{ca:'Nova rutina',es:'Nueva rutina',en:'New routine'}[lang]}</div>
+              <input type="text" value={rName} onChange={e=>setRName(e.target.value)} placeholder={{ca:'Nom de la rutina',es:'Nombre de la rutina',en:'Routine name'}[lang]} style={inp}/>
+              {rPoses.length>0 && (
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:12 }}>
+                  {rPoses.map((id,i) => (
+                    <span key={id} onClick={()=>toggleRPose(id)} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'var(--accent)', color:'var(--cream)', borderRadius:20, padding:'5px 10px', fontFamily:'var(--sans)', fontSize:12, cursor:'pointer' }}>{i+1}. {nameOf(id)} ✕</span>
+                  ))}
+                </div>
+              )}
+              <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)', margin:'14px 0 8px' }}>{{ca:'Toca per afegir (en ordre):',es:'Toca para añadir (en orden):',en:'Tap to add (in order):'}[lang]}</div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                {(asanas||[]).map(a => { const on = rPoses.includes(a.id); return (
+                  <button key={a.id} onClick={()=>toggleRPose(a.id)} style={{ borderRadius:20, padding:'6px 11px', fontFamily:'var(--sans)', fontSize:12, cursor:'pointer', border:'1px solid ' + (on?'var(--accent)':'color-mix(in srgb, var(--ink) 12%, transparent)'), background: on?'color-mix(in srgb, var(--accent) 15%, transparent)':'transparent', color: on?'var(--accent)':'var(--ink)' }}>{(a.name && (a.name[lang]||a.name.ca)) || a.id}</button>
+                ); })}
+              </div>
+              <button onClick={saveRoutine} disabled={!rName.trim()||!rPoses.length} className="yb-btn yb-btn-clay" style={{ width:'100%', marginTop:16, opacity: (rName.trim()&&rPoses.length)?1:0.5 }}>{{ca:'Desar rutina',es:'Guardar rutina',en:'Save routine'}[lang]}</button>
+            </div>
           </div>
         </div>
       );

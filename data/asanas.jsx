@@ -574,3 +574,11 @@ window.EBPoses = {
     else { const rm = this.removed(); if (rm.indexOf(id) === -1) rm.push(id); try { localStorage.setItem(EB_REMOVED_KEY, JSON.stringify(rm)); } catch (e) {} }
   },
 };
+
+// ── Rutines de la professora (crear / llistar / esborrar, local) ────────────
+const EB_ROUTINES_KEY = 'elbosc-routines';
+window.EBRoutines = {
+  load: () => { try { return JSON.parse(localStorage.getItem(EB_ROUTINES_KEY)) || []; } catch (e) { return []; } },
+  add: function (r) { const a = this.load(); a.push(r); try { localStorage.setItem(EB_ROUTINES_KEY, JSON.stringify(a)); } catch (e) {} },
+  remove: function (id) { try { localStorage.setItem(EB_ROUTINES_KEY, JSON.stringify(this.load().filter(r => r.id !== id))); } catch (e) {} },
+};
