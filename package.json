@@ -1,0 +1,10 @@
+{
+  "name": "yoga-el-bosc",
+  "version": "0.1.0",
+  "description": "El Bosc · Ioga personalitzat — PWA",
+  "scripts": {
+    "start": "npx serve -l 5000 ."
+  },
+  "author": "Joekss",
+  "license": "MIT"
+}
