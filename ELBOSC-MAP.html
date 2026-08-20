@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ELBOSC - Map (Mermaid)</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin: 20px; background: #fff; color: #111 }
+    .controls { margin-bottom: 12px }
+    button { background:#2E7D32;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer }
+    button.secondary { background:#1565C0 }
+    #diagram { border:1px solid #eee;padding:12px;border-radius:8px;background:#fafafa }
+    pre { background:#f5f5f5;padding:10px;border-radius:6px;overflow:auto }
+    .note { margin-top:8px;color:#555 }
+  </style>
+</head>
+<body>
+  <h1>El Bosc · Mapa conceptual (Mermaid)</h1>
+  <p>Aquest fitxer renderitza el diagrama Mermaid i et permet descarregar el SVG generat.</p>
+
+  <div class="controls">
+    <button id="render">Renderitza diagrama</button>
+    <button id="download" class="secondary" disabled>Descarrega SVG</button>
+    <span class="note">Obre aquest fitxer via servidor local (npm start o python -m http.server) per garantir la càrrega correcta del CDN.</span>
+  </div>
+
+  <div id="diagram">(fes clic a <strong>Renderitza diagrama</strong>)</div>
+
+  <h3>Mermaid source</h3>
+  <pre id="source" style="max-height:420px;">graph TD
+  %% Nodes amb informació i mida
+  index["index.html<br/><small>3.63 KB</small>"]
+  pkg["package.json<br/><small>206 B (npm start)</small>"]
+  manifest["manifest.webmanifest<br/><small>0.64 KB</small>"]
+  sw["sw.js<br/><small>5.30 KB (service worker)</small>"]
+  vendor["vendor/<br/><small>Babel 3.00 MB, React</small>"]
+  styles["styles/<br/><small>tokens.css, shell.css</small>"]
+  icons["icons/<br/><small>png: 152/192/512</small>"]
+  uploads["uploads/<br/><small>imatges d'usuari</small>"]
+
+  %% App i components
+  app["app.jsx<br/><small>9.07 KB</small>"]
+  subgraph COMPONENTS ["components/ (React)"]
+    Auth["Auth.jsx<br/><small>38.86 KB</small>"]
+    Chat["Chat.jsx<br/><small>77.49 KB</small>"]
+    Screens["Screens.jsx<br/><small>33.30 KB</small>"]
+    Onboarding["Onboarding.jsx<br/><small>14.13 KB</small>"]
+    Practice["Practice.jsx<br/><small>5.91 KB</small>"]
+    Pose["PoseIllustrations.jsx<br/><small>5.98 KB</small>"]
+    IconsComp["Icons.jsx<br/><small>5.36 KB</small>"]
+  end
+
+  subgraph DATA ["data/ (dades i lògica)"]
+    asanas["asanas.jsx<br/><small>24.98 KB</small>"]
+    i18n["i18n.jsx<br/><small>14.07 KB</small>"]
+    seq["sequencer.jsx<br/><small>4.28 KB</small>"]
+  end
+
+  %% Relacions principals (fletxes amb etiquetes senzilles)
+  index -- "carrega" --> vendor
+  index -- "carrega" --> app
+  index -- "registra" --> sw
+  index -- "usa" --> manifest
+  index -- "aplica estils" --> styles
+
+  app -- "orquestra / mostra pantalles" --> Screens
+  app -- "carrega components" --> Auth
+  app -- "carrega components" --> Onboarding
+  app -- "carrega components" --> Practice
+  app -- "carrega components" --> Chat
+
+  Auth -- "gestiona credencials" --> localStorage["localStorage / sessió"]
+  Auth -- "textos" --> i18n
+  Onboarding -- "textos" --> i18n
+  Practice -- "seqüències" --> seq
+  Practice -- "llista postures" --> asanas
+  Chat -- "pot usar" --> asanas
+  Chat -- "textos" --> i18n
+
+  %% Service worker caché i offline
+  sw -- "emmagatzema (cache)" --> index
+  sw -- "emmagatzema" --> vendor
+  sw -- "emmagatzema" --> styles
+  sw -- "emmagatzema" --> icons
+  sw -- "pot emmagatzemar" --> uploads
+
+  %% Vendor i transpilat
+  vendor -- "Babel compila JSX al vol" --> app
+  vendor -- "React/ReactDOM provee UI" --> COMPONENTS
+
+  %% Package / start
+  pkg -- "script npm start -> npx serve" --> index
+
+  %% Classes per color
+  class index,pkg,manifest,sw,vendor,styles,icons,uploads root;
+  class app,Auth,Chat,Screens,Onboarding,Practice,Pose,IconsComp comp;
+  class asanas,i18n,seq data;
+
+  classDef root fill:#FFF3E0,stroke:#F57C00,stroke-width:1px,color:#000;
+  classDef comp fill:#E8F5E9,stroke:#2E7D32,stroke-width:1px,color:#000;
+  classDef data fill:#E3F2FD,stroke:#1565C0,stroke-width:1px,color:#000;
+  classDef localStorage fill:#FFF9C4,stroke:#F9A825,stroke-width:1px,color:#000;
+
+  class localStorage localStorage
+
+  linkStyle 0,1,2,3 stroke:#888,stroke-width:1px
+
+  %% Etiquetes de grup per llegenda
+  classDef legend fill:#fafafa,stroke:#ccc,color:#000;
+</pre>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+  // Configura Mermaid
+  mermaid.initialize({ startOnLoad: false, theme: 'base', securityLevel: 'loose' });
+
+  const sourceEl = document.getElementById('source');
+  const diagramEl = document.getElementById('diagram');
+  const renderBtn = document.getElementById('render');
+  const downloadBtn = document.getElementById('download');
+  let renderedSvg = null;
+
+  function renderDiagram() {
+    const code = sourceEl.textContent;
+    const id = 'mermaid-diagram';
+    try {
+      mermaid.mermaidAPI.render(id, code, (svgCode) => {
+        renderedSvg = svgCode;
+        diagramEl.innerHTML = svgCode;
+        downloadBtn.disabled = false;
+      });
+    } catch (e) {
+      diagramEl.innerHTML = '<pre style="color:crimson">Error generant el diagrama:\n' + e.message + '</pre>';
+    }
+  }
+
+  function downloadSVG() {
+    if (!renderedSvg) return;
+    const blob = new Blob([renderedSvg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ELBOSC-MAP.svg';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  renderBtn.addEventListener('click', renderDiagram);
+  downloadBtn.addEventListener('click', downloadSVG);
+
+  // Auto-render on load
+  window.addEventListener('load', () => {
+    renderDiagram();
+  });
+</script>
+</body>
+</html>
