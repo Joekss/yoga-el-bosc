@@ -95,10 +95,8 @@ Variables d'entorn (afegeix `.env.example` al repo):
 3. Afegeix commits clars i proves si s'escau.
 4. Obre un Pull Request descrivint els canvis.
 
-Si voleu, puc afegir un `CONTRIBUTING.md` amb plantilla de PR i regles.
-
 ## Licencia
-[Indica la llicència aquí — p. ex. MIT]
+[Aquesta app es propietat de Cèlia Betriu Acunya]
 
 MIT © 2026 Joekss
 
@@ -106,7 +104,12 @@ MIT © 2026 Joekss
 Autor: Joekss
 Repositorio: https://github.com/Joekss/yoga-el-bosc
 
+## - Avis Legal - Aviso legal
+La propietat i ús Aquesta aplicació, el seu codi, dissenys, continguts i tots els materials associats són propietat exclusiva de La Cèlia Cuña Betriu. L’usuari no està autoritzat a copiar, modificar, redistribuir o fer un ús comercial del programari sense l’autorització prèvia i per escrit del propietari. Qualsevol ús indegut, alteració no autoritzada o explotació il·licitada d’aquestes aportacions podrà ser objecte d’accions legals i reclamacions per danys i perjudicis, segons la legislació aplicable.
+
+Per a consultes o per sol·licitar permisos d’ús: contacta amb Joelreintegra@gmail.com
+
+Peu de pàgina / copyright (breu) © 2026 La Cèliua. Tots els drets reservats. L’ús, la modificació o la distribució no autoritzats poden donar lloc a accions legals.
+
 ---
 
-Notes:
-- He actualitzat el README amb la composició de llenguatges i la branca `main` que m'has indicat. Si vols que ompli els placeholders (build tool, scripts exactes, llicència, contacta), proporciona les dades i actualitzo el fitxer.
