@@ -79,6 +79,9 @@ function App() {
   const [dueNotes, setDueNotes] = uSA([]);
   const [theme, setTheme] = uSA(() => { try { return localStorage.getItem('elbosc-theme') || 'bosc'; } catch (e) { return 'bosc'; } });
   const changeTheme = (v) => { try { localStorage.setItem('elbosc-theme', v); } catch (e) {} setTheme(v); };
+  const [posesVersion, setPosesVersion] = uSA(0);
+  const [textSize, setTextSize] = uSA(() => { try { return localStorage.getItem('elbosc-textsize') || 'm'; } catch (e) { return 'm'; } });
+  const changeTextSize = (v) => { try { localStorage.setItem('elbosc-textsize', v); } catch (e) {} setTextSize(v); };
 
   // React to tweak stage change (only in dev mode)
   uEA(() => { if (!isProd && tweaks.stage) setStage(tweaks.stage); }, [tweaks.stage]);
@@ -115,7 +118,28 @@ function App() {
   // Desa el nom al dispositiu perquè no es perdi en recarregar
   uEA(() => { try { if (profile.name && profile.name !== DEFAULT_PROFILE.name) localStorage.setItem('elbosc-name', profile.name); } catch (e) {} }, [profile.name]);
 
-  const sequence = uMA(() => generateSequence(profile, ASANAS), [profile]);
+  // Supabase: si l'usuària torna d'un enllaç màgic (o ja té sessió), entra a l'app
+  uEA(() => {
+    if (!window.sb) return;
+    const enter = (session) => {
+      if (!session || !session.user) return;
+      const email = session.user.email || '';
+      try {
+        const existing = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
+        if (!(existing && existing.role)) localStorage.setItem('elbosc-session', JSON.stringify({ email, role: 'student' }));
+      } catch (e) {}
+      setTweak('role', 'student');
+      setStage('app'); setTab('home');
+      try { if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search); } catch (e) {}
+    };
+    window.sb.auth.getSession().then(({ data }) => enter(data && data.session)).catch(() => {});
+    let sub;
+    try { sub = window.sb.auth.onAuthStateChange((_e, session) => enter(session)).data; } catch (e) {}
+    return () => { try { sub && sub.subscription && sub.subscription.unsubscribe(); } catch (e) {} };
+  }, []);
+
+  const asanas = uMA(() => (window.EBPoses ? window.EBPoses.effective() : ASANAS), [posesVersion]);
+  const sequence = uMA(() => generateSequence(profile, asanas), [profile, asanas]);
 
   // Apply theme attributes to root
   uEA(() => {
@@ -124,7 +148,8 @@ function App() {
     root.setAttribute('data-mode', tweaks.mode || 'light');
     root.setAttribute('data-typeface', tweaks.typeface || 'cormorant');
     root.setAttribute('data-density', tweaks.density || 'normal');
-  }, [theme, tweaks.mode, tweaks.typeface, tweaks.density]);
+    root.setAttribute('data-textsize', textSize || 'm');
+  }, [theme, textSize, tweaks.mode, tweaks.typeface, tweaks.density]);
 
   const setLang = (l) => setTweak('lang', l);
 
@@ -156,7 +181,9 @@ function App() {
           {tab === 'home' && <Dashboard t={t} profile={profile} sequence={sequence} lang={lang}
             role={tweaks.role || 'student'}
             theme={theme} onChangeTheme={changeTheme}
+            textSize={textSize} onChangeTextSize={changeTextSize}
             adminPin={adminPin} onChangePin={changeAdminPin}
+            asanas={asanas} onPosesChanged={() => setPosesVersion(v => v + 1)}
             onStartPractice={() => setStage('practice')}
             onOpenPose={(p) => setPoseDetail(p)}
             illustrationStyle={tweaks.illustrationStyle}
@@ -168,11 +195,11 @@ function App() {
               } catch (e) {}
               setStage('auth');
             }}/>}
-          {tab === 'library' && <Library t={t} lang={lang} asanas={ASANAS}
+          {tab === 'library' && <Library t={t} lang={lang} asanas={asanas}
             onOpenPose={(p) => setPoseDetail(p)} illustrationStyle={tweaks.illustrationStyle}/>}
           {tab === 'calendar' && <Calendar t={t} lang={lang} profile={profile}/>}
           {tab === 'journal' && <Journal t={t} lang={lang}/>}
-          {tab === 'messages' && <Chat t={t} lang={lang} role={tweaks.role || 'student'} asanas={ASANAS}/>}
+          {tab === 'messages' && <Chat t={t} lang={lang} role={tweaks.role || 'student'} asanas={asanas}/>}
           <TabBar active={tab} setActive={setTab} t={t} role={tweaks.role || 'student'}/>
           {poseDetail && <PoseDetail t={t} lang={lang} asana={poseDetail} onClose={() => setPoseDetail(null)} illustrationStyle={tweaks.illustrationStyle}/>}
         </>

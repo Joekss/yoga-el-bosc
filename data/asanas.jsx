@@ -435,7 +435,150 @@ const ASANAS = [
     target: ['cames', 'core', 'esquena'],
     contraindications: ['lesio-genoll', 'hipertensio'],
   },
+  {
+    id: 'uttanasana',
+    sanskrit: 'Uttānāsana',
+    name: { ca: 'Flexió dempeus', es: 'Flexión de pie', en: 'Standing forward fold' },
+    level: 'principiant', duration: 45, family: 'flexio',
+    chakra: 'svadhisthana', chakraLabel: { ca: 'Sacre', es: 'Sacro', en: 'Sacral' },
+    breath: { ca: 'Exhala per plegar-te, respira llarg', es: 'Exhala para plegarte, respira largo', en: 'Exhale to fold, breathe long' },
+    benefits: {
+      ca: ['Allarga isquiotibials i esquena', 'Calma el sistema nerviós', 'Allibera coll i espatlles'],
+      es: ['Alarga isquiotibiales y espalda', 'Calma el sistema nervioso', 'Libera cuello y hombros'],
+      en: ['Lengthens hamstrings and spine', 'Calms the nervous system', 'Releases neck and shoulders'],
+    },
+    muscles: ['isquiotibials', 'esquena', 'bessons'],
+    instructions: {
+      ca: ['Des de dempeus, plega\'t des dels malucs', 'Genolls suaus si cal', 'Deixa caure cap i braços', 'Pes cap als dits dels peus'],
+      es: ['Desde de pie, pliégate desde las caderas', 'Rodillas suaves si hace falta', 'Deja caer cabeza y brazos', 'Peso hacia los dedos'],
+      en: ['From standing, fold from the hips', 'Soften the knees if needed', 'Let head and arms hang', 'Weight toward the toes'],
+    },
+    target: ['esquena', 'isquiotibials'], contraindications: ['lesio-esquena'],
+  },
+  {
+    id: 'virabhadrasana-i',
+    sanskrit: 'Vīrabhadrāsana I',
+    name: { ca: 'Guerrer I', es: 'Guerrero I', en: 'Warrior I' },
+    level: 'intermedi', duration: 40, family: 'peu',
+    chakra: 'manipura', chakraLabel: { ca: 'Plexe solar', es: 'Plexo solar', en: 'Solar plexus' },
+    breath: { ca: 'Inhala allargant els braços amunt', es: 'Inhala alargando los brazos arriba', en: 'Inhale reaching the arms up' },
+    benefits: {
+      ca: ['Enforteix cames i malucs', 'Obre pit i espatlles', 'Millora concentració i equilibri'],
+      es: ['Fortalece piernas y caderas', 'Abre pecho y hombros', 'Mejora concentración y equilibrio'],
+      en: ['Strengthens legs and hips', 'Opens chest and shoulders', 'Builds focus and balance'],
+    },
+    muscles: ['quadríceps', 'gluti', 'espatlles', 'core'],
+    instructions: {
+      ca: ['Peu davanter flexionat 90°, genoll sobre turmell', 'Peu del darrere a 45°, cama estirada', 'Malucs cap endavant', 'Braços amunt, mirada suau'],
+      es: ['Pie delantero a 90°, rodilla sobre tobillo', 'Pie trasero a 45°, pierna estirada', 'Caderas hacia delante', 'Brazos arriba, mirada suave'],
+      en: ['Front knee 90°, over the ankle', 'Back foot at 45°, leg straight', 'Hips facing forward', 'Arms up, soft gaze'],
+    },
+    target: ['cames', 'espatlles'], contraindications: ['hipertensio', 'lesio-genoll'],
+  },
+  {
+    id: 'ustrasana',
+    sanskrit: 'Uṣṭrāsana',
+    name: { ca: 'Camell', es: 'Camello', en: 'Camel pose' },
+    level: 'intermedi', duration: 30, family: 'extensio',
+    chakra: 'anahata', chakraLabel: { ca: 'Cor', es: 'Corazón', en: 'Heart' },
+    breath: { ca: 'Inhala obrint el pit, exhala amb calma', es: 'Inhala abriendo el pecho, exhala con calma', en: 'Inhale to open the chest, exhale calmly' },
+    benefits: {
+      ca: ['Obre pit i abdomen', 'Enforteix l\'esquena', 'Estimula l\'energia'],
+      es: ['Abre pecho y abdomen', 'Fortalece la espalda', 'Estimula la energía'],
+      en: ['Opens chest and abdomen', 'Strengthens the back', 'Boosts energy'],
+    },
+    muscles: ['esquena', 'quadríceps', 'abdomen'],
+    instructions: {
+      ca: ['De genolls, malucs sobre els genolls', 'Mans als talons o als malucs', 'Empeny malucs endavant, obre el pit', 'Deixa caure el cap enrere amb cura'],
+      es: ['De rodillas, caderas sobre las rodillas', 'Manos a los talones o caderas', 'Empuja caderas adelante, abre el pecho', 'Deja caer la cabeza atrás con cuidado'],
+      en: ['Kneel, hips over the knees', 'Hands to heels or hips', 'Press hips forward, open the chest', 'Let the head drop back gently'],
+    },
+    target: ['esquena', 'pit'], contraindications: ['lesio-esquena', 'lesio-coll', 'hipertensio'],
+  },
+  {
+    id: 'navasana',
+    sanskrit: 'Nāvāsana',
+    name: { ca: 'Postura del vaixell', es: 'Postura del barco', en: 'Boat pose' },
+    level: 'intermedi', duration: 25, family: 'equilibri',
+    chakra: 'manipura', chakraLabel: { ca: 'Plexe solar', es: 'Plexo solar', en: 'Solar plexus' },
+    breath: { ca: 'Respira estable mantenint el nucli actiu', es: 'Respira estable manteniendo el core activo', en: 'Breathe steadily with an active core' },
+    benefits: {
+      ca: ['Enforteix el nucli i els flexors', 'Millora l\'equilibri', 'Estimula la digestió'],
+      es: ['Fortalece el core y los flexores', 'Mejora el equilibrio', 'Estimula la digestión'],
+      en: ['Strengthens core and hip flexors', 'Improves balance', 'Stimulates digestion'],
+    },
+    muscles: ['abdomen', 'flexors-maluc', 'quadríceps'],
+    instructions: {
+      ca: ['Assegut, recolza\'t enrere amb l\'esquena recta', 'Aixeca les cames formant una V', 'Braços paral·lels a terra', 'Mantén el pit obert'],
+      es: ['Sentado, inclínate atrás con la espalda recta', 'Eleva las piernas formando una V', 'Brazos paralelos al suelo', 'Mantén el pecho abierto'],
+      en: ['Seated, lean back with a straight spine', 'Lift the legs into a V', 'Arms parallel to the floor', 'Keep the chest open'],
+    },
+    target: ['core', 'cames'], contraindications: ['lesio-esquena', 'embaras'],
+  },
+  {
+    id: 'baddha-konasana',
+    sanskrit: 'Baddha Koṇāsana',
+    name: { ca: 'Angle lligat', es: 'Ángulo atado', en: 'Bound angle pose' },
+    level: 'principiant', duration: 60, family: 'flexio',
+    chakra: 'svadhisthana', chakraLabel: { ca: 'Sacre', es: 'Sacro', en: 'Sacral' },
+    breath: { ca: 'Respiració suau, relaxant els malucs', es: 'Respiración suave, relajando las caderas', en: 'Soft breath, relaxing the hips' },
+    benefits: {
+      ca: ['Obre malucs i engonals', 'Millora la flexibilitat', 'Relaxa la part baixa de l\'esquena'],
+      es: ['Abre caderas e ingles', 'Mejora la flexibilidad', 'Relaja la zona lumbar'],
+      en: ['Opens hips and groin', 'Improves flexibility', 'Relaxes the lower back'],
+    },
+    muscles: ['adductors', 'malucs', 'esquena-baixa'],
+    instructions: {
+      ca: ['Assegut, ajunta les plantes dels peus', 'Deixa caure els genolls als costats', 'Esquena llarga, agafa els peus', 'Plega\'t endavant suaument si vols'],
+      es: ['Sentado, junta las plantas de los pies', 'Deja caer las rodillas a los lados', 'Espalda larga, sujeta los pies', 'Pliégate hacia delante suavemente si quieres'],
+      en: ['Seated, bring the soles together', 'Let the knees fall to the sides', 'Long spine, hold the feet', 'Fold forward gently if you like'],
+    },
+    target: ['malucs', 'esquena'], contraindications: ['lesio-genoll'],
+  },
+  {
+    id: 'natarajasana',
+    sanskrit: 'Naṭarājāsana',
+    name: { ca: 'Postura del ballarí', es: 'Postura del bailarín', en: 'Dancer pose' },
+    level: 'avancat', duration: 25, family: 'equilibri',
+    chakra: 'anahata', chakraLabel: { ca: 'Cor', es: 'Corazón', en: 'Heart' },
+    breath: { ca: 'Respira estable trobant un punt fix de mirada', es: 'Respira estable fijando la mirada', en: 'Breathe steadily with a fixed gaze' },
+    benefits: {
+      ca: ['Millora l\'equilibri i la concentració', 'Obre pit i espatlles', 'Enforteix cames i turmells'],
+      es: ['Mejora el equilibrio y la concentración', 'Abre pecho y hombros', 'Fortalece piernas y tobillos'],
+      en: ['Improves balance and focus', 'Opens chest and shoulders', 'Strengthens legs and ankles'],
+    },
+    muscles: ['quadríceps', 'gluti', 'espatlles', 'core'],
+    instructions: {
+      ca: ['Dempeus, agafa el turmell d\'un peu per darrere', 'Empeny el peu cap enrere i amunt', 'Estira l\'altre braç endavant', 'Fixa la mirada en un punt'],
+      es: ['De pie, agarra el tobillo de un pie por detrás', 'Empuja el pie atrás y arriba', 'Estira el otro brazo adelante', 'Fija la mirada en un punto'],
+      en: ['Standing, hold one ankle behind you', 'Press the foot back and up', 'Extend the other arm forward', 'Fix your gaze on one point'],
+    },
+    target: ['cames', 'pit'], contraindications: ['lesio-esquena', 'vertigen'],
+  },
 ];
 
 // Export per global window
 window.ASANAS = ASANAS;
+
+// ── Gestió de postures de la professora (afegir/treure, local) ──────────────
+const EB_CUSTOM_KEY = 'elbosc-custom-poses';
+const EB_REMOVED_KEY = 'elbosc-removed-poses';
+window.EBPoses = {
+  custom: () => { try { return JSON.parse(localStorage.getItem(EB_CUSTOM_KEY)) || []; } catch (e) { return []; } },
+  removed: () => { try { return JSON.parse(localStorage.getItem(EB_REMOVED_KEY)) || []; } catch (e) { return []; } },
+  effective: function () { const rm = this.removed(); return [...ASANAS.filter(a => rm.indexOf(a.id) === -1), ...this.custom()]; },
+  add: function (pose) { const c = this.custom(); c.push(pose); try { localStorage.setItem(EB_CUSTOM_KEY, JSON.stringify(c)); } catch (e) {} },
+  remove: function (id) {
+    const c = this.custom();
+    if (c.some(p => p.id === id)) { try { localStorage.setItem(EB_CUSTOM_KEY, JSON.stringify(c.filter(p => p.id !== id))); } catch (e) {} }
+    else { const rm = this.removed(); if (rm.indexOf(id) === -1) rm.push(id); try { localStorage.setItem(EB_REMOVED_KEY, JSON.stringify(rm)); } catch (e) {} }
+  },
+};
+
+// ── Rutines de la professora (crear / llistar / esborrar, local) ────────────
+const EB_ROUTINES_KEY = 'elbosc-routines';
+window.EBRoutines = {
+  load: () => { try { return JSON.parse(localStorage.getItem(EB_ROUTINES_KEY)) || []; } catch (e) { return []; } },
+  add: function (r) { const a = this.load(); a.push(r); try { localStorage.setItem(EB_ROUTINES_KEY, JSON.stringify(a)); } catch (e) {} },
+  remove: function (id) { try { localStorage.setItem(EB_ROUTINES_KEY, JSON.stringify(this.load().filter(r => r.id !== id))); } catch (e) {} },
+};

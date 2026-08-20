@@ -12,7 +12,7 @@ const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, adminPin, onChangePin, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, adminPin, onChangePin, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -25,6 +25,29 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, adm
   const [showProfile, setShowProfile] = uS(false);
   const [pinDraft, setPinDraft] = uS('');
   const [pinMsg, setPinMsg] = uS(null);
+  const [showPoseMgr, setShowPoseMgr] = uS(false);
+  const [np, setNp] = uS({ name:'', sanskrit:'', level:'principiant', family:'peu' });
+  const _slug = (s) => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'postura';
+  const addPose = () => {
+    if (!np.name.trim() || !window.EBPoses) return;
+    const id = 'cust-' + _slug(np.name) + '-' + Date.now().toString(36).slice(-4);
+    window.EBPoses.add({ id, sanskrit: np.sanskrit.trim(), name:{ ca:np.name.trim(), es:np.name.trim(), en:np.name.trim() }, level: np.level, family: np.family, duration: 45, custom: true, benefits:{ca:[],es:[],en:[]}, instructions:{ca:[],es:[],en:[]}, muscles:[], target:[], contraindications:[] });
+    onPosesChanged && onPosesChanged();
+    setNp({ name:'', sanskrit:'', level:'principiant', family:'peu' });
+  };
+  const removePose = (id) => { if (window.EBPoses) { window.EBPoses.remove(id); onPosesChanged && onPosesChanged(); } };
+  const [showRoutineMgr, setShowRoutineMgr] = uS(false);
+  const [rName, setRName] = uS('');
+  const [rPoses, setRPoses] = uS([]);
+  const [routinesV, setRoutinesV] = uS(0);
+  const routines = uM(() => (window.EBRoutines ? window.EBRoutines.load() : []), [routinesV, showRoutineMgr]);
+  const toggleRPose = (id) => setRPoses(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const saveRoutine = () => {
+    if (!rName.trim() || !rPoses.length || !window.EBRoutines) return;
+    window.EBRoutines.add({ id:'r' + Date.now().toString(36), name: rName.trim(), poseIds: rPoses });
+    setRoutinesV(v => v + 1); setRName(''); setRPoses([]);
+  };
+  const removeRoutine = (id) => { if (window.EBRoutines) { window.EBRoutines.remove(id); setRoutinesV(v => v + 1); } };
   const onPickPhoto = (e) => {
     const file = e.target.files && e.target.files[0];
     e.target.value = ''; // permet tornar a triar el mateix fitxer
@@ -231,6 +254,19 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, adm
             ))}
           </div>
 
+          {/* Mida del text (accessibilitat) */}
+          <label style={{ ...themeLabelStyle, marginTop:18 }}>{{ca:'Mida del text',es:'Tamaño del texto',en:'Text size'}[lang]}</label>
+          <div style={{ display:'flex', gap:8, marginTop:10 }}>
+            {[{id:'m',l:'A'},{id:'l',l:'A+'},{id:'xl',l:'A++'}].map(o => (
+              <button key={o.id} onClick={() => onChangeTextSize && onChangeTextSize(o.id)}
+                style={{ flex:1, padding:'10px', borderRadius:12, cursor:'pointer', fontFamily:'var(--serif)', fontWeight:500,
+                         fontSize: o.id==='m'?15:o.id==='l'?18:22,
+                         border:'1px solid ' + ((textSize||'m')===o.id ? 'var(--accent)' : 'color-mix(in srgb, var(--ink) 12%, transparent)'),
+                         background: (textSize||'m')===o.id ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
+                         color: (textSize||'m')===o.id ? 'var(--accent)' : 'var(--ink)' }}>{o.l}</button>
+            ))}
+          </div>
+
           {role === 'teacher' && (
             <div style={{ marginTop:16 }}>
               <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'6px 0 14px' }}/>
@@ -248,6 +284,14 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, adm
                   style={{ flexShrink:0, padding:'0 16px', borderRadius:12, border:'none', background:'var(--accent)', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor: pinValid?'pointer':'default', opacity: pinValid?1:0.5 }}>{PT.pinSave}</button>
               </div>
               {pinMsg && <div style={{ fontFamily:'var(--sans)', fontSize:12, color: pinMsg.type==='ok' ? 'var(--leaf-deep)' : 'var(--accent)', marginTop:8 }}>{pinMsg.text}</div>}
+              <button onClick={() => { setShowProfile(false); setShowPoseMgr(true); }}
+                style={{ width:'100%', marginTop:14, padding:'12px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
+                {{ca:'Gestionar postures',es:'Gestionar posturas',en:'Manage poses'}[lang]}
+              </button>
+              <button onClick={() => { setShowProfile(false); setShowRoutineMgr(true); }}
+                style={{ width:'100%', marginTop:8, padding:'12px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
+                {{ca:'Crear rutines',es:'Crear rutinas',en:'Create routines'}[lang]}
+              </button>
             </div>
           )}
 
@@ -259,6 +303,90 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, adm
         </div>
       </div>
     )}
+
+    {showPoseMgr && (() => {
+      const inp = { width:'100%', border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'11px 12px', fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', color:'var(--ink)', outline:'none', boxSizing:'border-box' };
+      return (
+        <div style={{ position:'fixed', inset:0, zIndex:9999, background:'var(--paper)', display:'flex', flexDirection:'column' }}>
+          <div style={{ padding:'54px 20px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)' }}>
+            <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:22, color:'var(--ink)' }}>{{ca:'Gestió de postures',es:'Gestión de posturas',en:'Manage poses'}[lang]}</div>
+            <button onClick={() => setShowPoseMgr(false)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}><Icon name="close" size={22} color="var(--ink)"/></button>
+          </div>
+          <div className="yb-scroll" style={{ flex:1, overflowY:'auto', padding:'16px 20px 40px' }}>
+            <div className="yb-card" style={{ marginBottom:16 }}>
+              <div style={{ fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', marginBottom:12 }}>{{ca:'Afegir postura',es:'Añadir postura',en:'Add pose'}[lang]}</div>
+              <input type="text" value={np.name} onChange={e=>setNp({...np, name:e.target.value})} placeholder={{ca:'Nom',es:'Nombre',en:'Name'}[lang]} style={inp}/>
+              <input type="text" value={np.sanskrit} onChange={e=>setNp({...np, sanskrit:e.target.value})} placeholder={{ca:'Sànscrit (opcional)',es:'Sánscrito (opcional)',en:'Sanskrit (optional)'}[lang]} style={{...inp, marginTop:8}}/>
+              <div style={{ display:'flex', gap:8, marginTop:8 }}>
+                <select value={np.level} onChange={e=>setNp({...np, level:e.target.value})} style={{...inp, flex:1}}>
+                  <option value="principiant">{{ca:'Principiant',es:'Principiante',en:'Beginner'}[lang]}</option>
+                  <option value="intermedi">{{ca:'Intermedi',es:'Intermedio',en:'Intermediate'}[lang]}</option>
+                  <option value="avancat">{{ca:'Avançat',es:'Avanzado',en:'Advanced'}[lang]}</option>
+                </select>
+                <select value={np.family} onChange={e=>setNp({...np, family:e.target.value})} style={{...inp, flex:1}}>
+                  {['peu','equilibri','flexio','extensio','torsio','restauratiu','meditacio','mobilitat','inversio'].map(f=>(<option key={f} value={f}>{f}</option>))}
+                </select>
+              </div>
+              <button onClick={addPose} disabled={!np.name.trim()} className="yb-btn yb-btn-clay" style={{ width:'100%', marginTop:12, opacity: np.name.trim()?1:0.5 }}>{{ca:'Afegir',es:'Añadir',en:'Add'}[lang]}</button>
+            </div>
+            {(asanas||[]).map(a => (
+              <div key={a.id} className="yb-card" style={{ marginBottom:8, display:'flex', alignItems:'center', gap:12, padding:'10px 14px' }}>
+                <div style={{ width:40, height:40, flexShrink:0 }}><PoseSVG id={a.id} size={40}/></div>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:'var(--serif)', fontSize:15, color:'var(--ink)' }}>{(a.name && (a.name[lang]||a.name.ca)) || a.id}</div>
+                  <div style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)' }}>{a.sanskrit} · {a.level}{a.custom?' · ✎':''}</div>
+                </div>
+                <button onClick={()=>removePose(a.id)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:6 }}><Icon name="trash" size={16} color="var(--ink-soft)"/></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    })()}
+
+    {showRoutineMgr && (() => {
+      const inp = { width:'100%', border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'11px 12px', fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', color:'var(--ink)', outline:'none', boxSizing:'border-box' };
+      const nameOf = (id) => { const a = (asanas||[]).find(x => x.id === id); return a ? ((a.name && (a.name[lang]||a.name.ca)) || a.id) : id; };
+      return (
+        <div style={{ position:'fixed', inset:0, zIndex:9999, background:'var(--paper)', display:'flex', flexDirection:'column' }}>
+          <div style={{ padding:'54px 20px 12px', display:'flex', alignItems:'center', justifyContent:'space-between', borderBottom:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)' }}>
+            <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:22, color:'var(--ink)' }}>{{ca:'Rutines',es:'Rutinas',en:'Routines'}[lang]}</div>
+            <button onClick={() => setShowRoutineMgr(false)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}><Icon name="close" size={22} color="var(--ink)"/></button>
+          </div>
+          <div className="yb-scroll" style={{ flex:1, overflowY:'auto', padding:'16px 20px 40px' }}>
+            {routines.length === 0 && <div style={{ fontFamily:'var(--sans)', fontSize:13, color:'var(--ink-soft)', textAlign:'center', marginBottom:14 }}>{{ca:'Encara no hi ha rutines.',es:'Aún no hay rutinas.',en:'No routines yet.'}[lang]}</div>}
+            {routines.map(r => (
+              <div key={r.id} className="yb-card" style={{ marginBottom:8, display:'flex', alignItems:'center', gap:12, padding:'12px 14px' }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ fontFamily:'var(--serif)', fontSize:16, color:'var(--ink)' }}>{r.name}</div>
+                  <div style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)' }}>{r.poseIds.length} {{ca:'postures',es:'posturas',en:'poses'}[lang]} · {r.poseIds.map(nameOf).slice(0,3).join(', ')}{r.poseIds.length>3?'…':''}</div>
+                </div>
+                <button onClick={()=>removeRoutine(r.id)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:6 }}><Icon name="trash" size={16} color="var(--ink-soft)"/></button>
+              </div>
+            ))}
+
+            <div className="yb-card" style={{ marginTop:16 }}>
+              <div style={{ fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', marginBottom:12 }}>{{ca:'Nova rutina',es:'Nueva rutina',en:'New routine'}[lang]}</div>
+              <input type="text" value={rName} onChange={e=>setRName(e.target.value)} placeholder={{ca:'Nom de la rutina',es:'Nombre de la rutina',en:'Routine name'}[lang]} style={inp}/>
+              {rPoses.length>0 && (
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:12 }}>
+                  {rPoses.map((id,i) => (
+                    <span key={id} onClick={()=>toggleRPose(id)} style={{ display:'inline-flex', alignItems:'center', gap:6, background:'var(--accent)', color:'var(--cream)', borderRadius:20, padding:'5px 10px', fontFamily:'var(--sans)', fontSize:12, cursor:'pointer' }}>{i+1}. {nameOf(id)} ✕</span>
+                  ))}
+                </div>
+              )}
+              <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)', margin:'14px 0 8px' }}>{{ca:'Toca per afegir (en ordre):',es:'Toca para añadir (en orden):',en:'Tap to add (in order):'}[lang]}</div>
+              <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                {(asanas||[]).map(a => { const on = rPoses.includes(a.id); return (
+                  <button key={a.id} onClick={()=>toggleRPose(a.id)} style={{ borderRadius:20, padding:'6px 11px', fontFamily:'var(--sans)', fontSize:12, cursor:'pointer', border:'1px solid ' + (on?'var(--accent)':'color-mix(in srgb, var(--ink) 12%, transparent)'), background: on?'color-mix(in srgb, var(--accent) 15%, transparent)':'transparent', color: on?'var(--accent)':'var(--ink)' }}>{(a.name && (a.name[lang]||a.name.ca)) || a.id}</button>
+                ); })}
+              </div>
+              <button onClick={saveRoutine} disabled={!rName.trim()||!rPoses.length} className="yb-btn yb-btn-clay" style={{ width:'100%', marginTop:16, opacity: (rName.trim()&&rPoses.length)?1:0.5 }}>{{ca:'Desar rutina',es:'Guardar rutina',en:'Save routine'}[lang]}</button>
+            </div>
+          </div>
+        </div>
+      );
+    })()}
     </>
   );
 };
