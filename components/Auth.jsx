@@ -205,17 +205,6 @@ const EmailScreen = ({ t, lang, onSend, onAdminTrigger, checkEmail }) => {
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  const [magicMsg, setMagicMsg] = uSAuth('');
-  const sendMagic = async () => {
-    if (!isValid) return;
-    if (!window.sb) { setMagicMsg('⚠ Supabase'); return; }
-    setMagicMsg({ ca:'Enviant…', es:'Enviando…', en:'Sending…' }[lang]);
-    try {
-      const { error } = await window.sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
-      setMagicMsg(error ? ('⚠ ' + error.message) : { ca:'T\'hem enviat un enllaç al correu. Obre\'l per entrar.', es:'Te enviamos un enlace al correo. Ábrelo para entrar.', en:'We sent a link to your email. Open it to sign in.' }[lang]);
-    } catch (e) { setMagicMsg('⚠ ' + String(e)); }
-  };
-
   const handleSend = () => {
     if (!isValid) return;
     const result = checkEmail ? checkEmail(email) : { ok: true };
@@ -271,20 +260,17 @@ const EmailScreen = ({ t, lang, onSend, onAdminTrigger, checkEmail }) => {
                       padding:'12px 16px', marginBottom: 16 }}>
           <Icon name="mail" size={18} color="var(--ink-soft)"/>
           <input type="email" value={email} onChange={e => { setEmail(e.target.value); setErr(''); }}
-            onKeyDown={e => e.key === 'Enter' && sendMagic()}
+            onKeyDown={e => e.key === 'Enter' && handleSend()}
             placeholder={t.emailPh} autoFocus
             style={{ flex:1, border:'none', outline:'none', background:'transparent',
                      fontFamily:'var(--sans)', fontSize: 16, color:'var(--ink)' }}/>
         </div>
         {err && <div style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--accent)', marginBottom: 10 }}>{err}</div>}
 
-        <button onClick={sendMagic} disabled={!isValid}
-          className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: !isValid ? 0.55 : 1, marginBottom: 10 }}>
+        <button onClick={handleSend} disabled={!isValid}
+          className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: !isValid ? 0.55 : 1 }}>
           {t.sendBtn}
         </button>
-        <div style={{ fontFamily:'var(--sans)', fontSize:12, color: magicMsg && magicMsg.indexOf('⚠')===0 ? 'var(--accent)' : 'var(--ink-soft)', textAlign:'center', lineHeight:1.5, minHeight:18 }}>
-          {magicMsg || { ca:'T\'enviarem un enllaç per entrar de forma segura.', es:'Te enviaremos un enlace para entrar de forma segura.', en:'We\'ll email you a secure sign-in link.' }[lang]}
-        </div>
 
       </div>
 

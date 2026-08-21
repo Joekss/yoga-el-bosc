@@ -8,13 +8,14 @@ const { useState: uSA, useEffect: uEA, useMemo: uMA } = React;
     const inv = new URLSearchParams(window.location.search).get('inv');
     if (inv) {
       const dec = atob(inv);
-      const i = dec.indexOf(':');
-      const email = dec.slice(0, i).toLowerCase().trim();
-      const code  = dec.slice(i + 1).trim();
+      const parts = dec.split('|');
+      const email = (parts[0] || '').toLowerCase().trim();
+      const code  = (parts[1] || '').trim();
+      const name  = (parts[2] || '').trim();
       if (email && code) {
         localStorage.setItem('elbosc-credential', JSON.stringify({ email, code }));
-        localStorage.setItem('elbosc-session', JSON.stringify({ email, role: 'student' }));
-        window.__elBoscInvite = { email, code };
+        localStorage.setItem('elbosc-session', JSON.stringify({ email, role: 'student', name }));
+        window.__elBoscInvite = { email, code, name };
         // NO netegem l'URL: el link guardat als marcadors funciona sempre
       }
     }
