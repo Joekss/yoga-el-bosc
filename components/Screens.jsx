@@ -23,9 +23,10 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
-    if (h < 12) return { ca: 'Bon matí', es: 'Buenos días', en: 'Good morning' }[lang];
-    if (h < 19) return { ca: 'Bona tarda', es: 'Buenas tardes', en: 'Good afternoon' }[lang];
-    return { ca: 'Bona nit', es: 'Buenas noches', en: 'Good evening' }[lang];
+    if (h < 12) return { ca: 'Bon matí',   es: 'Buenos días',    en: 'Good morning'   }[lang];
+    if (h < 14) return { ca: 'Bon dia',    es: 'Buen día',       en: 'Good day'       }[lang];
+    if (h < 21) return { ca: 'Bona tarda', es: 'Buenas tardes',  en: 'Good afternoon' }[lang];
+    return             { ca: 'Bona nit',   es: 'Buenas noches',  en: 'Good evening'   }[lang];
   })();
 
   const [avatar, setAvatar] = uS(() => { try { return localStorage.getItem('elbosc-avatar') || null; } catch(e){ return null; } });

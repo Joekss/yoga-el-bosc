@@ -12,7 +12,13 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
-  background: #2C2A24;
+  /* Fons botànic per a la vista web/desktop */
+  background-color: #1E1C17;
+  background-image:
+    radial-gradient(ellipse at 20% 30%, rgba(90,106,61,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 70%, rgba(184,116,74,0.14) 0%, transparent 55%),
+    radial-gradient(ellipse at 60% 10%, rgba(90,106,61,0.10) 0%, transparent 45%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
   display: flex;
   justify-content: center;
   align-items: flex-start;
@@ -41,14 +47,30 @@ body {
   padding-right: env(safe-area-inset-right, 0px);
 }
 
-/* On wide screens, add a subtle border/shadow so the app looks contained */
+/* Pantalles grans (tauleta/web): l'app es mostra com un mòbil centrat */
 @media (min-width: 431px) {
-  .yb-shell-wrap {
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.15), 0 8px 48px rgba(0,0,0,0.35);
-  }
   body {
     align-items: center;
     min-height: 100dvh;
+    padding: 24px 0;
+  }
+  .yb-shell-wrap {
+    height: min(100dvh - 48px, 900px);
+    min-height: unset;
+    border-radius: 32px;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.06),
+      0 0 0 8px rgba(0,0,0,0.25),
+      0 24px 80px rgba(0,0,0,0.5);
+    overflow: hidden;
+  }
+}
+
+/* Pantalles molt petites (< 360px): redueix padding intern */
+@media (max-width: 359px) {
+  .yb-shell-wrap {
+    padding-left: max(env(safe-area-inset-left, 0px), 0px);
+    padding-right: max(env(safe-area-inset-right, 0px), 0px);
   }
 }
 
