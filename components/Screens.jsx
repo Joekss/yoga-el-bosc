@@ -223,7 +223,13 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
         style={{ position:'fixed', inset:0, zIndex:9998, background:'rgba(20,18,14,0.5)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
         <div onClick={e => e.stopPropagation()}
           style={{ width:'100%', maxWidth:430, background:'var(--paper)', borderTopLeftRadius:24, borderTopRightRadius:24, padding:'22px 24px calc(28px + env(safe-area-inset-bottom, 0px))', boxShadow:'0 -10px 40px rgba(0,0,0,0.25)' }}>
-          <div style={{ width:40, height:4, borderRadius:2, background:'color-mix(in srgb, var(--ink) 15%, transparent)', margin:'0 auto 18px' }}/>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', position:'relative', marginBottom:18 }}>
+            <div style={{ width:40, height:4, borderRadius:2, background:'color-mix(in srgb, var(--ink) 15%, transparent)' }}/>
+            <button onClick={() => setShowProfile(false)}
+              style={{ position:'absolute', right:0, top:'50%', transform:'translateY(-50%)', background:'transparent', border:'none', cursor:'pointer', padding:6, lineHeight:1 }}>
+              <Icon name="close" size={22} color="var(--ink-soft)"/>
+            </button>
+          </div>
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, marginBottom:20 }}>
             <div style={{ width:96, height:96, borderRadius:'50%', overflow:'hidden', background:'var(--cream)', border:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)', display:'flex', alignItems:'center', justifyContent:'center' }}>
               {avatar
@@ -734,7 +740,16 @@ const Calendar = ({ t, lang, profile }) => {
 const JOURNAL_KEY = 'elbosc-journal';
 const jLoad = () => { try { const s = JSON.parse(localStorage.getItem(JOURNAL_KEY)); if (Array.isArray(s)) return s; } catch(e){} return []; };
 const jSave = (arr) => { try { localStorage.setItem(JOURNAL_KEY, JSON.stringify(arr)); } catch(e){} };
-const MOOD_EMOJI = ['◔','◑','◐','●','✦'];
+const MOOD_EMOJI = ['🌱','🌿','🌸','🌻','✨'];
+
+const NOTE_COLORS = [
+  { key:'none',  bg:null,                                                   dot:'color-mix(in srgb, var(--ink) 8%, var(--paper))' },
+  { key:'terra', bg:'color-mix(in srgb, var(--accent) 14%, var(--cream))',  dot:'var(--accent)' },
+  { key:'bosc',  bg:'color-mix(in srgb, var(--leaf) 14%, var(--cream))',    dot:'var(--leaf)' },
+  { key:'cel',   bg:'color-mix(in srgb, #7EB5C2 18%, var(--cream))',        dot:'#7EB5C2' },
+  { key:'sorra', bg:'color-mix(in srgb, #C4A87A 18%, var(--cream))',        dot:'#C4A87A' },
+];
+const ncIdx = (key) => { const i = NOTE_COLORS.findIndex(c => c.key === key); return i >= 0 ? i : 0; };
 
 const Journal = ({ t, lang, onShare }) => {
   const [entries, setEntries] = uS(jLoad);
@@ -744,13 +759,15 @@ const Journal = ({ t, lang, onShare }) => {
 
   const save = () => {
     if (!note.trim()) return;
-    const entry = { id:'j'+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), mood, text: note.trim() };
+    const entry = { id:'j'+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), mood, text: note.trim(), color: noteColor };
     const next = [entry, ...jLoad()];
-    jSave(next); setEntries(next); setNote('');
+    jSave(next); setEntries(next); setNote(''); setNoteColor('none');
   };
   const remove = (id) => { const next = jLoad().filter(e => e.id !== id); jSave(next); setEntries(next); };
   const sorted = [...entries].sort((a,b) => b.ts - a.ts);
   const fmt = (ts) => { try { return new Date(ts).toLocaleDateString(locale, { weekday:'short', day:'numeric', month:'long' }); } catch(e){ return ''; } };
+  const fmtTime = (ts) => { try { return new Date(ts).toLocaleTimeString(locale, { hour:'2-digit', minute:'2-digit', second:'2-digit' }); } catch(e){ return ''; } };
+  const [noteColor, setNoteColor] = uS('none');
   const [sharedIds, setSharedIds] = uS([]);
   const shareEntry = (e) => {
     const label = { ca:'Diari', es:'Diario', en:'Journal' }[lang];
@@ -791,7 +808,18 @@ const Journal = ({ t, lang, onShare }) => {
               fontFamily:'var(--serif)', fontSize: 16, lineHeight: 1.5, color:'var(--ink)', background:'transparent' }}/>
         </div>
 
-        <button onClick={save} disabled={!note.trim()} className="yb-btn yb-btn-primary" style={{ width:'100%', marginTop: 16, opacity: note.trim() ? 1 : 0.55 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, padding:'10px 16px', background:'var(--cream)', borderRadius:14 }}>
+          <span style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)', letterSpacing:'0.12em', textTransform:'uppercase', flexShrink:0 }}>
+            {{ca:'Color', es:'Color', en:'Color'}[lang]}
+          </span>
+          {NOTE_COLORS.map(c => (
+            <button key={c.key} onClick={() => setNoteColor(c.key)}
+              style={{ width:26, height:26, borderRadius:'50%', background:c.dot, border:'none', cursor:'pointer', padding:0, flexShrink:0,
+                       outline: noteColor===c.key ? '2px solid var(--ink-soft)' : 'none', outlineOffset:'2px',
+                       boxShadow: c.key==='none' ? 'inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 18%, transparent)' : 'none' }}/>
+          ))}
+        </div>
+        <button onClick={save} disabled={!note.trim()} className="yb-btn yb-btn-primary" style={{ width:'100%', marginTop: 12, opacity: note.trim() ? 1 : 0.55 }}>
           {t.journal_.save}
         </button>
 
@@ -804,10 +832,11 @@ const Journal = ({ t, lang, onShare }) => {
             </div>
           )}
           {sorted.map(e => (
-            <div key={e.id} className="yb-card" style={{ marginBottom: 10, display:'flex', gap: 14, alignItems:'flex-start', padding: 14 }}>
+            <div key={e.id} className="yb-card" style={{ marginBottom: 10, display:'flex', gap: 14, alignItems:'flex-start', padding: 14, ...(e.color && e.color !== 'none' ? { background: NOTE_COLORS[ncIdx(e.color)].bg } : {}) }}>
               <div style={{ width: 36, height: 36, borderRadius:'50%', background:'color-mix(in srgb, var(--accent) 18%, transparent)', color:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', fontSize: 18, flexShrink:0 }}>{MOOD_EMOJI[e.mood]}</div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)', textTransform:'uppercase' }}>{fmt(e.ts)}</div>
+                <div style={{ fontFamily:'var(--sans)', fontSize: 10, color:'var(--ink-soft)', marginTop:1, opacity:0.7 }}>{fmtTime(e.ts)}</div>
                 <div style={{ fontFamily:'var(--serif)', fontSize: 14, color:'var(--ink)', marginTop: 2, fontStyle:'italic', wordBreak:'break-word' }}>"{e.text}"</div>
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
