@@ -343,22 +343,44 @@ const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
             ))}
           </div>
           <span style={{ fontFamily:'var(--sans)', fontSize: 11, opacity: 0.85 }}>{msg.body.duration}s</span>
+          {msg.body?.url && (
+            <a href={msg.body.url} download="audio.mp4" onClick={e => e.stopPropagation()}
+               style={{ display:'flex', alignItems:'center', justifyContent:'center', marginLeft: 4 }}>
+              <Icon name="download" size={14} color={mine ? 'color-mix(in srgb, var(--cream) 80%, transparent)' : 'var(--ink-soft)'}/>
+            </a>
+          )}
         </div>
       );
     }
-    if (msg.kind === 'image') return (
-      <div>
-        <div style={{ width: 200, height: 130, borderRadius: 14, background: 'linear-gradient(135deg, var(--sand), var(--paper-2))', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
-          <svg viewBox="0 0 100 60" style={{ width:'85%', opacity: 0.6 }}>
-            <path d="M5 50 L25 30 L40 42 L60 18 L82 38 L95 28 L95 55 L5 55 Z" fill="var(--leaf)" opacity="0.5"/>
-            <circle cx="78" cy="14" r="6" fill="var(--accent)" opacity="0.7"/>
-          </svg>
+    if (msg.kind === 'image') {
+      const imgUrl = msg.body?.url;
+      return (
+        <div>
+          <div style={{ width: 200, borderRadius: 14, overflow:'hidden', position:'relative' }}>
+            {imgUrl ? (
+              <img src={imgUrl} alt={msg.body?.caption || ''} style={{ width:'100%', display:'block', maxHeight: 240, objectFit:'cover' }}/>
+            ) : (
+              <div style={{ height: 130, background: 'linear-gradient(135deg, var(--sand), var(--paper-2))', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg viewBox="0 0 100 60" style={{ width:'85%', opacity: 0.6 }}>
+                  <path d="M5 50 L25 30 L40 42 L60 18 L82 38 L95 28 L95 55 L5 55 Z" fill="var(--leaf)" opacity="0.5"/>
+                  <circle cx="78" cy="14" r="6" fill="var(--accent)" opacity="0.7"/>
+                </svg>
+              </div>
+            )}
+            {imgUrl && (
+              <a href={imgUrl} download="imatge.jpg" onClick={e => e.stopPropagation()}
+                 style={{ position:'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius:'50%',
+                          background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <Icon name="download" size={13} color="white"/>
+              </a>
+            )}
+          </div>
+          {msg.body?.caption && (
+            <div style={{ marginTop: 6, fontFamily:'var(--serif)', fontSize: 14 }}>{msg.body.caption}</div>
+          )}
         </div>
-        {msg.body?.caption && (
-          <div style={{ marginTop: 6, fontFamily:'var(--serif)', fontSize: 14 }}>{msg.body.caption}</div>
-        )}
-      </div>
-    );
+      );
+    }
     if (msg.kind === 'pdf') return (
       <div style={{ display:'flex', alignItems:'center', gap: 10, minWidth: 200, padding: '4px 0' }}>
         <div style={{ width: 40, height: 48, borderRadius: 6, background: mine ? 'var(--cream)':'var(--accent)', color: mine ? 'var(--accent)':'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--sans)', fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>PDF</div>
@@ -366,7 +388,14 @@ const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
           <div style={{ fontFamily:'var(--sans)', fontSize: 13, fontWeight: 500 }}>{msg.body?.name || 'pranayama-guide.pdf'}</div>
           <div style={{ fontFamily:'var(--sans)', fontSize: 11, opacity: 0.7 }}>{msg.body?.size || '320 KB'}</div>
         </div>
-        <Icon name="download" size={16} color={mine ? 'var(--cream)':'var(--ink-soft)'}/>
+        {msg.body?.url ? (
+          <a href={msg.body.url} download={msg.body?.name || 'document.pdf'} onClick={e => e.stopPropagation()}
+             style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <Icon name="download" size={16} color={mine ? 'var(--cream)':'var(--ink-soft)'}/>
+          </a>
+        ) : (
+          <Icon name="download" size={16} color={mine ? 'var(--cream)':'var(--ink-soft)'}/>
+        )}
       </div>
     );
     if (msg.kind === 'pose') {
@@ -529,6 +558,7 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
   const recTRef = uRC(0);
   const mediaRecRef = uRC(null);
   const inputRef = uRC(null);
+  const imgInputRef = uRC(null);
 
   uEC(() => {
     if (!recording) {
@@ -604,11 +634,11 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
 
   const ATTACH_OPTS = [
     { id:'image', label: t.image, icon:'image' },
-    { id:'pdf', label: t.pdf, icon:'pdf' },
+    { id:'pdf', label: t.pdf, icon:'pdf', teacherOnly: true },
     { id:'pose', label: t.pose, icon:'flower' },
-    { id:'session', label: t.session, icon:'play' },
-    { id:'quote', label: t.quote, icon:'quote' },
-  ];
+    { id:'session', label: t.session, icon:'play', teacherOnly: true },
+    { id:'quote', label: t.quote, icon:'quote', teacherOnly: true },
+  ].filter(o => !o.teacherOnly || !isStudent);
 
   return (
     <>
@@ -699,7 +729,7 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap: 10, paddingBottom: 16 }}>
           {ATTACH_OPTS.map(o => (
             <button key={o.id} onClick={() => {
-              if (o.id === 'image') { sendMsg('image', { caption:'' }); setSheet(null); }
+              if (o.id === 'image') { imgInputRef.current?.click(); setSheet(null); }
               else if (o.id === 'pdf') { sendMsg('pdf', { name:'guia-pranayama.pdf', size:'320 KB' }); setSheet(null); }
               else if (o.id === 'pose') setSheet('pose');
               else if (o.id === 'session') setSheet('session');
@@ -833,6 +863,17 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
           ))}
         </div>
       </Sheet>
+
+      {/* Input ocult per seleccionar imatge de la galeria */}
+      <input ref={imgInputRef} type="file" accept="image/*" style={{ display:'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => { sendMsg('image', { caption: file.name, url: ev.target.result }); };
+          reader.readAsDataURL(file);
+          e.target.value = '';
+        }}/>
     </>
   );
 };
@@ -882,16 +923,18 @@ const ConversationView = ({ t, lang, asanas, role, student, messages, onSend, on
                       display:'flex', alignItems:'center', justifyContent:'center',
                       fontFamily:'var(--serif)', fontSize: 18, position:'relative' }}>
           {student.initials}
-          {student.online && (
+          {!isStudent && student.online && (
             <span style={{ position:'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius:'50%',
                            background:'#5BC788', border:'2px solid var(--paper)' }}/>
           )}
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily:'var(--serif)', fontSize: 17, fontStyle:'italic', color:'var(--ink)' }}>{student.name}</div>
-          <div style={{ fontFamily:'var(--sans)', fontSize: 11, color: student.online ? 'var(--leaf-deep)':'var(--ink-soft)' }}>
-            {student.online ? t.online : `${t.offlineSince} ${lastSeenLabel(student.lastPracticeDays, t)}`}
-          </div>
+          {!isStudent && (
+            <div style={{ fontFamily:'var(--sans)', fontSize: 11, color: student.online ? 'var(--leaf-deep)':'var(--ink-soft)' }}>
+              {student.online ? t.online : `${t.offlineSince} ${lastSeenLabel(student.lastPracticeDays, t)}`}
+            </div>
+          )}
         </div>
         {!isStudent && (
           <button onClick={onOpenContext} style={{ background:'var(--cream)', border:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)',
