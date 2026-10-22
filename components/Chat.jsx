@@ -29,8 +29,8 @@ const CHAT_T = {
     composerPh: 'Escriu un missatge…',
     composerPhTeacher: 'Respon a {name}…',
     composerPhBroadcast: 'Difusió per a {n} alumnes…',
-    studentCantInitiate: 'Pots respondre a la Cèlia quan ella et contacti.',
-    waitingTeacher: 'Esperant un missatge de la Cèlia',
+    studentCantInitiate: 'Escriu el primer missatge a la Cèlia.',
+    waitingTeacher: 'Inicia la conversa',
     today: 'Avui', yesterday: 'Ahir',
     sent: 'Enviat', delivered: 'Lliurat', read: 'Llegit',
     schedule: 'Programar', scheduled: 'Programat', scheduledFor: 'Programat per',
@@ -81,8 +81,8 @@ const CHAT_T = {
     composerPh: 'Escribe un mensaje…',
     composerPhTeacher: 'Responde a {name}…',
     composerPhBroadcast: 'Difusión para {n} alumnas…',
-    studentCantInitiate: 'Puedes responder a Cèlia cuando ella te contacte.',
-    waitingTeacher: 'Esperando un mensaje de Cèlia',
+    studentCantInitiate: 'Escribe el primer mensaje a Cèlia.',
+    waitingTeacher: 'Inicia la conversación',
     today: 'Hoy', yesterday: 'Ayer',
     sent: 'Enviado', delivered: 'Entregado', read: 'Leído',
     schedule: 'Programar', scheduled: 'Programado', scheduledFor: 'Programado para',
@@ -133,8 +133,8 @@ const CHAT_T = {
     composerPh: 'Write a message…',
     composerPhTeacher: 'Reply to {name}…',
     composerPhBroadcast: 'Broadcast to {n} students…',
-    studentCantInitiate: 'You can reply to Cèlia once she contacts you.',
-    waitingTeacher: 'Waiting for a message from Cèlia',
+    studentCantInitiate: 'Send Cèlia your first message.',
+    waitingTeacher: 'Start the conversation',
     today: 'Today', yesterday: 'Yesterday',
     sent: 'Sent', delivered: 'Delivered', read: 'Read',
     schedule: 'Schedule', scheduled: 'Scheduled', scheduledFor: 'Scheduled for',
@@ -901,20 +901,9 @@ const ConversationView = ({ t, lang, asanas, role, student, messages, onSend, on
       </div>
 
       {/* Compositor */}
-      {(isStudent && messages.length === 0) ? (
-        <div style={{ padding:'14px 18px calc(env(safe-area-inset-bottom, 12px) + 14px)',
-                       background:'color-mix(in srgb, var(--paper) 92%, transparent)',
-                       borderTop:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)',
-                       textAlign:'center' }}>
-          <div style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--ink-soft)' }}>
-            {t.studentCantInitiate}
-          </div>
-        </div>
-      ) : (
-        <Composer t={t} lang={lang} asanas={asanas} role={role}
-                  recipientName={student.name} isStudent={isStudent}
-                  onSend={onSend}/>
-      )}
+      <Composer t={t} lang={lang} asanas={asanas} role={role}
+                recipientName={student.name} isStudent={isStudent}
+                onSend={onSend}/>
     </div>
   );
 };
