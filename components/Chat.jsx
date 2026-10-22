@@ -247,23 +247,7 @@ const seedConversations = (lang) => {
     body: '', time: now, status: 'read', reactions: [], ...over,
   });
   return {
-    nuria: [
-      M({ from:'teacher', kind:'text',
-        body: { ca:'Bon dia, Núria. Com et trobes l\'esquena aquesta setmana?', es:'Buenos días, Núria. ¿Cómo va tu espalda esta semana?', en:'Good morning, Núria. How is your back this week?' }[lang],
-        time: now - 86400000*2, status: 'read' }),
-      M({ from:'student', kind:'text',
-        body: { ca:'Una mica millor després de la pràctica de dilluns 🙏', es:'Algo mejor tras la práctica del lunes 🙏', en:'A bit better after Monday\'s practice 🙏' }[lang],
-        time: now - 86400000*2 + 1200000, status:'sent' }),
-      M({ from:'teacher', kind:'pose', body: { id:'balasana' },
-        time: now - 86400000 - 7200000, status:'read' }),
-      M({ from:'teacher', kind:'text',
-        body: { ca:'Mira si aquesta postura abans de dormir t\'ajuda.', es:'Mira si esta postura antes de dormir te ayuda.', en:'See if this pose before bed helps.' }[lang],
-        time: now - 86400000 - 7200000 + 4000, status:'read' }),
-      M({ from:'student', kind:'audio', body: { duration: 14, waveform: [0.3,0.5,0.7,0.4,0.6,0.8,0.5,0.3,0.4,0.6,0.7,0.5,0.4,0.3] },
-        time: now - 3600000*5, status:'sent' }),
-      M({ from:'teacher', kind:'quote', body: QUOTES_BANK[1],
-        time: now - 1800000, status:'delivered' }),
-    ],
+    nuria: [],
     marta: [
       M({ from:'teacher', kind:'session', body: { duration: 30, poses: 8, focus: { ca:'Core', es:'Core', en:'Core' }[lang] },
         time: now - 86400000*3, status:'read' }),
@@ -550,22 +534,11 @@ const Sheet = ({ open, onClose, title, children, height = 'auto' }) => {
 const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend, isStudent }) => {
   const [text, setText] = uSC('');
   const [sheet, setSheet] = uSC(null); // 'attach'|'pose'|'session'|'quote'|'emoji'|'schedule'
-  const [recording, setRecording] = uSC(false);
-  const [recT, setRecT] = uSC(0);
   const [privateMode, setPrivateMode] = uSC(false);
   const [scheduled, setScheduled] = uSC(null); // timestamp or null
-  const recTimer = uRC(null);
-  const recTRef = uRC(0);
-  const mediaRecRef = uRC(null);
   const inputRef = uRC(null);
   const imgInputRef = uRC(null);
-
-  uEC(() => {
-    if (!recording) {
-      if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
-    }
-    return () => { if (recTimer.current) clearInterval(recTimer.current); };
-  }, [recording]);
+  const audioInputRef = uRC(null);
 
   const ph = broadcastCount > 0
     ? t.composerPhBroadcast.replace('{n}', broadcastCount)
@@ -584,52 +557,6 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
   const handleEmoji = (e) => {
     setText(s => s + e);
     inputRef.current?.focus();
-  };
-
-  const startRecording = () => {
-    if (mediaRecRef.current) return;
-    // getUserMedia ha d'estar en el handler directe (iOS exigeix gesture directe)
-    navigator.mediaDevices?.getUserMedia({ audio: true }).then(stream => {
-      // Detecta el millor MIME: iOS només suporta audio/mp4
-      const mimeType = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find(
-        m => { try { return MediaRecorder.isTypeSupported(m); } catch(e) { return false; } }
-      ) || '';
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-      const chunks = [];
-      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.start();
-      mediaRecRef.current = { recorder, stream, chunks, mimeType };
-      recTRef.current = 0;
-      setRecT(0);
-      recTimer.current = setInterval(() => { recTRef.current++; setRecT(recTRef.current); }, 1000);
-      setRecording(true);
-    }).catch(() => {
-      mediaRecRef.current = null;
-      alert({ ca:'Cal permís de micròfon. Ves a Ajustaments > Safari > Micròfon i activa\'l.', es:'Necesitas permiso de micrófono. Ve a Ajustes > Safari > Micrófono y actívalo.', en:'Microphone permission needed. Go to Settings > Safari > Microphone.' }[lang] || 'Microphone permission needed.');
-    });
-  };
-
-  const handleRecordingEnd = () => {
-    clearInterval(recTimer.current);
-    recTimer.current = null;
-    setRecording(false);
-    const duration = recTRef.current;
-    const wf = Array.from({length: Math.min(20, Math.max(4, Math.max(duration, 1)*2))}, () => 0.2 + Math.random()*0.7);
-    const ctx = mediaRecRef.current;
-    mediaRecRef.current = null;
-    if (!ctx) return;
-    if (ctx.recorder && ctx.recorder.state !== 'inactive') {
-      ctx.recorder.onstop = () => {
-        const blobType = ctx.mimeType || ctx.recorder.mimeType || 'audio/mp4';
-        const blob = new Blob(ctx.chunks, { type: blobType });
-        const url = URL.createObjectURL(blob);
-        ctx.stream.getTracks().forEach(t => t.stop());
-        sendMsg('audio', { duration: Math.max(duration, 1), waveform: wf, url });
-      };
-      ctx.recorder.stop();
-    } else {
-      ctx.stream?.getTracks().forEach(t => t.stop());
-    }
   };
 
   const ATTACH_OPTS = [
@@ -671,21 +598,7 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
         backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
         borderTop:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)',
       }}>
-        {recording ? (
-          <div style={{ display:'flex', alignItems:'center', gap: 12, padding:'10px 14px', background:'color-mix(in srgb, var(--accent) 10%, var(--cream))', borderRadius: 999 }}>
-            <span style={{ width: 10, height: 10, borderRadius:'50%', background:'var(--accent)', animation:'ybBreathe 1.2s ease infinite' }}/>
-            <div style={{ flex:1, fontFamily:'var(--sans)', fontSize: 13, color:'var(--ink)' }}>
-              {t.record} <span style={{ opacity:0.6, marginLeft: 8 }}>{recT}s</span>
-            </div>
-            <button onClick={()=>setRecording(false)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'var(--ink-soft)', padding: 4 }}>
-              <Icon name="close" size={16}/>
-            </button>
-            <button onClick={handleRecordingEnd} style={{ width: 36, height: 36, borderRadius:'50%', background:'var(--accent)', border:'none', cursor:'pointer', color:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <Icon name="send" size={16} color="var(--cream)"/>
-            </button>
-          </div>
-        ) : (
-          <div style={{ display:'flex', alignItems:'flex-end', gap: 8 }}>
+        <div style={{ display:'flex', alignItems:'flex-end', gap: 8 }}>
             <button onClick={()=>setSheet('attach')} aria-label={t.attach}
                     style={{ width: 38, height: 38, borderRadius:'50%', background:'var(--cream)', border:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)', cursor:'pointer', flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center' }}>
               <Icon name="plus" size={18} color="var(--ink-soft)"/>
@@ -713,7 +626,7 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
               </button>
             ) : (
               <button
-                onClick={startRecording}
+                onClick={() => audioInputRef.current?.click()}
                 aria-label={t.audio}
                 style={{ width: 42, height: 42, borderRadius:'50%', background:'var(--ink)', border:'none', cursor:'pointer', flexShrink: 0,
                          display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -721,7 +634,6 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
               </button>
             )}
           </div>
-        )}
       </div>
 
       {/* Sheet d'adjuncions */}
@@ -871,6 +783,20 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
           if (!file) return;
           const reader = new FileReader();
           reader.onload = (ev) => { sendMsg('image', { caption: file.name, url: ev.target.result }); };
+          reader.readAsDataURL(file);
+          e.target.value = '';
+        }}/>
+      <input ref={audioInputRef} type="file" accept="audio/*" style={{ display:'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const estDur = Math.round(file.size / 2000);
+            const bars = Math.min(20, Math.max(4, estDur || 4));
+            const wf = Array.from({length: bars}, () => 0.2 + Math.random()*0.7);
+            sendMsg('audio', { duration: Math.max(estDur, 1), waveform: wf, url: ev.target.result });
+          };
           reader.readAsDataURL(file);
           e.target.value = '';
         }}/>

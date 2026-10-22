@@ -63,14 +63,14 @@ function App() {
   }); // auth | welcome | quiz | app | practice
   const [tab, setTab] = uSA('home');
   const [profile, setProfile] = uSA(() => {
-    // Nom real de l'alumna: invite link → nom desat al dispositiu → sessió → per defecte
     try {
       const inv  = window.__elBoscInvite;
-      if (inv?.name) return { ...DEFAULT_PROFILE, name: inv.name };
-      const saved = localStorage.getItem('elbosc-name');
-      if (saved) return { ...DEFAULT_PROFILE, name: saved };
-      const sess = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
-      if (sess?.name) return { ...DEFAULT_PROFILE, name: sess.name };
+      const saved = JSON.parse(localStorage.getItem('elbosc-profile') || 'null');
+      const base = saved ? { ...DEFAULT_PROFILE, ...saved } : DEFAULT_PROFILE;
+      if (inv?.name) return { ...base, name: inv.name };
+      const savedName = localStorage.getItem('elbosc-name');
+      if (savedName && !saved) return { ...base, name: savedName };
+      return base;
     } catch (e) {}
     return DEFAULT_PROFILE;
   });
@@ -116,8 +116,8 @@ function App() {
     return () => clearInterval(iv);
   }, []);
 
-  // Desa el nom al dispositiu perquè no es perdi en recarregar
-  uEA(() => { try { if (profile.name && profile.name !== DEFAULT_PROFILE.name) localStorage.setItem('elbosc-name', profile.name); } catch (e) {} }, [profile.name]);
+  // Desa el perfil complet al dispositiu perquè no es perdi en recarregar
+  uEA(() => { try { localStorage.setItem('elbosc-profile', JSON.stringify(profile)); if (profile.name && profile.name !== DEFAULT_PROFILE.name) localStorage.setItem('elbosc-name', profile.name); } catch (e) {} }, [profile]);
 
   // Supabase: si l'usuària torna d'un enllaç màgic (o ja té sessió), entra a l'app
   uEA(() => {
