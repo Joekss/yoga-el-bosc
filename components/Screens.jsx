@@ -744,9 +744,9 @@ const MOOD_EMOJI = ['🌱','🌿','🌸','🌻','✨'];
 
 const NOTE_COLORS = [
   { key:'none',  bg:null,                                                   dot:'color-mix(in srgb, var(--ink) 8%, var(--paper))' },
-  { key:'terra', bg:'color-mix(in srgb, var(--accent) 14%, var(--cream))',  dot:'var(--accent)' },
-  { key:'bosc',  bg:'color-mix(in srgb, var(--leaf) 14%, var(--cream))',    dot:'var(--leaf)' },
-  { key:'cel',   bg:'color-mix(in srgb, #7EB5C2 18%, var(--cream))',        dot:'#7EB5C2' },
+  { key:'terra', bg:'color-mix(in srgb, #C47853 14%, var(--cream))',        dot:'#C47853' },
+  { key:'bosc',  bg:'color-mix(in srgb, #5A8940 16%, var(--cream))',        dot:'#5A8940' },
+  { key:'cel',   bg:'color-mix(in srgb, #5B87C2 18%, var(--cream))',        dot:'#5B87C2' },
   { key:'sorra', bg:'color-mix(in srgb, #C4A87A 18%, var(--cream))',        dot:'#C4A87A' },
 ];
 const ncIdx = (key) => { const i = NOTE_COLORS.findIndex(c => c.key === key); return i >= 0 ? i : 0; };
