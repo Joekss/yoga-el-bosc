@@ -19,7 +19,7 @@ if (typeof window !== 'undefined') window.EBShare = {
 };
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, adminPin, onChangePin, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, adminPin, onChangePin, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName, onEditProfile }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -85,6 +85,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
     hint:   {ca:'Fes una foto o tria-la de la galeria', es:'Haz una foto o elígela de la galería', en:'Take a photo or pick from gallery'}[lang],
     remove: {ca:'Treure foto', es:'Quitar foto', en:'Remove photo'}[lang],
     logout: {ca:'Tancar sessió', es:'Cerrar sesión', en:'Log out'}[lang],
+    editProfile: {ca:'Modificar respostes del perfil', es:'Modificar respuestas del perfil', en:'Edit profile answers'}[lang],
     nameLabel: {ca:'El teu nom', es:'Tu nombre', en:'Your name'}[lang],
     namePh: {ca:'El teu nom', es:'Tu nombre', en:'Your name'}[lang],
     theme: {ca:'Tema', es:'Tema', en:'Theme'}[lang],
@@ -310,6 +311,12 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
           )}
 
           <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
+          {role !== 'teacher' && onEditProfile && (
+            <button onClick={() => { setShowProfile(false); onEditProfile(); }}
+              style={{ width:'100%', marginBottom:8, padding:'13px', borderRadius:14, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:15, cursor:'pointer', boxSizing:'border-box' }}>
+              {PT.editProfile}
+            </button>
+          )}
           <button onClick={() => { setShowProfile(false); onLogout && onLogout(); }}
             style={{ width:'100%', padding:'13px', borderRadius:14, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:15, cursor:'pointer', boxSizing:'border-box' }}>
             {PT.logout}

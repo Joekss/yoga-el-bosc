@@ -23,7 +23,7 @@ const { useState: uSA, useEffect: uEA, useMemo: uMA } = React;
 })();
 
 const DEFAULT_PROFILE = {
-  name: 'Núria',
+  name: '',
   age: 38, gender: 'Dona', height: 165, weight: 60,
   lifestyle: 'Moderat', sleep: 7, stress: 6,
   level: 'principiant', years: 1, style: 'Hatha',
@@ -54,10 +54,14 @@ function App() {
   const t = I18N[lang];
 
   const [stage, setStage] = uSA(() => {
-    if (window.__elBoscInvite) return 'welcome'; // enllaç d'invitació: accés directe
+    if (window.__elBoscInvite) {
+      // Alumna retornant via enllaç desat: si ja va completar el qüestionari, va directament a l'app
+      if (localStorage.getItem('elbosc-quiz-done')) return 'app';
+      return 'welcome';
+    }
     try {
       const sess = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
-      if (sess?.role) return sess.role === 'teacher' ? 'app' : 'app';
+      if (sess?.role) return 'app';
     } catch (e) {}
     return tweaks.stage || 'auth';
   }); // auth | welcome | quiz | app | practice
@@ -175,7 +179,8 @@ function App() {
       {stage === 'quiz' && (
         <Questionnaire t={t} profile={profile} setProfile={setProfile}
           onBack={() => setStage('welcome')}
-          onComplete={() => { setStage('app'); setTab('home'); }}/>
+          onComplete={() => { try { localStorage.setItem('elbosc-quiz-done', '1'); } catch(e) {} setStage('app'); setTab('home'); }}
+          onEditProfile={() => setStage('quiz')}/>
       )}
       {stage === 'app' && (
         <>
@@ -189,6 +194,7 @@ function App() {
             onOpenPose={(p) => setPoseDetail(p)}
             illustrationStyle={tweaks.illustrationStyle}
             onChangeName={(nm) => setProfile(p => ({ ...p, name: nm }))}
+            onEditProfile={() => setStage('quiz')}
             onLogout={() => {
               try {
                 localStorage.removeItem('elbosc-session');
