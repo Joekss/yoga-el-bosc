@@ -18,9 +18,26 @@ if (typeof window !== 'undefined') window.EBShare = {
   add: (text) => { try { const a = JSON.parse(localStorage.getItem(EB_SHARE_KEY)) || []; a.push({ id: 's' + Date.now() + Math.random().toString(36).slice(2,5), text: String(text), time: Date.now() }); localStorage.setItem(EB_SHARE_KEY, JSON.stringify(a)); } catch (e) {} },
 };
 
+// ── Cites de la Cèlia (rotació aleatòria al Dashboard) ─────────────────────
+const CELIA_QUOTES = [
+  { ca: '"Quina sensació tens quan estàs fent aquesta pràctica? Escolta el cos."',           es: '"¿Qué sensación tienes cuando haces esta práctica? Escucha el cuerpo."',           en: '"What sensation do you feel during this practice? Listen to your body."' },
+  { ca: '"Cada respiració és un nou inici. Deixa que el cos et guiï."',                       es: '"Cada respiración es un nuevo inicio. Deja que el cuerpo te guíe."',                en: '"Each breath is a new beginning. Let the body guide you."' },
+  { ca: '"Avui no cal arribar enlloc. El camí ja és la pràctica."',                           es: '"Hoy no hace falta llegar a ningún sitio. El camino ya es la práctica."',           en: '"Today there is nowhere to arrive. The path is already the practice."' },
+  { ca: '"Nota on et queda la tensió i respira-hi a dins."',                                  es: '"Nota dónde te queda la tensión y respira hacia ahí."',                             en: '"Notice where the tension sits and breathe right into it."' },
+  { ca: '"El cos sap. Aprèn a escoltar-lo abans de corregir-lo."',                            es: '"El cuerpo sabe. Aprende a escucharlo antes de corregirlo."',                       en: '"The body knows. Learn to listen before you correct."' },
+  { ca: '"La constància és la llavor. La pràctica d\'avui és benestar futur."',               es: '"La constancia es la semilla. La práctica de hoy es bienestar futuro."',            en: '"Consistency is the seed. Today\'s practice is tomorrow\'s well-being."' },
+  { ca: '"Posa atenció a allò que et costa. Sovint és el que més et necessita."',             es: '"Presta atención a lo que te cuesta. Suele ser lo que más te necesita."',           en: '"Pay attention to what feels hard. It is often what needs you most."' },
+  { ca: '"La flexibilitat comença per la ment. El cos la segueix."',                          es: '"La flexibilidad empieza en la mente. El cuerpo la sigue."',                        en: '"Flexibility begins in the mind. The body follows."' },
+  { ca: '"No hi ha cap postura perfecta. Hi ha la teva postura d\'avui."',                    es: '"No existe la postura perfecta. Existe tu postura de hoy."',                        en: '"There is no perfect pose. There is only your pose today."' },
+  { ca: '"Respira fondo i deixa que la pràctica et transformi per dins."',                    es: '"Respira hondo y deja que la práctica te transforme por dentro."',                  en: '"Breathe deeply and let the practice transform you from within."' },
+  { ca: '"Torna a tu cada vegada. Aquí és on comença tot."',                                  es: '"Vuelve a ti cada vez. Aquí es donde empieza todo."',                               en: '"Come back to yourself each time. This is where everything begins."' },
+  { ca: '"Avui, un cop sobre l\'estoreta ja és una victòria."',                               es: '"Hoy, una vez sobre la esterilla ya es una victoria."',                             en: '"Today, once on the mat is already a victory."' },
+];
+
 // ── Dashboard ───────────────────────────────────────────────
 const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, adminPin, onChangePin, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName, onEditProfile }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
+  const [quoteIdx] = uS(() => Math.floor(Math.random() * CELIA_QUOTES.length));
   const greeting = (() => {
     const h = new Date().getHours();
     if (h < 12) return { ca: 'Bon matí',   es: 'Buenos días',    en: 'Good morning'   }[lang];
@@ -237,7 +254,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
           <div>
             <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--accent)', letterSpacing:'0.15em', textTransform:'uppercase' }}>{t.messages_.from}</div>
             <div style={{ fontFamily:'var(--serif)', fontSize: 15, lineHeight: 1.5, color:'var(--ink)', marginTop: 4, fontStyle:'italic' }}>
-              {{ ca:'"Quina sensació tens quan estàs fent aquesta pràctica? Escolta el cos."', es:'"¿Qué sensación tienes cuando haces esta práctica? Escucha el cuerpo."', en:'"What sensation do you feel during this practice? Listen to your body."' }[lang]}
+              {CELIA_QUOTES[quoteIdx][lang]}
             </div>
           </div>
         </div>
