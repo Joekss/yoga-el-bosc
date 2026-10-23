@@ -180,7 +180,8 @@ function App() {
         <Questionnaire t={t} profile={profile} setProfile={setProfile}
           onBack={() => setStage('welcome')}
           onComplete={() => { try { localStorage.setItem('elbosc-quiz-done', '1'); } catch(e) {} setStage('app'); setTab('home'); }}
-          onEditProfile={() => setStage('quiz')}/>
+          onEditProfile={() => setStage('quiz')}
+/>
       )}
       {stage === 'app' && (
         <>
@@ -215,7 +216,15 @@ function App() {
         <PracticeMode t={t} sequence={sequence} lang={lang}
           illustrationStyle={tweaks.illustrationStyle}
           onExit={() => setStage('app')}
-          onComplete={() => setStage('app')}/>
+          onComplete={() => {
+            try {
+              const today = new Date();
+              const ds = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+              const saved = JSON.parse(localStorage.getItem('elbosc-sessions') || '[]');
+              if (!saved.includes(ds)) { saved.push(ds); localStorage.setItem('elbosc-sessions', JSON.stringify(saved)); }
+            } catch(e) {}
+            setStage('app');
+          }}/>
       )}
     </div>
   );

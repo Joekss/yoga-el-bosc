@@ -49,6 +49,31 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
   const [rPoses, setRPoses] = uS([]);
   const [routinesV, setRoutinesV] = uS(0);
   const routines = uM(() => (window.EBRoutines ? window.EBRoutines.load() : []), [routinesV, showRoutineMgr]);
+
+  // Sessió tracking real (llegit de localStorage elbosc-sessions)
+  const sessions = uM(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('elbosc-sessions') || '[]')); } catch(e) { return new Set(); }
+  }, []);
+  const streak = uM(() => {
+    let count = 0;
+    const d = new Date();
+    while (count < 366) {
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if (sessions.has(ds)) { count++; d.setDate(d.getDate()-1); } else break;
+    }
+    return count;
+  }, [sessions]);
+  const thisWeek = uM(() => {
+    const today = new Date();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((today.getDay()+6)%7));
+    monday.setHours(0,0,0,0);
+    const ms = `${monday.getFullYear()}-${String(monday.getMonth()+1).padStart(2,'0')}-${String(monday.getDate()).padStart(2,'0')}`;
+    let count = 0;
+    sessions.forEach(ds => { if (ds >= ms) count++; });
+    return count;
+  }, [sessions]);
+
   const toggleRPose = (id) => setRPoses(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const saveRoutine = () => {
     if (!rName.trim() || !rPoses.length || !window.EBRoutines) return;
@@ -195,12 +220,12 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
       <div style={{ padding: '24px', display:'grid', gridTemplateColumns:'1fr 1fr', gap: 12 }}>
         <div className="yb-card" style={{ padding: 16 }}>
           <Icon name="flame" size={18} color="var(--accent)"/>
-          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>4</div>
+          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>{streak}</div>
           <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)' }}>{t.progress_.streak}</div>
         </div>
         <div className="yb-card" style={{ padding: 16 }}>
           <Icon name="heart" size={18} color="var(--accent)"/>
-          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>3 / {profile.frequency || 3}</div>
+          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>{thisWeek} / {profile.frequency || 3}</div>
           <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)' }}>{t.progress_.thisWeek}</div>
         </div>
       </div>
