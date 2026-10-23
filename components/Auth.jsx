@@ -205,17 +205,6 @@ const EmailScreen = ({ t, lang, onSend, onAdminTrigger, checkEmail }) => {
 
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-  const [magicMsg, setMagicMsg] = uSAuth('');
-  const sendMagic = async () => {
-    if (!isValid) return;
-    if (!window.sb) { setMagicMsg('⚠ Supabase'); return; }
-    setMagicMsg({ ca:'Enviant…', es:'Enviando…', en:'Sending…' }[lang]);
-    try {
-      const { error } = await window.sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
-      setMagicMsg(error ? ('⚠ ' + error.message) : { ca:'T\'hem enviat un enllaç al correu. Obre\'l per entrar.', es:'Te enviamos un enlace al correo. Ábrelo para entrar.', en:'We sent a link to your email. Open it to sign in.' }[lang]);
-    } catch (e) { setMagicMsg('⚠ ' + String(e)); }
-  };
-
   const handleSend = () => {
     if (!isValid) return;
     const result = checkEmail ? checkEmail(email) : { ok: true };
@@ -271,20 +260,17 @@ const EmailScreen = ({ t, lang, onSend, onAdminTrigger, checkEmail }) => {
                       padding:'12px 16px', marginBottom: 16 }}>
           <Icon name="mail" size={18} color="var(--ink-soft)"/>
           <input type="email" value={email} onChange={e => { setEmail(e.target.value); setErr(''); }}
-            onKeyDown={e => e.key === 'Enter' && sendMagic()}
+            onKeyDown={e => e.key === 'Enter' && handleSend()}
             placeholder={t.emailPh} autoFocus
             style={{ flex:1, border:'none', outline:'none', background:'transparent',
                      fontFamily:'var(--sans)', fontSize: 16, color:'var(--ink)' }}/>
         </div>
         {err && <div style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--accent)', marginBottom: 10 }}>{err}</div>}
 
-        <button onClick={sendMagic} disabled={!isValid}
-          className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: !isValid ? 0.55 : 1, marginBottom: 10 }}>
+        <button onClick={handleSend} disabled={!isValid}
+          className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: !isValid ? 0.55 : 1, marginBottom: 12 }}>
           {t.sendBtn}
         </button>
-        <div style={{ fontFamily:'var(--sans)', fontSize:12, color: magicMsg && magicMsg.indexOf('⚠')===0 ? 'var(--accent)' : 'var(--ink-soft)', textAlign:'center', lineHeight:1.5, minHeight:18 }}>
-          {magicMsg || { ca:'T\'enviarem un enllaç per entrar de forma segura.', es:'Te enviaremos un enlace para entrar de forma segura.', en:'We\'ll email you a secure sign-in link.' }[lang]}
-        </div>
 
       </div>
 
@@ -377,15 +363,26 @@ const CodeScreen = ({ t, lang, email, correctCode, onVerified, onBack }) => {
   );
 };
 
-// ── Pantalla PIN (trigger ocult → admin) ─────────────────────────────────────
-const PinScreen = ({ t, lang = 'ca', adminPin, onSuccess, onClose }) => {
+// ── Pantalla PIN (trigger ocult → admin) — teclat numèric 4 dígits ───────────
+const PinScreen = ({ t, adminPin, onSuccess, onClose }) => {
   const [input, setInput] = uSAuth('');
   const [shake, setShake] = uSAuth(false);
 
-  const submit = () => {
-    if (input.length < 4) return;
-    if (input === adminPin) { setTimeout(() => onSuccess(), 150); }
-    else { setShake(true); setTimeout(() => { setShake(false); setInput(''); }, 700); }
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+
+  const press = (k) => {
+    if (k === '⌫') { setInput(s => s.slice(0,-1)); return; }
+    if (!k) return;
+    const next = (input + k).slice(0, 4);
+    setInput(next);
+    if (next.length === 4) {
+      if (next === adminPin) {
+        setTimeout(() => onSuccess(), 200);
+      } else {
+        setShake(true);
+        setTimeout(() => { setShake(false); setInput(''); }, 700);
+      }
+    }
   };
 
   return (
@@ -400,21 +397,31 @@ const PinScreen = ({ t, lang = 'ca', adminPin, onSuccess, onClose }) => {
       <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:26, color:'var(--cream)', marginBottom:6 }}>{t.pinTitle}</div>
       <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'color-mix(in srgb, var(--cream) 55%, transparent)', marginBottom:32, letterSpacing:'0.05em' }}>{t.pinSub}</div>
 
-      {/* Camp de PIN — alfanumèric, fins a 8 caràcters */}
-      <div style={{ width:'100%', maxWidth:280, animation: shake ? 'ybShake 0.5s ease' : 'none' }}>
-        <input type="text" inputMode="text" autoCapitalize="none" autoCorrect="off" spellCheck="false" autoFocus
-          value={input} maxLength={8}
-          onChange={e => setInput(e.target.value.replace(/[^A-Za-z0-9]/g,'').slice(0,8))}
-          onKeyDown={e => e.key === 'Enter' && submit()}
-          placeholder="••••••"
-          style={{ width:'100%', textAlign:'center', letterSpacing:'0.35em', fontFamily:'var(--serif)', fontSize:24,
-                   padding:'14px 16px', borderRadius:16, boxSizing:'border-box', outline:'none',
-                   border:'2px solid color-mix(in srgb, var(--cream) 25%, transparent)',
-                   background:'color-mix(in srgb, var(--cream) 8%, transparent)', color:'var(--cream)' }}/>
-        <button onClick={submit} disabled={input.length < 4}
-          className="yb-btn yb-btn-clay" style={{ width:'100%', marginTop:16, opacity: input.length < 4 ? 0.5 : 1 }}>
-          {({ca:'Entrar',es:'Entrar',en:'Enter'})[lang]}
-        </button>
+      {/* Dots */}
+      <div style={{ display:'flex', gap:16, marginBottom:36,
+                    animation: shake ? 'ybShake 0.5s ease' : 'none' }}>
+        {[0,1,2,3].map(i=>(
+          <div key={i} style={{ width:14, height:14, borderRadius:'50%',
+                                background: i < input.length ? 'var(--accent)' : 'color-mix(in srgb, var(--cream) 20%, transparent)',
+                                border:'2px solid color-mix(in srgb, var(--cream) 30%, transparent)',
+                                transition:'background .15s' }}/>
+        ))}
+      </div>
+
+      {/* Keypad */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:10, width:230 }}>
+        {keys.map((k,i)=>(
+          <button key={i} onClick={()=>press(k)} disabled={!k && k!=='0'}
+            style={{ height:62, borderRadius:16, border:'none', cursor: !k ? 'default':'pointer',
+                     background: !k ? 'transparent' : k==='⌫' ? 'color-mix(in srgb, var(--cream) 10%, transparent)' : 'color-mix(in srgb, var(--cream) 12%, transparent)',
+                     color:'var(--cream)', fontFamily:'var(--serif)', fontSize: k==='⌫'?18:28, fontStyle:'italic',
+                     display:'flex', alignItems:'center', justifyContent:'center',
+                     transition:'background .1s', opacity: !k ? 0 : 1 }}
+            onMouseDown={e=>{ e.currentTarget.style.background='color-mix(in srgb, var(--cream) 22%, transparent)'; }}
+            onMouseUp={e=>{ e.currentTarget.style.background = k==='⌫' ? 'color-mix(in srgb, var(--cream) 10%, transparent)':'color-mix(in srgb, var(--cream) 12%, transparent)'; }}>
+            {k==='⌫' ? <Icon name="back" size={16} color="var(--cream)"/> : k}
+          </button>
+        ))}
       </div>
 
       <div style={{ marginTop:24, fontFamily:'var(--sans)', fontSize:11, color:'color-mix(in srgb, var(--cream) 35%, transparent)' }}>

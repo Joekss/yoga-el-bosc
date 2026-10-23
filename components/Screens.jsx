@@ -11,14 +11,39 @@ const ebDayKey = (y, m, d) => `${y}-${ebPad(m+1)}-${ebPad(d)}`;
 const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number); const [h,mi] = String(n.time||'00:00').split(':').map(Number); return new Date(Y, (M||1)-1, D||1, h||0, mi||0, 0, 0); };
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
+// ── Compartir al xat (bústia local: Diari/Calendari → xat) ──────────────────
+const EB_SHARE_KEY = 'elbosc-chat-shared';
+if (typeof window !== 'undefined') window.EBShare = {
+  load: () => { try { return JSON.parse(localStorage.getItem(EB_SHARE_KEY)) || []; } catch (e) { return []; } },
+  add: (text) => { try { const a = JSON.parse(localStorage.getItem(EB_SHARE_KEY)) || []; a.push({ id: 's' + Date.now() + Math.random().toString(36).slice(2,5), text: String(text), time: Date.now() }); localStorage.setItem(EB_SHARE_KEY, JSON.stringify(a)); } catch (e) {} },
+};
+
+// ── Cites de la Cèlia (rotació aleatòria al Dashboard) ─────────────────────
+const CELIA_QUOTES = [
+  { ca: '"Quina sensació tens quan estàs fent aquesta pràctica? Escolta el cos."',           es: '"¿Qué sensación tienes cuando haces esta práctica? Escucha el cuerpo."',           en: '"What sensation do you feel during this practice? Listen to your body."' },
+  { ca: '"Cada respiració és un nou inici. Deixa que el cos et guiï."',                       es: '"Cada respiración es un nuevo inicio. Deja que el cuerpo te guíe."',                en: '"Each breath is a new beginning. Let the body guide you."' },
+  { ca: '"Avui no cal arribar enlloc. El camí ja és la pràctica."',                           es: '"Hoy no hace falta llegar a ningún sitio. El camino ya es la práctica."',           en: '"Today there is nowhere to arrive. The path is already the practice."' },
+  { ca: '"Nota on et queda la tensió i respira-hi a dins."',                                  es: '"Nota dónde te queda la tensión y respira hacia ahí."',                             en: '"Notice where the tension sits and breathe right into it."' },
+  { ca: '"El cos sap. Aprèn a escoltar-lo abans de corregir-lo."',                            es: '"El cuerpo sabe. Aprende a escucharlo antes de corregirlo."',                       en: '"The body knows. Learn to listen before you correct."' },
+  { ca: '"La constància és la llavor. La pràctica d\'avui és benestar futur."',               es: '"La constancia es la semilla. La práctica de hoy es bienestar futuro."',            en: '"Consistency is the seed. Today\'s practice is tomorrow\'s well-being."' },
+  { ca: '"Posa atenció a allò que et costa. Sovint és el que més et necessita."',             es: '"Presta atención a lo que te cuesta. Suele ser lo que más te necesita."',           en: '"Pay attention to what feels hard. It is often what needs you most."' },
+  { ca: '"La flexibilitat comença per la ment. El cos la segueix."',                          es: '"La flexibilidad empieza en la mente. El cuerpo la sigue."',                        en: '"Flexibility begins in the mind. The body follows."' },
+  { ca: '"No hi ha cap postura perfecta. Hi ha la teva postura d\'avui."',                    es: '"No existe la postura perfecta. Existe tu postura de hoy."',                        en: '"There is no perfect pose. There is only your pose today."' },
+  { ca: '"Respira fondo i deixa que la pràctica et transformi per dins."',                    es: '"Respira hondo y deja que la práctica te transforme por dentro."',                  en: '"Breathe deeply and let the practice transform you from within."' },
+  { ca: '"Torna a tu cada vegada. Aquí és on comença tot."',                                  es: '"Vuelve a ti cada vez. Aquí es donde empieza todo."',                               en: '"Come back to yourself each time. This is where everything begins."' },
+  { ca: '"Avui, un cop sobre l\'estoreta ja és una victòria."',                               es: '"Hoy, una vez sobre la esterilla ya es una victoria."',                             en: '"Today, once on the mat is already a victory."' },
+];
+
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, adminPin, onChangePin, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, adminPin, onChangePin, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName, onEditProfile }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
+  const [quoteIdx] = uS(() => Math.floor(Math.random() * CELIA_QUOTES.length));
   const greeting = (() => {
     const h = new Date().getHours();
-    if (h < 12) return { ca: 'Bon matí', es: 'Buenos días', en: 'Good morning' }[lang];
-    if (h < 19) return { ca: 'Bona tarda', es: 'Buenas tardes', en: 'Good afternoon' }[lang];
-    return { ca: 'Bona nit', es: 'Buenas noches', en: 'Good evening' }[lang];
+    if (h < 12) return { ca: 'Bon matí',   es: 'Buenos días',    en: 'Good morning'   }[lang];
+    if (h < 14) return { ca: 'Bon dia',    es: 'Buen día',       en: 'Good day'       }[lang];
+    if (h < 21) return { ca: 'Bona tarda', es: 'Buenas tardes',  en: 'Good afternoon' }[lang];
+    return             { ca: 'Bona nit',   es: 'Buenas noches',  en: 'Good evening'   }[lang];
   })();
 
   const [avatar, setAvatar] = uS(() => { try { return localStorage.getItem('elbosc-avatar') || null; } catch(e){ return null; } });
@@ -41,6 +66,31 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
   const [rPoses, setRPoses] = uS([]);
   const [routinesV, setRoutinesV] = uS(0);
   const routines = uM(() => (window.EBRoutines ? window.EBRoutines.load() : []), [routinesV, showRoutineMgr]);
+
+  // Sessió tracking real (llegit de localStorage elbosc-sessions)
+  const sessions = uM(() => {
+    try { return new Set(JSON.parse(localStorage.getItem('elbosc-sessions') || '[]')); } catch(e) { return new Set(); }
+  }, []);
+  const streak = uM(() => {
+    let count = 0;
+    const d = new Date();
+    while (count < 366) {
+      const ds = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      if (sessions.has(ds)) { count++; d.setDate(d.getDate()-1); } else break;
+    }
+    return count;
+  }, [sessions]);
+  const thisWeek = uM(() => {
+    const today = new Date();
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - ((today.getDay()+6)%7));
+    monday.setHours(0,0,0,0);
+    const ms = `${monday.getFullYear()}-${String(monday.getMonth()+1).padStart(2,'0')}-${String(monday.getDate()).padStart(2,'0')}`;
+    let count = 0;
+    sessions.forEach(ds => { if (ds >= ms) count++; });
+    return count;
+  }, [sessions]);
+
   const toggleRPose = (id) => setRPoses(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const saveRoutine = () => {
     if (!rName.trim() || !rPoses.length || !window.EBRoutines) return;
@@ -77,6 +127,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
     hint:   {ca:'Fes una foto o tria-la de la galeria', es:'Haz una foto o elígela de la galería', en:'Take a photo or pick from gallery'}[lang],
     remove: {ca:'Treure foto', es:'Quitar foto', en:'Remove photo'}[lang],
     logout: {ca:'Tancar sessió', es:'Cerrar sesión', en:'Log out'}[lang],
+    editProfile: {ca:'Modificar respostes del perfil', es:'Modificar respuestas del perfil', en:'Edit profile answers'}[lang],
     nameLabel: {ca:'El teu nom', es:'Tu nombre', en:'Your name'}[lang],
     namePh: {ca:'El teu nom', es:'Tu nombre', en:'Your name'}[lang],
     theme: {ca:'Tema', es:'Tema', en:'Theme'}[lang],
@@ -186,12 +237,12 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
       <div style={{ padding: '24px', display:'grid', gridTemplateColumns:'1fr 1fr', gap: 12 }}>
         <div className="yb-card" style={{ padding: 16 }}>
           <Icon name="flame" size={18} color="var(--accent)"/>
-          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>4</div>
+          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>{streak}</div>
           <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)' }}>{t.progress_.streak}</div>
         </div>
         <div className="yb-card" style={{ padding: 16 }}>
           <Icon name="heart" size={18} color="var(--accent)"/>
-          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>3 / {profile.frequency || 3}</div>
+          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>{thisWeek} / {profile.frequency || 3}</div>
           <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)' }}>{t.progress_.thisWeek}</div>
         </div>
       </div>
@@ -203,7 +254,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
           <div>
             <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--accent)', letterSpacing:'0.15em', textTransform:'uppercase' }}>{t.messages_.from}</div>
             <div style={{ fontFamily:'var(--serif)', fontSize: 15, lineHeight: 1.5, color:'var(--ink)', marginTop: 4, fontStyle:'italic' }}>
-              {{ ca:'"Quina sensació tens quan estàs fent aquesta pràctica? Escolta el cos."', es:'"¿Qué sensación tienes cuando haces esta práctica? Escucha el cuerpo."', en:'"What sensation do you feel during this practice? Listen to your body."' }[lang]}
+              {CELIA_QUOTES[quoteIdx][lang]}
             </div>
           </div>
         </div>
@@ -215,7 +266,13 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
         style={{ position:'fixed', inset:0, zIndex:9998, background:'rgba(20,18,14,0.5)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
         <div onClick={e => e.stopPropagation()}
           style={{ width:'100%', maxWidth:430, background:'var(--paper)', borderTopLeftRadius:24, borderTopRightRadius:24, padding:'22px 24px calc(28px + env(safe-area-inset-bottom, 0px))', boxShadow:'0 -10px 40px rgba(0,0,0,0.25)' }}>
-          <div style={{ width:40, height:4, borderRadius:2, background:'color-mix(in srgb, var(--ink) 15%, transparent)', margin:'0 auto 18px' }}/>
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', position:'relative', marginBottom:18 }}>
+            <div style={{ width:40, height:4, borderRadius:2, background:'color-mix(in srgb, var(--ink) 15%, transparent)' }}/>
+            <button onClick={() => setShowProfile(false)}
+              style={{ position:'absolute', right:0, top:'50%', transform:'translateY(-50%)', background:'transparent', border:'none', cursor:'pointer', padding:6, lineHeight:1 }}>
+              <Icon name="close" size={22} color="var(--ink-soft)"/>
+            </button>
+          </div>
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, marginBottom:20 }}>
             <div style={{ width:96, height:96, borderRadius:'50%', overflow:'hidden', background:'var(--cream)', border:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)', display:'flex', alignItems:'center', justifyContent:'center' }}>
               {avatar
@@ -296,6 +353,12 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
           )}
 
           <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
+          {role !== 'teacher' && onEditProfile && (
+            <button onClick={() => { setShowProfile(false); onEditProfile(); }}
+              style={{ width:'100%', marginBottom:8, padding:'13px', borderRadius:14, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:15, cursor:'pointer', boxSizing:'border-box' }}>
+              {PT.editProfile}
+            </button>
+          )}
           <button onClick={() => { setShowProfile(false); onLogout && onLogout(); }}
             style={{ width:'100%', padding:'13px', borderRadius:14, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:15, cursor:'pointer', boxSizing:'border-box' }}>
             {PT.logout}
@@ -568,6 +631,7 @@ const Calendar = ({ t, lang, profile }) => {
   const [now, setNow] = uS(() => Date.now());
   const [draftTime, setDraftTime] = uS('09:00');
   const [draftText, setDraftText] = uS('');
+  const [sharedIds, setSharedIds] = uS([]);
   const RED = '#C2493B';
 
   // Rellotge: refresca cada 30s perquè els dies passin de verd a vermell sols
@@ -595,6 +659,11 @@ const Calendar = ({ t, lang, profile }) => {
     ebSaveNotes(next); setNotes(next); setDraftText('');
   };
   const removeNote = (id) => { const next = ebLoadNotes().filter(n => n.id !== id); ebSaveNotes(next); setNotes(next); };
+  const shareCalNote = (n) => {
+    const label = { ca:'Calendari', es:'Calendario', en:'Calendar' }[lang];
+    if (window.EBShare) window.EBShare.add(`📅 ${label} · ${selDateLabel} ${n.time}\n${n.text}`);
+    setSharedIds(prev => prev.includes(n.id) ? prev : [...prev, n.id]);
+  };
 
   const selDateLabel = selected != null ? (() => { try { return new Date(view.y, view.m, selected).toLocaleDateString(locale, { weekday:'long', day:'numeric', month:'long' }); } catch(e){ return String(selected); } })() : '';
   const selNotes = selected != null ? notesForDay(selected) : [];
@@ -678,6 +747,9 @@ const Calendar = ({ t, lang, profile }) => {
                 <div key={n.id} style={{ display:'flex', alignItems:'flex-start', gap:10, padding:'10px 0', borderBottom:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)' }}>
                   <div style={{ minWidth:52, fontFamily:'var(--serif)', fontStyle:'italic', fontSize:16, color: due ? RED : 'var(--leaf-deep)' }}>{n.time}</div>
                   <div style={{ flex:1, fontFamily:'var(--sans)', fontSize:14, color:'var(--ink)', wordBreak:'break-word' }}>{n.text}</div>
+                  <button onClick={() => shareCalNote(n)} title="Compartir al xat" style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
+                    <Icon name={sharedIds.includes(n.id) ? 'check' : 'send'} size={15} color={sharedIds.includes(n.id) ? 'var(--leaf-deep)' : 'var(--ink-soft)'}/>
+                  </button>
                   <button onClick={() => removeNote(n.id)} style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
                     <Icon name="trash" size={15} color="var(--ink-soft)"/>
                   </button>
@@ -717,7 +789,16 @@ const Calendar = ({ t, lang, profile }) => {
 const JOURNAL_KEY = 'elbosc-journal';
 const jLoad = () => { try { const s = JSON.parse(localStorage.getItem(JOURNAL_KEY)); if (Array.isArray(s)) return s; } catch(e){} return []; };
 const jSave = (arr) => { try { localStorage.setItem(JOURNAL_KEY, JSON.stringify(arr)); } catch(e){} };
-const MOOD_EMOJI = ['◔','◑','◐','●','✦'];
+const MOOD_EMOJI = ['🌱','🌿','🌸','🌻','✨'];
+
+const NOTE_COLORS = [
+  { key:'none',  bg:null,                                                   dot:'color-mix(in srgb, var(--ink) 8%, var(--paper))' },
+  { key:'terra', bg:'color-mix(in srgb, #C47853 14%, var(--cream))',        dot:'#C47853' },
+  { key:'bosc',  bg:'color-mix(in srgb, #5A8940 16%, var(--cream))',        dot:'#5A8940' },
+  { key:'cel',   bg:'color-mix(in srgb, #5B87C2 18%, var(--cream))',        dot:'#5B87C2' },
+  { key:'sorra', bg:'color-mix(in srgb, #C4A87A 18%, var(--cream))',        dot:'#C4A87A' },
+];
+const ncIdx = (key) => { const i = NOTE_COLORS.findIndex(c => c.key === key); return i >= 0 ? i : 0; };
 
 const Journal = ({ t, lang, onShare }) => {
   const [entries, setEntries] = uS(jLoad);
@@ -727,13 +808,21 @@ const Journal = ({ t, lang, onShare }) => {
 
   const save = () => {
     if (!note.trim()) return;
-    const entry = { id:'j'+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), mood, text: note.trim() };
+    const entry = { id:'j'+Date.now()+Math.random().toString(36).slice(2,6), ts: Date.now(), mood, text: note.trim(), color: noteColor };
     const next = [entry, ...jLoad()];
-    jSave(next); setEntries(next); setNote('');
+    jSave(next); setEntries(next); setNote(''); setNoteColor('none');
   };
   const remove = (id) => { const next = jLoad().filter(e => e.id !== id); jSave(next); setEntries(next); };
   const sorted = [...entries].sort((a,b) => b.ts - a.ts);
   const fmt = (ts) => { try { return new Date(ts).toLocaleDateString(locale, { weekday:'short', day:'numeric', month:'long' }); } catch(e){ return ''; } };
+  const fmtTime = (ts) => { try { return new Date(ts).toLocaleTimeString(locale, { hour:'2-digit', minute:'2-digit', second:'2-digit' }); } catch(e){ return ''; } };
+  const [noteColor, setNoteColor] = uS('none');
+  const [sharedIds, setSharedIds] = uS([]);
+  const shareEntry = (e) => {
+    const label = { ca:'Diari', es:'Diario', en:'Journal' }[lang];
+    if (window.EBShare) window.EBShare.add(`📔 ${label} · ${fmt(e.ts)} ${MOOD_EMOJI[e.mood]}\n"${e.text}"`);
+    setSharedIds(prev => prev.includes(e.id) ? prev : [...prev, e.id]);
+  };
 
   return (
     <div className="yb-scroll" style={{ height: '100%', overflowY: 'auto', background: 'var(--paper)' }}>
@@ -768,7 +857,18 @@ const Journal = ({ t, lang, onShare }) => {
               fontFamily:'var(--serif)', fontSize: 16, lineHeight: 1.5, color:'var(--ink)', background:'transparent' }}/>
         </div>
 
-        <button onClick={save} disabled={!note.trim()} className="yb-btn yb-btn-primary" style={{ width:'100%', marginTop: 16, opacity: note.trim() ? 1 : 0.55 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginTop:14, padding:'10px 16px', background:'var(--cream)', borderRadius:14 }}>
+          <span style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)', letterSpacing:'0.12em', textTransform:'uppercase', flexShrink:0 }}>
+            {{ca:'Color', es:'Color', en:'Color'}[lang]}
+          </span>
+          {NOTE_COLORS.map(c => (
+            <button key={c.key} onClick={() => setNoteColor(c.key)}
+              style={{ width:26, height:26, borderRadius:'50%', background:c.dot, border:'none', cursor:'pointer', padding:0, flexShrink:0,
+                       outline: noteColor===c.key ? '2px solid var(--ink-soft)' : 'none', outlineOffset:'2px',
+                       boxShadow: c.key==='none' ? 'inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 18%, transparent)' : 'none' }}/>
+          ))}
+        </div>
+        <button onClick={save} disabled={!note.trim()} className="yb-btn yb-btn-primary" style={{ width:'100%', marginTop: 12, opacity: note.trim() ? 1 : 0.55 }}>
           {t.journal_.save}
         </button>
 
@@ -781,18 +881,17 @@ const Journal = ({ t, lang, onShare }) => {
             </div>
           )}
           {sorted.map(e => (
-            <div key={e.id} className="yb-card" style={{ marginBottom: 10, display:'flex', gap: 14, alignItems:'flex-start', padding: 14 }}>
+            <div key={e.id} className="yb-card" style={{ marginBottom: 10, display:'flex', gap: 14, alignItems:'flex-start', padding: 14, ...(e.color && e.color !== 'none' ? { background: NOTE_COLORS[ncIdx(e.color)].bg } : {}) }}>
               <div style={{ width: 36, height: 36, borderRadius:'50%', background:'color-mix(in srgb, var(--accent) 18%, transparent)', color:'var(--accent)', display:'flex', alignItems:'center', justifyContent:'center', fontSize: 18, flexShrink:0 }}>{MOOD_EMOJI[e.mood]}</div>
               <div style={{ flex:1, minWidth:0 }}>
                 <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)', textTransform:'uppercase' }}>{fmt(e.ts)}</div>
+                <div style={{ fontFamily:'var(--sans)', fontSize: 10, color:'var(--ink-soft)', marginTop:1, opacity:0.7 }}>{fmtTime(e.ts)}</div>
                 <div style={{ fontFamily:'var(--serif)', fontSize: 14, color:'var(--ink)', marginTop: 2, fontStyle:'italic', wordBreak:'break-word' }}>"{e.text}"</div>
               </div>
               <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
-                {onShare && (
-                  <button onClick={() => onShare({ kind:'journal', mood:e.mood, emoji:MOOD_EMOJI[e.mood], date:fmt(e.ts), text:e.text })} title="Compartir" style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
-                    <Icon name="send" size={15} color="var(--ink-soft)"/>
-                  </button>
-                )}
+                <button onClick={() => shareEntry(e)} title="Compartir al xat" style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
+                  <Icon name={sharedIds.includes(e.id) ? 'check' : 'send'} size={15} color={sharedIds.includes(e.id) ? 'var(--leaf-deep)' : 'var(--ink-soft)'}/>
+                </button>
                 <button onClick={() => remove(e.id)} title="Eliminar" style={{ background:'transparent', border:'none', cursor:'pointer', padding:4 }}>
                   <Icon name="trash" size={15} color="var(--ink-soft)"/>
                 </button>

@@ -29,8 +29,8 @@ const CHAT_T = {
     composerPh: 'Escriu un missatge…',
     composerPhTeacher: 'Respon a {name}…',
     composerPhBroadcast: 'Difusió per a {n} alumnes…',
-    studentCantInitiate: 'Pots respondre a la Cèlia quan ella et contacti.',
-    waitingTeacher: 'Esperant un missatge de la Cèlia',
+    studentCantInitiate: 'Escriu el primer missatge a la Cèlia.',
+    waitingTeacher: 'Inicia la conversa',
     today: 'Avui', yesterday: 'Ahir',
     sent: 'Enviat', delivered: 'Lliurat', read: 'Llegit',
     schedule: 'Programar', scheduled: 'Programat', scheduledFor: 'Programat per',
@@ -81,8 +81,8 @@ const CHAT_T = {
     composerPh: 'Escribe un mensaje…',
     composerPhTeacher: 'Responde a {name}…',
     composerPhBroadcast: 'Difusión para {n} alumnas…',
-    studentCantInitiate: 'Puedes responder a Cèlia cuando ella te contacte.',
-    waitingTeacher: 'Esperando un mensaje de Cèlia',
+    studentCantInitiate: 'Escribe el primer mensaje a Cèlia.',
+    waitingTeacher: 'Inicia la conversación',
     today: 'Hoy', yesterday: 'Ayer',
     sent: 'Enviado', delivered: 'Entregado', read: 'Leído',
     schedule: 'Programar', scheduled: 'Programado', scheduledFor: 'Programado para',
@@ -133,8 +133,8 @@ const CHAT_T = {
     composerPh: 'Write a message…',
     composerPhTeacher: 'Reply to {name}…',
     composerPhBroadcast: 'Broadcast to {n} students…',
-    studentCantInitiate: 'You can reply to Cèlia once she contacts you.',
-    waitingTeacher: 'Waiting for a message from Cèlia',
+    studentCantInitiate: 'Send Cèlia your first message.',
+    waitingTeacher: 'Start the conversation',
     today: 'Today', yesterday: 'Yesterday',
     sent: 'Sent', delivered: 'Delivered', read: 'Read',
     schedule: 'Schedule', scheduled: 'Scheduled', scheduledFor: 'Scheduled for',
@@ -247,23 +247,7 @@ const seedConversations = (lang) => {
     body: '', time: now, status: 'read', reactions: [], ...over,
   });
   return {
-    nuria: [
-      M({ from:'teacher', kind:'text',
-        body: { ca:'Bon dia, Núria. Com et trobes l\'esquena aquesta setmana?', es:'Buenos días, Núria. ¿Cómo va tu espalda esta semana?', en:'Good morning, Núria. How is your back this week?' }[lang],
-        time: now - 86400000*2, status: 'read' }),
-      M({ from:'student', kind:'text',
-        body: { ca:'Una mica millor després de la pràctica de dilluns 🙏', es:'Algo mejor tras la práctica del lunes 🙏', en:'A bit better after Monday\'s practice 🙏' }[lang],
-        time: now - 86400000*2 + 1200000, status:'sent' }),
-      M({ from:'teacher', kind:'pose', body: { id:'balasana' },
-        time: now - 86400000 - 7200000, status:'read' }),
-      M({ from:'teacher', kind:'text',
-        body: { ca:'Mira si aquesta postura abans de dormir t\'ajuda.', es:'Mira si esta postura antes de dormir te ayuda.', en:'See if this pose before bed helps.' }[lang],
-        time: now - 86400000 - 7200000 + 4000, status:'read' }),
-      M({ from:'student', kind:'audio', body: { duration: 14, waveform: [0.3,0.5,0.7,0.4,0.6,0.8,0.5,0.3,0.4,0.6,0.7,0.5,0.4,0.3] },
-        time: now - 3600000*5, status:'sent' }),
-      M({ from:'teacher', kind:'quote', body: QUOTES_BANK[1],
-        time: now - 1800000, status:'delivered' }),
-    ],
+    nuria: [],
     marta: [
       M({ from:'teacher', kind:'session', body: { duration: 30, poses: 8, focus: { ca:'Core', es:'Core', en:'Core' }[lang] },
         time: now - 86400000*3, status:'read' }),
@@ -343,22 +327,44 @@ const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
             ))}
           </div>
           <span style={{ fontFamily:'var(--sans)', fontSize: 11, opacity: 0.85 }}>{msg.body.duration}s</span>
+          {msg.body?.url && (
+            <a href={msg.body.url} download="audio.mp4" onClick={e => e.stopPropagation()}
+               style={{ display:'flex', alignItems:'center', justifyContent:'center', marginLeft: 4 }}>
+              <Icon name="download" size={14} color={mine ? 'color-mix(in srgb, var(--cream) 80%, transparent)' : 'var(--ink-soft)'}/>
+            </a>
+          )}
         </div>
       );
     }
-    if (msg.kind === 'image') return (
-      <div>
-        <div style={{ width: 200, height: 130, borderRadius: 14, background: 'linear-gradient(135deg, var(--sand), var(--paper-2))', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
-          <svg viewBox="0 0 100 60" style={{ width:'85%', opacity: 0.6 }}>
-            <path d="M5 50 L25 30 L40 42 L60 18 L82 38 L95 28 L95 55 L5 55 Z" fill="var(--leaf)" opacity="0.5"/>
-            <circle cx="78" cy="14" r="6" fill="var(--accent)" opacity="0.7"/>
-          </svg>
+    if (msg.kind === 'image') {
+      const imgUrl = msg.body?.url;
+      return (
+        <div>
+          <div style={{ width: 200, borderRadius: 14, overflow:'hidden', position:'relative' }}>
+            {imgUrl ? (
+              <img src={imgUrl} alt={msg.body?.caption || ''} style={{ width:'100%', display:'block', maxHeight: 240, objectFit:'cover' }}/>
+            ) : (
+              <div style={{ height: 130, background: 'linear-gradient(135deg, var(--sand), var(--paper-2))', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg viewBox="0 0 100 60" style={{ width:'85%', opacity: 0.6 }}>
+                  <path d="M5 50 L25 30 L40 42 L60 18 L82 38 L95 28 L95 55 L5 55 Z" fill="var(--leaf)" opacity="0.5"/>
+                  <circle cx="78" cy="14" r="6" fill="var(--accent)" opacity="0.7"/>
+                </svg>
+              </div>
+            )}
+            {imgUrl && (
+              <a href={imgUrl} download="imatge.jpg" onClick={e => e.stopPropagation()}
+                 style={{ position:'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius:'50%',
+                          background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <Icon name="download" size={13} color="white"/>
+              </a>
+            )}
+          </div>
+          {msg.body?.caption && (
+            <div style={{ marginTop: 6, fontFamily:'var(--serif)', fontSize: 14 }}>{msg.body.caption}</div>
+          )}
         </div>
-        {msg.body?.caption && (
-          <div style={{ marginTop: 6, fontFamily:'var(--serif)', fontSize: 14 }}>{msg.body.caption}</div>
-        )}
-      </div>
-    );
+      );
+    }
     if (msg.kind === 'pdf') return (
       <div style={{ display:'flex', alignItems:'center', gap: 10, minWidth: 200, padding: '4px 0' }}>
         <div style={{ width: 40, height: 48, borderRadius: 6, background: mine ? 'var(--cream)':'var(--accent)', color: mine ? 'var(--accent)':'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--sans)', fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>PDF</div>
@@ -366,7 +372,14 @@ const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
           <div style={{ fontFamily:'var(--sans)', fontSize: 13, fontWeight: 500 }}>{msg.body?.name || 'pranayama-guide.pdf'}</div>
           <div style={{ fontFamily:'var(--sans)', fontSize: 11, opacity: 0.7 }}>{msg.body?.size || '320 KB'}</div>
         </div>
-        <Icon name="download" size={16} color={mine ? 'var(--cream)':'var(--ink-soft)'}/>
+        {msg.body?.url ? (
+          <a href={msg.body.url} download={msg.body?.name || 'document.pdf'} onClick={e => e.stopPropagation()}
+             style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <Icon name="download" size={16} color={mine ? 'var(--cream)':'var(--ink-soft)'}/>
+          </a>
+        ) : (
+          <Icon name="download" size={16} color={mine ? 'var(--cream)':'var(--ink-soft)'}/>
+        )}
       </div>
     );
     if (msg.kind === 'pose') {
@@ -521,21 +534,11 @@ const Sheet = ({ open, onClose, title, children, height = 'auto' }) => {
 const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend, isStudent }) => {
   const [text, setText] = uSC('');
   const [sheet, setSheet] = uSC(null); // 'attach'|'pose'|'session'|'quote'|'emoji'|'schedule'
-  const [recording, setRecording] = uSC(false);
-  const [recT, setRecT] = uSC(0);
   const [privateMode, setPrivateMode] = uSC(false);
   const [scheduled, setScheduled] = uSC(null); // timestamp or null
-  const recTimer = uRC(null);
-  const recTRef = uRC(0);
-  const mediaRecRef = uRC(null);
   const inputRef = uRC(null);
-
-  uEC(() => {
-    if (!recording) {
-      if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
-    }
-    return () => { if (recTimer.current) clearInterval(recTimer.current); };
-  }, [recording]);
+  const imgInputRef = uRC(null);
+  const audioInputRef = uRC(null);
 
   const ph = broadcastCount > 0
     ? t.composerPhBroadcast.replace('{n}', broadcastCount)
@@ -556,59 +559,13 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
     inputRef.current?.focus();
   };
 
-  const startRecording = () => {
-    if (mediaRecRef.current) return;
-    // getUserMedia ha d'estar en el handler directe (iOS exigeix gesture directe)
-    navigator.mediaDevices?.getUserMedia({ audio: true }).then(stream => {
-      // Detecta el millor MIME: iOS només suporta audio/mp4
-      const mimeType = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find(
-        m => { try { return MediaRecorder.isTypeSupported(m); } catch(e) { return false; } }
-      ) || '';
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-      const chunks = [];
-      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.start();
-      mediaRecRef.current = { recorder, stream, chunks, mimeType };
-      recTRef.current = 0;
-      setRecT(0);
-      recTimer.current = setInterval(() => { recTRef.current++; setRecT(recTRef.current); }, 1000);
-      setRecording(true);
-    }).catch(() => {
-      mediaRecRef.current = null;
-      alert({ ca:'Cal permís de micròfon. Ves a Ajustaments > Safari > Micròfon i activa\'l.', es:'Necesitas permiso de micrófono. Ve a Ajustes > Safari > Micrófono y actívalo.', en:'Microphone permission needed. Go to Settings > Safari > Microphone.' }[lang] || 'Microphone permission needed.');
-    });
-  };
-
-  const handleRecordingEnd = () => {
-    clearInterval(recTimer.current);
-    recTimer.current = null;
-    setRecording(false);
-    const duration = recTRef.current;
-    const wf = Array.from({length: Math.min(20, Math.max(4, Math.max(duration, 1)*2))}, () => 0.2 + Math.random()*0.7);
-    const ctx = mediaRecRef.current;
-    mediaRecRef.current = null;
-    if (!ctx) return;
-    if (ctx.recorder && ctx.recorder.state !== 'inactive') {
-      ctx.recorder.onstop = () => {
-        const blobType = ctx.mimeType || ctx.recorder.mimeType || 'audio/mp4';
-        const blob = new Blob(ctx.chunks, { type: blobType });
-        const url = URL.createObjectURL(blob);
-        ctx.stream.getTracks().forEach(t => t.stop());
-        sendMsg('audio', { duration: Math.max(duration, 1), waveform: wf, url });
-      };
-      ctx.recorder.stop();
-    } else {
-      ctx.stream?.getTracks().forEach(t => t.stop());
-    }
-  };
-
   const ATTACH_OPTS = [
     { id:'image', label: t.image, icon:'image' },
-    { id:'pdf', label: t.pdf, icon:'pdf' },
+    { id:'pdf', label: t.pdf, icon:'pdf', teacherOnly: true },
     { id:'pose', label: t.pose, icon:'flower' },
-    { id:'session', label: t.session, icon:'play' },
-    { id:'quote', label: t.quote, icon:'quote' },
-  ];
+    { id:'session', label: t.session, icon:'play', teacherOnly: true },
+    { id:'quote', label: t.quote, icon:'quote', teacherOnly: true },
+  ].filter(o => !o.teacherOnly || !isStudent);
 
   return (
     <>
@@ -641,21 +598,7 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
         backdropFilter:'blur(20px)', WebkitBackdropFilter:'blur(20px)',
         borderTop:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)',
       }}>
-        {recording ? (
-          <div style={{ display:'flex', alignItems:'center', gap: 12, padding:'10px 14px', background:'color-mix(in srgb, var(--accent) 10%, var(--cream))', borderRadius: 999 }}>
-            <span style={{ width: 10, height: 10, borderRadius:'50%', background:'var(--accent)', animation:'ybBreathe 1.2s ease infinite' }}/>
-            <div style={{ flex:1, fontFamily:'var(--sans)', fontSize: 13, color:'var(--ink)' }}>
-              {t.record} <span style={{ opacity:0.6, marginLeft: 8 }}>{recT}s</span>
-            </div>
-            <button onClick={()=>setRecording(false)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'var(--ink-soft)', padding: 4 }}>
-              <Icon name="close" size={16}/>
-            </button>
-            <button onClick={handleRecordingEnd} style={{ width: 36, height: 36, borderRadius:'50%', background:'var(--accent)', border:'none', cursor:'pointer', color:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <Icon name="send" size={16} color="var(--cream)"/>
-            </button>
-          </div>
-        ) : (
-          <div style={{ display:'flex', alignItems:'flex-end', gap: 8 }}>
+        <div style={{ display:'flex', alignItems:'flex-end', gap: 8 }}>
             <button onClick={()=>setSheet('attach')} aria-label={t.attach}
                     style={{ width: 38, height: 38, borderRadius:'50%', background:'var(--cream)', border:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)', cursor:'pointer', flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center' }}>
               <Icon name="plus" size={18} color="var(--ink-soft)"/>
@@ -683,7 +626,7 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
               </button>
             ) : (
               <button
-                onClick={startRecording}
+                onClick={() => audioInputRef.current?.click()}
                 aria-label={t.audio}
                 style={{ width: 42, height: 42, borderRadius:'50%', background:'var(--ink)', border:'none', cursor:'pointer', flexShrink: 0,
                          display:'flex', alignItems:'center', justifyContent:'center' }}>
@@ -691,7 +634,6 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
               </button>
             )}
           </div>
-        )}
       </div>
 
       {/* Sheet d'adjuncions */}
@@ -699,7 +641,7 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap: 10, paddingBottom: 16 }}>
           {ATTACH_OPTS.map(o => (
             <button key={o.id} onClick={() => {
-              if (o.id === 'image') { sendMsg('image', { caption:'' }); setSheet(null); }
+              if (o.id === 'image') { imgInputRef.current?.click(); setSheet(null); }
               else if (o.id === 'pdf') { sendMsg('pdf', { name:'guia-pranayama.pdf', size:'320 KB' }); setSheet(null); }
               else if (o.id === 'pose') setSheet('pose');
               else if (o.id === 'session') setSheet('session');
@@ -833,6 +775,31 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
           ))}
         </div>
       </Sheet>
+
+      {/* Input ocult per seleccionar imatge de la galeria */}
+      <input ref={imgInputRef} type="file" accept="image/*" style={{ display:'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => { sendMsg('image', { caption: file.name, url: ev.target.result }); };
+          reader.readAsDataURL(file);
+          e.target.value = '';
+        }}/>
+      <input ref={audioInputRef} type="file" accept="audio/*" style={{ display:'none' }}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (ev) => {
+            const estDur = Math.round(file.size / 2000);
+            const bars = Math.min(20, Math.max(4, estDur || 4));
+            const wf = Array.from({length: bars}, () => 0.2 + Math.random()*0.7);
+            sendMsg('audio', { duration: Math.max(estDur, 1), waveform: wf, url: ev.target.result });
+          };
+          reader.readAsDataURL(file);
+          e.target.value = '';
+        }}/>
     </>
   );
 };
@@ -882,16 +849,18 @@ const ConversationView = ({ t, lang, asanas, role, student, messages, onSend, on
                       display:'flex', alignItems:'center', justifyContent:'center',
                       fontFamily:'var(--serif)', fontSize: 18, position:'relative' }}>
           {student.initials}
-          {student.online && (
+          {!isStudent && student.online && (
             <span style={{ position:'absolute', bottom: 0, right: 0, width: 10, height: 10, borderRadius:'50%',
                            background:'#5BC788', border:'2px solid var(--paper)' }}/>
           )}
         </div>
         <div style={{ flex: 1 }}>
           <div style={{ fontFamily:'var(--serif)', fontSize: 17, fontStyle:'italic', color:'var(--ink)' }}>{student.name}</div>
-          <div style={{ fontFamily:'var(--sans)', fontSize: 11, color: student.online ? 'var(--leaf-deep)':'var(--ink-soft)' }}>
-            {student.online ? t.online : `${t.offlineSince} ${lastSeenLabel(student.lastPracticeDays, t)}`}
-          </div>
+          {!isStudent && (
+            <div style={{ fontFamily:'var(--sans)', fontSize: 11, color: student.online ? 'var(--leaf-deep)':'var(--ink-soft)' }}>
+              {student.online ? t.online : `${t.offlineSince} ${lastSeenLabel(student.lastPracticeDays, t)}`}
+            </div>
+          )}
         </div>
         {!isStudent && (
           <button onClick={onOpenContext} style={{ background:'var(--cream)', border:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)',
@@ -932,20 +901,9 @@ const ConversationView = ({ t, lang, asanas, role, student, messages, onSend, on
       </div>
 
       {/* Compositor */}
-      {(isStudent && messages.length === 0) ? (
-        <div style={{ padding:'14px 18px calc(env(safe-area-inset-bottom, 12px) + 14px)',
-                       background:'color-mix(in srgb, var(--paper) 92%, transparent)',
-                       borderTop:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)',
-                       textAlign:'center' }}>
-          <div style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--ink-soft)' }}>
-            {t.studentCantInitiate}
-          </div>
-        </div>
-      ) : (
-        <Composer t={t} lang={lang} asanas={asanas} role={role}
-                  recipientName={student.name} isStudent={isStudent}
-                  onSend={onSend}/>
-      )}
+      <Composer t={t} lang={lang} asanas={asanas} role={role}
+                recipientName={student.name} isStudent={isStudent}
+                onSend={onSend}/>
     </div>
   );
 };
@@ -1271,6 +1229,19 @@ const Chat = ({ t: globalT, lang, role = 'student', asanas }) => {
 
   // Re-sembra els missatges quan canvia la llengua per actualitzar textos mock
   uEC(() => { setConversations(seedConversations(lang)); }, [lang]);
+
+  // Afegeix a la conversa el que s'ha compartit des del Diari/Calendari (bústia local)
+  uEC(() => {
+    try {
+      const shared = (window.EBShare && window.EBShare.load()) || [];
+      if (!shared.length) return;
+      setConversations(prev => {
+        const key = 'nuria';
+        const extra = shared.map(s => ({ id: newId(), from: 'student', kind: 'text', body: s.text, time: s.time || Date.now(), status: 'sent', reactions: [] }));
+        return { ...prev, [key]: [...(prev[key] || []), ...extra] };
+      });
+    } catch (e) {}
+  }, [lang]);
 
   // En obrir una conversa, marca els missatges entrants com llegits
   uEC(() => {

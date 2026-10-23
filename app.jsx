@@ -8,13 +8,14 @@ const { useState: uSA, useEffect: uEA, useMemo: uMA } = React;
     const inv = new URLSearchParams(window.location.search).get('inv');
     if (inv) {
       const dec = atob(inv);
-      const i = dec.indexOf(':');
-      const email = dec.slice(0, i).toLowerCase().trim();
-      const code  = dec.slice(i + 1).trim();
+      const parts = dec.split('|');
+      const email = (parts[0] || '').toLowerCase().trim();
+      const code  = (parts[1] || '').trim();
+      const name  = (parts[2] || '').trim();
       if (email && code) {
         localStorage.setItem('elbosc-credential', JSON.stringify({ email, code }));
-        localStorage.setItem('elbosc-session', JSON.stringify({ email, role: 'student' }));
-        window.__elBoscInvite = { email, code };
+        localStorage.setItem('elbosc-session', JSON.stringify({ email, role: 'student', name }));
+        window.__elBoscInvite = { email, code, name };
         // NO netegem l'URL: el link guardat als marcadors funciona sempre
       }
     }
@@ -22,7 +23,7 @@ const { useState: uSA, useEffect: uEA, useMemo: uMA } = React;
 })();
 
 const DEFAULT_PROFILE = {
-  name: 'Núria',
+  name: '',
   age: 38, gender: 'Dona', height: 165, weight: 60,
   lifestyle: 'Moderat', sleep: 7, stress: 6,
   level: 'principiant', years: 1, style: 'Hatha',
@@ -53,23 +54,27 @@ function App() {
   const t = I18N[lang];
 
   const [stage, setStage] = uSA(() => {
-    if (window.__elBoscInvite) return 'welcome'; // enllaç d'invitació: accés directe
+    if (window.__elBoscInvite) {
+      // Alumna retornant via enllaç desat: si ja va completar el qüestionari, va directament a l'app
+      if (localStorage.getItem('elbosc-quiz-done')) return 'app';
+      return 'welcome';
+    }
     try {
       const sess = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
-      if (sess?.role) return sess.role === 'teacher' ? 'app' : 'app';
+      if (sess?.role) return 'app';
     } catch (e) {}
     return tweaks.stage || 'auth';
   }); // auth | welcome | quiz | app | practice
   const [tab, setTab] = uSA('home');
   const [profile, setProfile] = uSA(() => {
-    // Nom real de l'alumna: invite link → nom desat al dispositiu → sessió → per defecte
     try {
       const inv  = window.__elBoscInvite;
-      if (inv?.name) return { ...DEFAULT_PROFILE, name: inv.name };
-      const saved = localStorage.getItem('elbosc-name');
-      if (saved) return { ...DEFAULT_PROFILE, name: saved };
-      const sess = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
-      if (sess?.name) return { ...DEFAULT_PROFILE, name: sess.name };
+      const saved = JSON.parse(localStorage.getItem('elbosc-profile') || 'null');
+      const base = saved ? { ...DEFAULT_PROFILE, ...saved } : DEFAULT_PROFILE;
+      if (inv?.name) return { ...base, name: inv.name };
+      const savedName = localStorage.getItem('elbosc-name');
+      if (savedName && !saved) return { ...base, name: savedName };
+      return base;
     } catch (e) {}
     return DEFAULT_PROFILE;
   });
@@ -115,8 +120,8 @@ function App() {
     return () => clearInterval(iv);
   }, []);
 
-  // Desa el nom al dispositiu perquè no es perdi en recarregar
-  uEA(() => { try { if (profile.name && profile.name !== DEFAULT_PROFILE.name) localStorage.setItem('elbosc-name', profile.name); } catch (e) {} }, [profile.name]);
+  // Desa el perfil complet al dispositiu perquè no es perdi en recarregar
+  uEA(() => { try { localStorage.setItem('elbosc-profile', JSON.stringify(profile)); if (profile.name && profile.name !== DEFAULT_PROFILE.name) localStorage.setItem('elbosc-name', profile.name); } catch (e) {} }, [profile]);
 
   // Supabase: si l'usuària torna d'un enllaç màgic (o ja té sessió), entra a l'app
   uEA(() => {
@@ -174,7 +179,9 @@ function App() {
       {stage === 'quiz' && (
         <Questionnaire t={t} profile={profile} setProfile={setProfile}
           onBack={() => setStage('welcome')}
-          onComplete={() => { setStage('app'); setTab('home'); }}/>
+          onComplete={() => { try { localStorage.setItem('elbosc-quiz-done', '1'); } catch(e) {} setStage('app'); setTab('home'); }}
+          onEditProfile={() => setStage('quiz')}
+/>
       )}
       {stage === 'app' && (
         <>
@@ -188,6 +195,7 @@ function App() {
             onOpenPose={(p) => setPoseDetail(p)}
             illustrationStyle={tweaks.illustrationStyle}
             onChangeName={(nm) => setProfile(p => ({ ...p, name: nm }))}
+            onEditProfile={() => setStage('quiz')}
             onLogout={() => {
               try {
                 localStorage.removeItem('elbosc-session');
@@ -208,7 +216,15 @@ function App() {
         <PracticeMode t={t} sequence={sequence} lang={lang}
           illustrationStyle={tweaks.illustrationStyle}
           onExit={() => setStage('app')}
-          onComplete={() => setStage('app')}/>
+          onComplete={() => {
+            try {
+              const today = new Date();
+              const ds = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+              const saved = JSON.parse(localStorage.getItem('elbosc-sessions') || '[]');
+              if (!saved.includes(ds)) { saved.push(ds); localStorage.setItem('elbosc-sessions', JSON.stringify(saved)); }
+            } catch(e) {}
+            setStage('app');
+          }}/>
       )}
     </div>
   );

@@ -42,13 +42,63 @@ const Welcome = ({ t, onStart, lang, setLang }) => (
       </div>
 
       <div style={{ textAlign: 'center', animation: 'ybFadeUp .6s ease' }}>
-        {/* Logo */}
-        <svg width="80" height="80" viewBox="0 0 80 80" style={{ marginBottom: 16 }}>
-          <circle cx="40" cy="40" r="38" fill="none" stroke="var(--accent)" strokeWidth="0.8" opacity="0.4"/>
-          <g stroke="var(--accent)" strokeWidth="1.2" fill="none" strokeLinecap="round">
-            <path d="M40 18 Q30 32 30 45 Q30 58 40 62 Q50 58 50 45 Q50 32 40 18z"/>
-            <line x1="40" y1="18" x2="40" y2="62"/>
-            <path d="M40 30 Q34 36 32 42 M40 30 Q46 36 48 42"/>
+        {/* Arbre El Bosc */}
+        <svg width="160" height="190" viewBox="0 0 160 200" style={{ display:'block', margin:'0 auto 12px' }}>
+          {/* Arrels */}
+          <g stroke="var(--accent)" strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.55">
+            <path d="M80 185 Q62 190 46 198"/>
+            <path d="M80 185 Q70 192 62 200"/>
+            <path d="M80 185 Q80 194 80 202"/>
+            <path d="M80 185 Q90 192 98 200"/>
+            <path d="M80 185 Q98 190 114 198"/>
+            <path d="M46 198 Q38 200 32 204"/>
+            <path d="M114 198 Q122 200 128 204"/>
+          </g>
+          {/* Tronc */}
+          <path d="M74 185 Q71 158 72 132 Q73 112 74 88 Q77 68 80 46 Q83 68 86 88 Q87 112 88 132 Q89 158 86 185 Z"
+                fill="var(--accent)" opacity="0.45"/>
+          {/* Línies d'escorça */}
+          <g stroke="var(--accent-deep)" strokeWidth="0.7" fill="none" opacity="0.25">
+            <path d="M76 162 Q80 157 84 162"/>
+            <path d="M75 142 Q80 137 85 142"/>
+            <path d="M76 122 Q80 117 84 122"/>
+          </g>
+          {/* Branques */}
+          <g stroke="var(--accent)" strokeWidth="1.6" fill="none" strokeLinecap="round" opacity="0.5">
+            <path d="M76 148 Q58 140 40 134"/>
+            <path d="M40 134 Q30 128 22 120"/>
+            <path d="M84 144 Q102 136 120 130"/>
+            <path d="M120 130 Q130 124 138 116"/>
+            <path d="M75 120 Q58 112 44 105"/>
+            <path d="M85 118 Q102 110 116 103"/>
+            <path d="M77 94 Q64 87 52 80"/>
+            <path d="M83 92 Q96 85 108 78"/>
+          </g>
+          {/* Fullatge — capa de fons (ombra) */}
+          <g fill="var(--leaf-deep)" opacity="0.45">
+            <ellipse cx="80" cy="60" rx="46" ry="56"/>
+            <ellipse cx="37" cy="100" rx="31" ry="37"/>
+            <ellipse cx="123" cy="94" rx="29" ry="35"/>
+            <ellipse cx="23" cy="126" rx="22" ry="26"/>
+            <ellipse cx="137" cy="120" rx="21" ry="25"/>
+          </g>
+          {/* Fullatge — capa intermèdia */}
+          <g fill="var(--leaf)" opacity="0.8">
+            <ellipse cx="80" cy="52" rx="41" ry="51"/>
+            <ellipse cx="39" cy="92" rx="28" ry="33"/>
+            <ellipse cx="121" cy="86" rx="26" ry="31"/>
+            <ellipse cx="26" cy="118" rx="19" ry="23"/>
+            <ellipse cx="134" cy="112" rx="18" ry="22"/>
+            <ellipse cx="62" cy="72" rx="23" ry="28"/>
+            <ellipse cx="100" cy="68" rx="21" ry="26"/>
+          </g>
+          {/* Fullatge — capa frontal (claror) */}
+          <g fill="var(--sage)" opacity="0.6">
+            <ellipse cx="75" cy="37" rx="29" ry="35"/>
+            <ellipse cx="100" cy="43" rx="25" ry="30"/>
+            <ellipse cx="50" cy="68" rx="19" ry="23"/>
+            <ellipse cx="113" cy="62" rx="17" ry="21"/>
+            <ellipse cx="80" cy="26" rx="21" ry="25"/>
           </g>
         </svg>
         <div style={{ fontFamily: 'var(--sans)', fontSize: 11, letterSpacing: '0.4em', color: 'var(--accent)', marginBottom: 8 }}>
