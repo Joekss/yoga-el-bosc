@@ -28,29 +28,25 @@ update public.profiles set role = 'teacher' where email = 'correo-de-celia@ejemp
 
 Desde la app: **Ajustes → Alumnas y acceso → Añadir alumna**. Solo los correos de esa lista pueden entrar. "Poner en pausa" corta el acceso al momento, desde cualquier dispositivo.
 
-## 4. Correo de acceso con código (importante para iPhone)
+## 4. Direcciones permitidas (hecho)
 
-En el iPhone, el enlace del correo se abre en Safari y no en la app instalada. Por eso la app también acepta el código de 6 cifras. Para que el correo lo incluya:
+Ya configurado en el proyecto: Site URL `https://joekss.github.io/yoga-el-bosc/`, redirecciones a esa dirección y a `localhost:5000` / `localhost:5001`, y código de acceso de 6 cifras.
 
-1. **Authentication → Emails → Magic Link**.
-2. Sustituye la plantilla por algo así:
+## 5. Correo con código y sin límite de 2 por hora (pendiente: Resend)
 
-```html
-<h2>Entra a El Bosc</h2>
-<p>Tu código: <strong style="font-size:22px;letter-spacing:4px">{{ .Token }}</strong></p>
-<p>O toca este enlace desde el mismo dispositivo: <a href="{{ .ConfirmationURL }}">Entrar</a></p>
+En el plan gratuito, Supabase no deja cambiar la plantilla del correo con su servicio por defecto, y solo envía 2 correos por hora. Sin plantilla propia, el correo solo lleva el enlace: en iPhone se abre en Safari y no en la app instalada.
+
+Cuando tengáis el dominio a mano:
+
+1. **resend.com** → crear cuenta → **Domains → Add Domain** → copiar los registros DNS en el proveedor del dominio hasta que salga **Verified**.
+2. **Settings → Integrations → Supabase → Connect** → proyecto `joelreintegra@gmail.com's Project`, remitente `hola@<dominio>`, nombre `El Bosc`.
+3. Aplicar la plantilla (`supabase/email/acces.html`) y subir el límite a 60 correos/hora:
+
+```bash
+SUPABASE_ACCESS_TOKEN=<token> bash scripts/configurar-correu.sh
 ```
 
-## 5. Direcciones permitidas
-
-En **Authentication → URL Configuration**:
-
-- **Site URL**: la dirección pública de la app (p. ej. `https://elbosc.netlify.app/`).
-- **Redirect URLs**: añade esa misma dirección y `http://localhost:5000/` para probar en local.
-
-## 6. Limitar el envío de correos (recomendado)
-
-El correo de Supabase por defecto está limitado a pocos mensajes por hora. Para uso real conecta un SMTP propio en **Authentication → Emails → SMTP Settings** (Resend, Brevo, etc.).
+El token se crea en supabase.com → Account → Access Tokens (con permiso de escritura de *Project Admin*). Bórralo al terminar.
 
 ## Probar en local sin Supabase
 

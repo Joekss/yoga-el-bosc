@@ -48,6 +48,12 @@ Sigue `supabase/README.md`: ejecutar las migraciones, hacer profesora a Cèlia, 
 
 ## Publicar
 
+La app se publica sola en **GitHub Pages** (`https://joekss.github.io/yoga-el-bosc/`) cada vez que se fusiona un cambio en `main` (`.github/workflows/deploy.yml`): compila `dist/`, pasa las pruebas y la publica.
+
+Activarlo una vez: en GitHub → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+
+Para generar la versión optimizada a mano:
+
 ```bash
 npm install
 ```
@@ -56,9 +62,7 @@ npm install
 npm run build
 ```
 
-Publica la carpeta `dist/` en cualquier hosting estático con HTTPS (GitHub Pages, Netlify o Vercel). Es la misma app pero compilada antes: abre en unos 0,4 s en un móvil lento en vez de unos 9 s, y la versión de caché se calcula sola en cada build.
-
-La raíz del repositorio sigue funcionando sin compilar (útil para desarrollar con `npm start`), pero es mucho más lenta.
+`dist/` es la misma app pero compilada antes: abre en unos 0,4 s en un móvil lento en vez de unos 9 s, y la versión de caché se calcula sola en cada build. La raíz del repositorio sigue funcionando sin compilar (útil para desarrollar con `npm start`).
 
 ## Licencia
 [Aquesta app es propietat de Cèlia Betriu Acunya]
