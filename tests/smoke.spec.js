@@ -154,6 +154,69 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     await p.context().close();
   }
 
+  console.log('9. Alumna nova: consentiment → qüestionari → pràctica registrada');
+  {
+    const p = await page(browser, { role: 'student', status: 'active' });
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'pau@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Començar');
+    await p.click('text=Començar');
+    await waitText(p, 'Les teves dades, en confiança');
+    ok(await p.isDisabled('text=Continuar'), 'no deixa continuar sense acceptar');
+    await p.check('#eb-consent');
+    await p.click('text=Continuar');
+    for (let i = 0; i < 30; i++) {
+      const body = await text(p);
+      if (body.includes('Crear la meva pràctica')) { await p.click('text=Crear la meva pràctica'); break; }
+      await p.click('text=Següent');
+    }
+    await waitText(p, 'Començar pràctica');
+    const calls = await p.evaluate(() => window.__sbCalls);
+    const saves = calls.filter(c => c.table === 'profiles' && c.op === 'update');
+    ok(saves.some(c => c.payload.data && c.payload.data.consent && c.payload.data.consent.version), 'desa el consentiment amb versió');
+    ok(saves.some(c => c.payload.data && c.payload.data.quizDone && c.payload.data.profile), 'desa el qüestionari');
+    // Pràctica: entra i salta totes les postures
+    await p.click('text=Començar pràctica');
+    for (let i = 0; i < 60; i++) {
+      const done = await p.evaluate(() => document.body.innerText.includes('Començar pràctica'));
+      if (done) break;
+      await p.click('button[aria-label="Postura següent"]', { timeout: 2000 }).catch(() => {});
+      await p.waitForTimeout(50);
+    }
+    await waitText(p, 'Començar pràctica');
+    await p.waitForTimeout(500);
+    const practice = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-practice') || '[]'));
+    ok(practice.length === 1, 'envia la pràctica al servidor');
+    const body = await text(p);
+    ok(/1\s*Dies consecutius/.test(body) && /1 \/ \d\s*Aquesta setmana/.test(body), 'ratxa 1 i 1 aquesta setmana');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+  }
+
+  console.log('10. Esborrar el compte');
+  {
+    const p = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna' });
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'anna@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Començar pràctica');
+    await p.click('button[aria-label="El teu perfil"]');
+    await p.click('text=Esborrar el meu compte');
+    await waitText(p, 'Toca de nou');
+    await p.click('text=Toca de nou');
+    await waitText(p, 'Entra a El Bosc');
+    const calls = await p.evaluate(() => window.__sbCalls);
+    ok(calls.some(c => c.rpc === 'delete_my_account'), 'crida delete_my_account i torna a l\'accés');
+    const left = await p.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('elbosc-')));
+    ok(left.length === 0, 'no deixa dades al dispositiu: ' + left.join(','));
+    await p.context().close();
+  }
+
   await browser.close();
   console.log(failures ? `\n${failures} prova(es) fallida(es)` : '\nTot correcte');
   process.exit(failures ? 1 : 0);

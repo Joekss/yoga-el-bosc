@@ -6,7 +6,7 @@ La app ya no decide quién entra ni quién es profesora: lo decide Supabase. Hay
 
 1. Abre **SQL Editor → New query**.
 2. Pega el contenido de `migrations/001_acces_i_rols.sql` y pulsa **Run**.
-3. Repite con cada archivo nuevo de `migrations/` en orden (001, 002, …).
+3. Repite con `migrations/002_practiques_i_privacitat.sql` y con cada archivo nuevo de `migrations/`, en orden.
 
 ## 2. Hacer profesora a Cèlia
 
@@ -59,3 +59,7 @@ npm test
 ```
 
 Las pruebas (`tests/smoke.spec.js`) usan un Supabase simulado (`tests/fake-supabase.js`), así que no tocan los datos reales.
+
+## Antes de publicar: rellenar la política de privacidad
+
+`privacitat.html` tiene campos marcados en amarillo que hay que completar: nombre de la responsable, correo de contacto y región del proyecto de Supabase (se ve en **Project Settings → General**).

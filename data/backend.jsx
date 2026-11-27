@@ -126,10 +126,93 @@
     if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
   }
 
+  // ── Pràctiques: es desen al dispositiu a l'instant i se sincronitzen ────
+  // Clau per usuari, perquè dues persones al mateix mòbil no es barregin.
+  const pkey = (uid) => 'elbosc-practice-' + uid;
+  const readLog = (uid) => { try { return JSON.parse(localStorage.getItem(pkey(uid)) || '[]'); } catch (e) { return []; } };
+  const writeLog = (uid, log) => { try { localStorage.setItem(pkey(uid), JSON.stringify(log.slice(-1000))); } catch (e) {} };
+  const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
+
+  async function pushPending(uid) {
+    if (!sb()) return;
+    const log = readLog(uid);
+    const pending = log.filter(x => !x.synced);
+    if (!pending.length) return;
+    const rows = pending.map(x => ({ id: x.id, user_id: uid, completed_at: x.completed_at, duration_sec: x.duration_sec, poses: x.poses }));
+    const { error } = await sb().from('practice_sessions').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+    if (error) return;
+    const ids = new Set(pending.map(x => x.id));
+    writeLog(uid, readLog(uid).map(x => ids.has(x.id) ? { ...x, synced: true } : x));
+  }
+
+  async function logPractice(uid, { durationSec, poses }) {
+    const entry = { id: uuid(), completed_at: new Date().toISOString(), duration_sec: Math.max(0, Math.round(durationSec || 0)), poses: poses || 0, synced: false };
+    writeLog(uid, [...readLog(uid), entry]);
+    try { await pushPending(uid); } catch (e) {}
+    return entry;
+  }
+
+  // Porta l'historial del servidor (per si ha practicat des d'un altre mòbil)
+  async function refreshPractice(uid) {
+    if (!sb()) return readLog(uid);
+    try { await pushPending(uid); } catch (e) {}
+    const since = new Date(Date.now() - 400 * 864e5).toISOString();
+    const { data, error } = await sb().from('practice_sessions')
+      .select('id, completed_at, duration_sec, poses').eq('user_id', uid).gte('completed_at', since)
+      .order('completed_at', { ascending: true });
+    if (error || !data) return readLog(uid);
+    const local = readLog(uid);
+    const serverIds = new Set(data.map(x => x.id));
+    const merged = [...data.map(x => ({ ...x, synced: true })), ...local.filter(x => !serverIds.has(x.id) && !x.synced)];
+    merged.sort((a, b) => a.completed_at < b.completed_at ? -1 : 1);
+    writeLog(uid, merged);
+    return merged;
+  }
+
+  // Ratxa (dies seguits fins avui o ahir), sessions totals, minuts, aquesta setmana
+  function practiceStats(log) {
+    const dayKey = (d) => { const x = new Date(d); return x.getFullYear() + '-' + (x.getMonth() + 1) + '-' + x.getDate(); };
+    const days = new Set(log.map(x => dayKey(x.completed_at)));
+    let streak = 0;
+    const cur = new Date();
+    if (!days.has(dayKey(cur))) cur.setDate(cur.getDate() - 1);
+    while (days.has(dayKey(cur))) { streak++; cur.setDate(cur.getDate() - 1); }
+    const monday = new Date(); monday.setHours(0, 0, 0, 0); monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+    const thisWeek = new Set(log.filter(x => new Date(x.completed_at) >= monday).map(x => dayKey(x.completed_at))).size;
+    const minutes = Math.round(log.reduce((s, x) => s + (x.duration_sec || 0), 0) / 60);
+    return { streak, total: log.length, minutes, thisWeek };
+  }
+
+  // ── Drets RGPD ──────────────────────────────────────────────────────────
+  async function deleteAccount() {
+    if (!sb()) throw fail('no-backend');
+    const { error } = await sb().rpc('delete_my_account');
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+    try {
+      Object.keys(localStorage).filter(k => k.indexOf('elbosc-') === 0).forEach(k => localStorage.removeItem(k));
+    } catch (e) {}
+    await signOut();
+  }
+
+  // Totes les dades de l'usuària en un fitxer JSON
+  function exportData(account) {
+    const local = {};
+    try { Object.keys(localStorage).filter(k => k.indexOf('elbosc-') === 0).forEach(k => { try { local[k] = JSON.parse(localStorage.getItem(k)); } catch (e) { local[k] = localStorage.getItem(k); } }); } catch (e) {}
+    const payload = { exportedAt: new Date().toISOString(), account: account ? { email: account.email, name: account.name, role: account.role, data: account.data } : null, device: local };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'el-bosc-dades-' + new Date().toISOString().slice(0, 10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
   window.EBBackend = {
     available: () => !!sb(),
     getSession, sendLoginEmail, verifyCode, loadAccount, saveProfile, signOut, onAuthChange,
     listMembers, addMember, setMemberStatus, removeMember,
     readCache,
+    logPractice, refreshPractice, readPracticeLog: readLog, practiceStats,
+    deleteAccount, exportData,
   };
 })();

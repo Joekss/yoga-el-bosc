@@ -76,6 +76,8 @@ function App() {
   const [profile, setProfile] = uSA(DEFAULT_PROFILE);
   const [invite] = uSA(() => (window.readInvite ? window.readInvite() : null));
   const [showStudents, setShowStudents] = uSA(false);
+  const [practiceLog, setPracticeLog] = uSA([]);
+  const stats = uMA(() => window.EBBackend ? window.EBBackend.practiceStats(practiceLog) : { streak: 0, total: 0, minutes: 0, thisWeek: 0 }, [practiceLog]);
   const role = isProd ? ((account && account.role) || 'student') : (tweaks.role || 'student');
 
   const [poseDetail, setPoseDetail] = uSA(null);
@@ -105,6 +107,8 @@ function App() {
       const saved = acc.data && acc.data.profile;
       const name = acc.name || (saved && saved.name) || (invite && invite.email === acc.email ? invite.name : '') || '';
       setProfile({ ...DEFAULT_PROFILE, ...(saved || {}), name });
+      setPracticeLog(window.EBBackend.readPracticeLog(acc.userId));
+      window.EBBackend.refreshPractice(acc.userId).then(log => { if (seq === loadSeq.current) setPracticeLog(log); }).catch(() => {});
       // Treu ?inv= i restes de l'enllaç màgic de la barra d'adreces
       try { if (window.location.search || window.location.hash) history.replaceState(null, '', window.location.pathname); } catch (e) {}
       if (acc.role === 'teacher') { setStage(s => s === 'practice' ? s : 'app'); setTab(tb => tb === 'home' ? 'messages' : tb); return; }
@@ -130,8 +134,18 @@ function App() {
   const retry = () => { window.EBBackend.getSession().then(enterWith).catch(() => setStage('error')); };
   const logout = async () => {
     await window.EBBackend.signOut();
-    setAccount(null); setProfile(DEFAULT_PROFILE); setTab('home'); setStage('auth');
+    setAccount(null); setProfile(DEFAULT_PROFILE); setPracticeLog([]); setTab('home'); setStage('auth');
   };
+  const deleteAccount = async () => {
+    await window.EBBackend.deleteAccount();
+    setAccount(null); setProfile(DEFAULT_PROFILE); setPracticeLog([]); setTab('home'); setStage('auth');
+  };
+  const completePractice = (result) => {
+    setStage('app');
+    if (!account || !result) return;
+    window.EBBackend.logPractice(account.userId, result).finally(() => setPracticeLog(window.EBBackend.readPracticeLog(account.userId)));
+  };
+  const hasConsent = () => !isProd || !!(account && account.data && account.data.consent);
 
   // Desa el perfil al compte (agrupa canvis seguits, p. ex. en escriure el nom)
   const saveTimer = uRA(null);
@@ -194,7 +208,11 @@ function App() {
       {stage === 'error' && <AccessScreen kind="error" lang={lang} onRetry={retry} onLogout={logout}/>}
       {stage === 'auth' && <AuthGate lang={lang} invite={invite}/>}
       {stage === 'welcome' && (
-        <Welcome t={t} lang={lang} setLang={setLang} onStart={() => setStage('quiz')}/>
+        <Welcome t={t} lang={lang} setLang={setLang} onStart={() => setStage(hasConsent() ? 'quiz' : 'consent')}/>
+      )}
+      {stage === 'consent' && (
+        <ConsentScreen lang={lang} onBack={() => setStage('welcome')}
+          onAccept={(consent) => { persistProfile(profile, { consent }); setStage('quiz'); }}/>
       )}
       {stage === 'quiz' && (
         <Questionnaire t={t} profile={profile} setProfile={setProfile}
@@ -208,7 +226,10 @@ function App() {
             theme={theme} onChangeTheme={changeTheme}
             textSize={textSize} onChangeTextSize={changeTextSize}
             onOpenStudents={() => setShowStudents(true)}
-            onRedoQuiz={() => setStage('quiz')}
+            onRedoQuiz={() => setStage(hasConsent() ? 'quiz' : 'consent')}
+            stats={stats}
+            onExportData={() => window.EBBackend.exportData(account)}
+            onDeleteAccount={isProd && role !== 'teacher' ? deleteAccount : null}
             asanas={asanas} onPosesChanged={() => setPosesVersion(v => v + 1)}
             onStartPractice={() => setStage('practice')}
             onOpenPose={(p) => setPoseDetail(p)}
@@ -229,7 +250,7 @@ function App() {
         <PracticeMode t={t} sequence={sequence} lang={lang}
           illustrationStyle={tweaks.illustrationStyle}
           onExit={() => setStage('app')}
-          onComplete={() => setStage('app')}/>
+          onComplete={completePractice}/>
       )}
       </ErrorBoundary>
     </div>

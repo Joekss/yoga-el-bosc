@@ -9,6 +9,8 @@ const SHELL = [
   './index.html',
   './styles/shell.css',
   './components/Auth.jsx',
+  './components/Consent.jsx',
+  './privacitat.html',
   './components/Chat.jsx',
   './tweaks-panel.jsx',
   './components/Icons.jsx',

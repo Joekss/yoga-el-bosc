@@ -1,4 +1,4 @@
-// components/Screens.jsx — Dashboard, Library, PoseDetail, Calendar, Journal, Progress, Messages
+// components/Screens.jsx — Dashboard, Library, PoseDetail, Calendar, Journal, Messages
 
 const { useState: uS, useMemo: uM, useEffect: uE } = React;
 
@@ -12,7 +12,7 @@ const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -21,6 +21,9 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
     return { ca: 'Bona nit', es: 'Buenas noches', en: 'Good evening' }[lang];
   })();
 
+  const [confirmDelete, setConfirmDelete] = uS(false);
+  const [deleting, setDeleting] = uS(false);
+  const [deleteErr, setDeleteErr] = uS('');
   const [avatar, setAvatar] = uS(() => { try { return localStorage.getItem('elbosc-avatar') || null; } catch(e){ return null; } });
   const [showProfile, setShowProfile] = uS(false);
   const [showPoseMgr, setShowPoseMgr] = uS(false);
@@ -174,12 +177,12 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
       <div style={{ padding: '24px', display:'grid', gridTemplateColumns:'1fr 1fr', gap: 12 }}>
         <div className="yb-card" style={{ padding: 16 }}>
           <Icon name="flame" size={18} color="var(--accent)"/>
-          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>4</div>
+          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>{(stats && stats.streak) || 0}</div>
           <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)' }}>{t.progress_.streak}</div>
         </div>
         <div className="yb-card" style={{ padding: 16 }}>
           <Icon name="heart" size={18} color="var(--accent)"/>
-          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>3 / {profile.frequency || 3}</div>
+          <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>{(stats && stats.thisWeek) || 0} / {profile.frequency || 3}</div>
           <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)' }}>{t.progress_.thisWeek}</div>
         </div>
       </div>
@@ -280,6 +283,36 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
               {{ca:'Actualitzar el meu qüestionari',es:'Actualizar mi cuestionario',en:'Update my questionnaire'}[lang]}
             </button>
           )}
+
+          <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
+          <label style={themeLabelStyle}>{{ca:'Privacitat',es:'Privacidad',en:'Privacy'}[lang]}</label>
+          <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:10 }}>
+            <a href="privacitat.html" target="_blank" rel="noopener" style={{ fontFamily:'var(--sans)', fontSize:13, color:'var(--accent)' }}>
+              {{ca:'Política de privacitat',es:'Política de privacidad',en:'Privacy policy'}[lang]}
+            </a>
+            {onExportData && (
+              <button onClick={onExportData}
+                style={{ width:'100%', padding:'11px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--ink) 15%, transparent)', color:'var(--ink)', fontFamily:'var(--sans)', fontSize:13, cursor:'pointer', boxSizing:'border-box' }}>
+                {{ca:'Descarregar les meves dades',es:'Descargar mis datos',en:'Download my data'}[lang]}
+              </button>
+            )}
+            {onDeleteAccount && (
+              <button disabled={deleting}
+                onClick={async () => {
+                  if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 4000); return; }
+                  setDeleting(true); setDeleteErr('');
+                  try { await onDeleteAccount(); setShowProfile(false); }
+                  catch (e) { setDeleteErr({ca:'No s\'ha pogut esborrar. Comprova la connexió.',es:'No se ha podido borrar. Comprueba la conexión.',en:'Couldn\'t delete. Check your connection.'}[lang]); }
+                  setDeleting(false); setConfirmDelete(false);
+                }}
+                style={{ width:'100%', padding:'11px', borderRadius:12, background: confirmDelete ? 'var(--accent)' : 'transparent', border:'1px solid var(--accent)', color: confirmDelete ? 'var(--cream)' : 'var(--accent)', fontFamily:'var(--sans)', fontSize:13, cursor:'pointer', boxSizing:'border-box' }}>
+                {confirmDelete
+                  ? {ca:'Segur? S\'esborrarà tot. Toca de nou',es:'¿Seguro? Se borrará todo. Toca otra vez',en:'Sure? Everything will be deleted. Tap again'}[lang]
+                  : {ca:'Esborrar el meu compte',es:'Borrar mi cuenta',en:'Delete my account'}[lang]}
+              </button>
+            )}
+            {deleteErr && <div role="alert" style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--accent)' }}>{deleteErr}</div>}
+          </div>
 
           <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
           <button onClick={() => { setShowProfile(false); onLogout && onLogout(); }}
@@ -792,52 +825,6 @@ const Journal = ({ t, lang, onShare }) => {
   );
 };
 
-// ── Progress ────────────────────────────────────────────────
-const Progress = ({ t, lang, profile }) => (
-  <div className="yb-scroll" style={{ height:'100%', overflowY:'auto', background:'var(--paper)' }}>
-    <div style={{ padding: '60px 24px 16px' }}>
-      <h1 style={{ fontSize: 36, fontStyle:'italic', color:'var(--ink)' }}>{t.progress_.title}</h1>
-    </div>
-    <div style={{ padding: '0 24px 100px' }}>
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 12, marginBottom: 20 }}>
-        {[
-          { v: 4, l: t.progress_.streak, ic:'flame' },
-          { v: 12, l: t.progress_.total, ic:'flower' },
-          { v: 268, l: t.progress_.minutesPracticed, ic:'timer' },
-          { v: profile.frequency || 3, l: t.progress_.thisWeek, ic:'heart' },
-        ].map((s, i) => (
-          <div key={i} className="yb-card" style={{ padding: 16 }}>
-            <Icon name={s.ic} size={18} color="var(--accent)"/>
-            <div style={{ fontFamily:'var(--serif)', fontSize: 32, fontStyle:'italic', marginTop: 4, color:'var(--ink)' }}>{s.v}</div>
-            <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)' }}>{s.l}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Bar chart */}
-      <div className="yb-card">
-        <div className="yb-divider-leaf" style={{ marginBottom: 16 }}>{{ca:'Setmana', es:'Semana', en:'Week'}[lang]}</div>
-        <div style={{ display:'flex', alignItems:'flex-end', gap: 8, height: 120 }}>
-          {[0.3, 0.6, 0, 0.8, 0.5, 0.9, 0.4].map((v,i) => (
-            <div key={i} style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap: 6 }}>
-              <div style={{ height: '100%', width:'100%', display:'flex', alignItems:'flex-end' }}>
-                <div style={{ width:'100%', height: `${v*100}%`, background: v > 0 ? 'var(--accent)' : 'var(--paper-2)', borderRadius: 6, minHeight: 4 }}/>
-              </div>
-              <div style={{ fontFamily:'var(--sans)', fontSize: 10, color:'var(--ink-soft)' }}>{['L','M','M','J','V','S','D'][i]}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="yb-card" style={{ marginTop: 16, background: 'color-mix(in srgb, var(--leaf) 12%, var(--cream))' }}>
-        <div style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--leaf-deep)' }}>{t.progress_.favPose}</div>
-        <div style={{ fontFamily:'var(--serif)', fontSize: 22, fontStyle:'italic', color:'var(--ink)', marginTop: 4 }}>Bālāsana</div>
-        <div style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--ink-soft)', marginTop: 2 }}>9 {{ca:'pràctiques', es:'prácticas', en:'practices'}[lang]}</div>
-      </div>
-    </div>
-  </div>
-);
-
 // ── Messages ────────────────────────────────────────────────
 const Messages = ({ t, lang }) => {
   const msgs = {
@@ -918,4 +905,4 @@ const TabBar = ({ active, setActive, t, role }) => {
   );
 };
 
-Object.assign(window, { Dashboard, Library, PoseDetail, Calendar, Journal, Progress, Messages, TabBar });
+Object.assign(window, { Dashboard, Library, PoseDetail, Calendar, Journal, Messages, TabBar });

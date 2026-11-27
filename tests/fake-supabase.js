@@ -13,6 +13,8 @@
       select() { return api; }, order() { return api; },
       eq(k, v) { st.filters.push([k, v]); return api; },
       update(p) { st.op = 'update'; st.payload = p; return api; },
+      upsert(p) { st.op = 'upsert'; st.payload = p; return api; },
+      gte() { return api; },
       insert(p) { st.op = 'insert'; st.payload = p; return api; },
       delete() { st.op = 'delete'; return api; },
       maybeSingle() { return run(true); },
@@ -35,6 +37,11 @@
         c.members = m; localStorage.setItem('fake-sb', JSON.stringify(c));
         return { data: null, error: null };
       }
+      if (table === 'practice_sessions') {
+        const rows = JSON.parse(localStorage.getItem('fake-sb-practice') || '[]');
+        if (st.op === 'upsert') { localStorage.setItem('fake-sb-practice', JSON.stringify(rows.concat(st.payload))); return { data: null, error: null }; }
+        return { data: rows, error: null };
+      }
       return { data: null, error: null };
     };
     return api;
@@ -53,6 +60,6 @@
       onAuthStateChange: (cb) => { listeners.push(cb); return { data: { subscription: { unsubscribe() {} } } }; },
     },
     from: q,
-    rpc: async (name) => { window.__sbCalls.push({ rpc: name }); return { data: cfg().status || 'active', error: null }; },
+    rpc: async (name) => { window.__sbCalls.push({ rpc: name }); if (name === 'delete_my_account') { localStorage.removeItem(SESSION_KEY); return { data: null, error: null }; } return { data: cfg().status || 'active', error: null }; },
   }) };
 })();

@@ -7,6 +7,35 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
   const [remaining, setRemaining] = useStateP(sequence[0]?.duration || 30);
   const [paused, setPaused] = useStateP(false);
   const [phase, setPhase] = useStateP('hold'); // hold | transition
+  const PL = {
+    exit:  {ca:'Sortir de la pràctica', es:'Salir de la práctica', en:'Exit practice'}[lang] || 'Exit',
+    prev:  {ca:'Postura anterior', es:'Postura anterior', en:'Previous pose'}[lang] || 'Previous',
+    next:  {ca:'Postura següent', es:'Postura siguiente', en:'Next pose'}[lang] || 'Next',
+    pause: {ca:'Pausa', es:'Pausa', en:'Pause'}[lang] || 'Pause',
+    play:  {ca:'Continuar', es:'Continuar', en:'Resume'}[lang] || 'Resume',
+  };
+  const practiced = useRefP(0);   // segons reals practicats (sense pauses)
+  const done = useRefP(false);
+  const finish = () => {
+    if (done.current) return;
+    done.current = true;
+    onComplete({ durationSec: practiced.current, poses: Math.min(idx + 1, sequence.length) });
+  };
+
+  // Manté la pantalla encesa durant la pràctica (si el navegador ho permet)
+  useEffectP(() => {
+    let lock = null, alive = true;
+    const req = () => {
+      try {
+        if (navigator.wakeLock && document.visibilityState === 'visible') {
+          navigator.wakeLock.request('screen').then(l => { if (alive) lock = l; else l.release(); }).catch(() => {});
+        }
+      } catch (e) {}
+    };
+    req();
+    document.addEventListener('visibilitychange', req);
+    return () => { alive = false; document.removeEventListener('visibilitychange', req); try { lock && lock.release(); } catch (e) {} };
+  }, []);
 
   const current = sequence[idx];
   const totalDur = sequence.reduce((s, p) => s + p.duration, 0);
@@ -15,6 +44,7 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
   useEffectP(() => {
     if (paused || !current) return;
     const t = setInterval(() => {
+      practiced.current += 1;
       setRemaining(r => {
         if (r <= 1) {
           if (idx < sequence.length - 1) {
@@ -22,7 +52,7 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
             return sequence[idx + 1].duration;
           } else {
             clearInterval(t);
-            setTimeout(onComplete, 800);
+            setTimeout(finish, 800);
             return 0;
           }
         }
@@ -43,7 +73,7 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
     }}>
       {/* Header */}
       <div style={{ padding: '60px 24px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <button onClick={onExit} style={{ background:'transparent', border:'none', color:'var(--cream)', cursor:'pointer', padding: 8 }}>
+        <button onClick={onExit} aria-label={PL.exit} style={{ background:'transparent', border:'none', color:'var(--cream)', cursor:'pointer', padding: 8 }}>
           <Icon name="close" size={22}/>
         </button>
         <div style={{ fontFamily: 'var(--sans)', fontSize: 12, letterSpacing: '0.2em', opacity: 0.7 }}>
@@ -87,18 +117,18 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
       {/* Controls */}
       <div style={{ padding: '24px 32px 40px' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
-          <button onClick={() => { if(idx>0){ setIdx(idx-1); setRemaining(sequence[idx-1].duration); } }}
+          <button aria-label={PL.prev} onClick={() => { if(idx>0){ setIdx(idx-1); setRemaining(sequence[idx-1].duration); } }}
             disabled={idx === 0}
             style={{ background:'transparent', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'50%', width:48, height:48, color:'var(--cream)', cursor:'pointer', opacity: idx===0?0.3:1 }}>
             <Icon name="back" size={18}/>
           </button>
 
-          <button onClick={() => setPaused(!paused)}
+          <button aria-label={paused ? PL.play : PL.pause} onClick={() => setPaused(!paused)}
             style={{ background:'var(--accent)', border:'none', borderRadius:'50%', width:72, height:72, color:'var(--cream)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: '0 8px 24px rgba(184,116,74,0.4)' }}>
             <Icon name={paused ? 'play' : 'pause'} size={26} color="var(--cream)"/>
           </button>
 
-          <button onClick={() => { if(idx<sequence.length-1){ setIdx(idx+1); setRemaining(sequence[idx+1].duration); } else onComplete(); }}
+          <button aria-label={PL.next} onClick={() => { if(idx<sequence.length-1){ setIdx(idx+1); setRemaining(sequence[idx+1].duration); } else finish(); }}
             style={{ background:'transparent', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'50%', width:48, height:48, color:'var(--cream)', cursor:'pointer' }}>
             <Icon name="next" size={18}/>
           </button>
