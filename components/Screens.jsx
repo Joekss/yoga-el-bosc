@@ -151,7 +151,7 @@ const ConstancyCalendar = ({ lang, log }) => {
 };
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, onRepeat, lastPoseIds, onOpenBreath, practiceLog, assignment, onStartAssignment, onOpenTracking, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, onRepeat, lastPoseIds, onOpenBreath, practiceLog, assignment, onStartAssignment, onOpenTracking, onOpenInstall, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -287,6 +287,9 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
           </div>
         </div>
       </div>
+
+      {/* Instal·lar l'app (si encara no ho està) */}
+      <InstallCard lang={lang} onOpen={onOpenInstall}/>
 
       {/* Rutina que ha assignat la professora */}
       <AssignedRoutineCard lang={lang} assignment={assignment} onStart={onStartAssignment}/>
@@ -479,6 +482,11 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
 
           <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
           <NotificationSettings lang={lang} role={role}/>
+          {onOpenInstall && (
+            <button onClick={() => { setShowProfile(false); onOpenInstall(); }} style={{ background:'none', border:'none', padding:'8px 0 0', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:13, cursor:'pointer' }}>
+              {{ca:'Com instal·lar l\'app al mòbil',es:'Cómo instalar la app en el móvil',en:'How to install the app'}[lang]}
+            </button>
+          )}
           <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
           <label style={themeLabelStyle}>{{ca:'Privacitat',es:'Privacidad',en:'Privacy'}[lang]}</label>
           <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:10 }}>

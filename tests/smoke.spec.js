@@ -529,6 +529,27 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     await p.context().close();
   }
 
+  console.log('19. Guia per instal·lar l\'app');
+  {
+    const p = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna' });
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'anna@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Instal·la El Bosc al mòbil');
+    await p.click('button:text-is("Com fer-ho")');
+    await waitText(p, 'Afegir a la pantalla d\'inici');
+    ok((await text(p)).includes('Safari'), 'a l\'iPhone explica els passos amb Safari');
+    await p.click('button[aria-label="Tancar"]');
+    await p.click('button:text-is("Ara no")');
+    await p.reload();
+    await waitText(p, 'Començar pràctica');
+    ok(!(await text(p)).includes('Instal·la El Bosc al mòbil'), 'si dius "Ara no" no torna a sortir');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+  }
+
   await browser.close();
   console.log(failures ? `\n${failures} prova(es) fallida(es)` : '\nTot correcte');
   process.exit(failures ? 1 : 0);

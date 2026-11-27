@@ -82,6 +82,7 @@ function App() {
   const [lastEntryId, setLastEntryId] = uSA(null);
   const [assignment, setAssignment] = uSA(null);         // rutina pendent assignada per la professora
   const [showTracking, setShowTracking] = uSA(false);
+  const [showInstall, setShowInstall] = uSA(false);
   const activeAssignment = uRA(null);
   const stats = uMA(() => window.EBBackend ? window.EBBackend.practiceStats(practiceLog) : { streak: 0, total: 0, minutes: 0, thisWeek: 0 }, [practiceLog]);
   const role = isProd ? ((account && account.role) || 'student') : (tweaks.role || 'student');
@@ -299,6 +300,7 @@ function App() {
             assignment={assignment}
             onStartAssignment={startAssignment}
             onOpenTracking={() => setShowTracking(true)}
+            onOpenInstall={() => setShowInstall(true)}
             onOpenBreath={(m) => setStage(m === 'meditate' ? 'meditate' : 'breath')}
             lastPoseIds={(practiceLog.slice().reverse().find(x => x.pose_ids && x.pose_ids.length) || {}).pose_ids || null}
             onOpenPose={(p) => setPoseDetail(p)}
@@ -314,6 +316,7 @@ function App() {
           {poseDetail && <PoseDetail t={t} lang={lang} asana={poseDetail} role={role} onClose={() => setPoseDetail(null)} illustrationStyle={tweaks.illustrationStyle}/>}
           {showStudents && role === 'teacher' && <StudentsPanel lang={lang} onClose={() => setShowStudents(false)}/>}
           {showTracking && role === 'teacher' && <TrackingPanel lang={lang} onClose={() => setShowTracking(false)}/>}
+          {showInstall && <InstallGuide lang={lang} onClose={() => setShowInstall(false)}/>}
         </>
       )}
       {(stage === 'breath' || stage === 'meditate') && (
