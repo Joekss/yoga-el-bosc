@@ -6,11 +6,14 @@
     "start": "python3 -m http.server 5000",
     "map:svg": "mmdc -i ELBOSC-MAP.md -o ELBOSC-MAP.svg -w 1200 -H 800",
     "map:png": "mmdc -i ELBOSC-MAP.md -o ELBOSC-MAP.png -w 1600 -H 1000",
-    "test": "node tests/smoke.spec.js"
+    "test": "node tests/smoke.spec.js",
+    "build": "node scripts/build.js",
+    "start:dist": "python3 -m http.server 5001 --directory dist"
   },
   "author": "Joekss",
   "license": "MIT",
   "devDependencies": {
-    "@mermaid-js/mermaid-cli": "^10.0.0"
+    "@mermaid-js/mermaid-cli": "^10.0.0",
+    "esbuild": "^0.24.0"
   }
 }

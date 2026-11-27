@@ -500,11 +500,11 @@ const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle }) => {
     <div style={{ position: 'absolute', inset: 0, background: 'var(--paper)', zIndex: 30, display:'flex', flexDirection:'column', animation: 'ybFadeUp .35s ease' }}>
       <div className="yb-scroll" style={{ flex: 1, overflowY: 'auto' }}>
         <div style={{ padding: '50px 16px 20px', display:'flex', justifyContent:'space-between' }}>
-          <button onClick={onClose} style={{ background:'var(--cream)', border:'none', borderRadius:'50%', width:40, height:40, cursor:'pointer' }}>
+          <button aria-label={({ca:'Tornar',es:'Volver',en:'Back'})[lang]} onClick={onClose} style={{ background:'var(--cream)', border:'none', borderRadius:'50%', width:40, height:40, cursor:'pointer' }}>
             <Icon name="back" size={18}/>
           </button>
           <div style={{ display:'flex', gap: 8 }}>
-            <button style={{ background:'var(--cream)', border:'none', borderRadius:'50%', width:40, height:40, cursor:'pointer' }}>
+            <button aria-label={({ca:'Preferida',es:'Favorita',en:'Favourite'})[lang]} style={{ background:'var(--cream)', border:'none', borderRadius:'50%', width:40, height:40, cursor:'pointer' }}>
               <Icon name="heart" size={18} color="var(--ink-soft)"/>
             </button>
           </div>
@@ -717,7 +717,7 @@ const Calendar = ({ t, lang, profile }) => {
                   placeholder={{ca:'Escriu la nota del dia…', es:'Escribe la nota del día…', en:'Write the day note…'}[lang]}
                   rows={3}
                   style={{ flex:1, border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'10px 12px', fontFamily:'var(--serif)', fontSize:15, background:'var(--cream)', color:'var(--ink)', outline:'none', resize:'none', lineHeight:1.4 }}/>
-                <button onClick={addNote} disabled={!draftText.trim()}
+                <button aria-label={({ca:'Afegir',es:'Añadir',en:'Add'})[lang]} onClick={addNote} disabled={!draftText.trim()}
                   style={{ background:'var(--accent)', border:'none', borderRadius:12, width:44, alignSelf:'stretch', display:'flex', alignItems:'center', justifyContent:'center', cursor: draftText.trim()?'pointer':'default', opacity: draftText.trim()?1:0.5, flexShrink:0 }}>
                   <Icon name="plus" size={20} color="var(--cream)"/>
                 </button>

@@ -18,7 +18,7 @@ jobs:
         env:
           PUPPETEER_SKIP_DOWNLOAD: "1"
         run: |
-          npm install --no-save --no-package-lock --omit=dev playwright@1.48.2
+          npm install --no-save --no-package-lock --omit=dev playwright@1.48.2 esbuild@0.24.0
           npx playwright install --with-deps chromium
       - name: Comprova la sintaxi del service worker
         run: node --check sw.js
@@ -27,3 +27,9 @@ jobs:
           python3 -m http.server 5000 &
           until curl -s localhost:5000 > /dev/null; do sleep 1; done
           node tests/smoke.spec.js
+      - name: Versió optimitzada (dist/) i proves contra ella
+        run: |
+          node scripts/build.js
+          python3 -m http.server 5001 --directory dist &
+          until curl -s localhost:5001 > /dev/null; do sleep 1; done
+          BASE=http://localhost:5001/ node tests/smoke.spec.js

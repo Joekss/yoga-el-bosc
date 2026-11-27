@@ -334,7 +334,7 @@ const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
       const hasUrl = !!msg.body?.url;
       return (
         <div style={{ display:'flex', alignItems:'center', gap: 10, minWidth: 180 }}>
-          <button onClick={toggleAudio} disabled={!hasUrl}
+          <button aria-label={audioPlaying ? ({ca:'Pausa',es:'Pausa',en:'Pause'}[lang]) : ({ca:'Reproduir àudio',es:'Reproducir audio',en:'Play audio'}[lang])} onClick={toggleAudio} disabled={!hasUrl}
             style={{ width: 32, height: 32, borderRadius:'50%', border:'none', background: mine ? 'var(--cream)':'var(--accent)', color: mine ? 'var(--accent)':'var(--cream)', cursor: hasUrl ? 'pointer' : 'default', opacity: hasUrl ? 1 : 0.5, display:'flex', alignItems:'center', justifyContent:'center' }}>
             <Icon name={audioPlaying ? 'pause' : 'play'} size={14} color={mine ? 'var(--accent)':'var(--cream)'}/>
           </button>
@@ -680,7 +680,7 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
             <button onClick={()=>setRecording(false)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'var(--ink-soft)', padding: 4 }}>
               <Icon name="close" size={16}/>
             </button>
-            <button onClick={handleRecordingEnd} style={{ width: 36, height: 36, borderRadius:'50%', background:'var(--accent)', border:'none', cursor:'pointer', color:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <button aria-label={({ca:'Enviar',es:'Enviar',en:'Send'})[lang]} onClick={handleRecordingEnd} style={{ width: 36, height: 36, borderRadius:'50%', background:'var(--accent)', border:'none', cursor:'pointer', color:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center' }}>
               <Icon name="send" size={16} color="var(--cream)"/>
             </button>
           </div>
@@ -903,7 +903,7 @@ const ConversationView = ({ t, lang, asanas, role, student, messages, onSend, on
         borderBottom:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)',
       }}>
         {!isStudent && onBack && (
-          <button onClick={onBack} style={{ background:'transparent', border:'none', cursor:'pointer', padding: 6 }}>
+          <button aria-label={({ca:'Tornar',es:'Volver',en:'Back'})[lang]} onClick={onBack} style={{ background:'transparent', border:'none', cursor:'pointer', padding: 6 }}>
             <Icon name="back" size={20} color="var(--ink)"/>
           </button>
         )}
@@ -924,7 +924,7 @@ const ConversationView = ({ t, lang, asanas, role, student, messages, onSend, on
           </div>
         </div>
         {!isStudent && (
-          <button onClick={onOpenContext} style={{ background:'var(--cream)', border:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)',
+          <button aria-label={t.context} onClick={onOpenContext} style={{ background:'var(--cream)', border:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)',
                   borderRadius: '50%', width: 36, height: 36, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
             <Icon name="user" size={16} color="var(--ink-soft)"/>
           </button>
@@ -1003,7 +1003,7 @@ const ContextDrawer = ({ open, onClose, t, lang, student, privateNotes, onAddNot
               {{ ca:'Nivell', es:'Nivel', en:'Level' }[lang]} · {student.level}
             </div>
           </div>
-          <button onClick={onClose} style={{ background:'transparent', border:'none', cursor:'pointer', padding: 6 }}>
+          <button aria-label={t.cancel} onClick={onClose} style={{ background:'transparent', border:'none', cursor:'pointer', padding: 6 }}>
             <Icon name="close" size={20} color="var(--ink-soft)"/>
           </button>
         </div>

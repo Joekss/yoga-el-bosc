@@ -72,9 +72,26 @@
 <script type="text/babel" src="app.jsx"></script>
 
 <script>
+// Service worker + avís quan hi ha una versió nova
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  var hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    if (!hadController) { hadController = true; return; }   // primera instal·lació: res a avisar
+    if (document.querySelector('.eb-update')) return;
+    var lang = 'ca'; try { lang = localStorage.getItem('elbosc-lang') || 'ca'; } catch (e) {}
+    var T = { ca: ['Hi ha una versió nova', 'Actualitzar'], es: ['Hay una versión nueva', 'Actualizar'], en: ['A new version is ready', 'Update'] }[lang] || ['Hi ha una versió nova', 'Actualitzar'];
+    var bar = document.createElement('div');
+    bar.className = 'eb-update'; bar.setAttribute('role', 'status');
+    var span = document.createElement('span'); span.textContent = T[0];
+    var btn = document.createElement('button'); btn.textContent = T[1];
+    btn.onclick = function () { location.reload(); };
+    bar.appendChild(span); bar.appendChild(btn); document.body.appendChild(bar);
+  });
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      // Comprova si hi ha versió nova en tornar a obrir l'app
+      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') reg.update().catch(function () {}); });
+    }).catch(function () {});
   });
 }
 </script>
