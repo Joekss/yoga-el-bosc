@@ -6,7 +6,7 @@
    ──────────────────────────────────────────────────────────── */
 
 :root {
-  --line: color-mix(in srgb, var(--ink) 8%, transparent);
+  --line: rgba(128,120,100,.2);   /* navegadors antics; a sota, la versió amb color-mix */
   --glow: var(--accent);
   --ease-out: cubic-bezier(.2, .8, .2, 1);
   --ease-spring: cubic-bezier(.34, 1.4, .5, 1);
@@ -55,7 +55,7 @@
   position: absolute; left: 0; right: 0; bottom: 0; z-index: 20;
   display: flex; justify-content: space-around; align-items: stretch;
   padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
-  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  background: var(--paper);
   backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--line);
 }
@@ -67,7 +67,7 @@
 }
 .eb-tab-pill {
   position: absolute; top: 5px; width: 54px; height: 30px; border-radius: 15px;
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  background: var(--paper-2);
   transform: scale(0.4); opacity: 0;
   transition: transform .35s var(--ease-spring), opacity .2s;
 }
@@ -95,15 +95,15 @@
   font-family: var(--sans); font-size: 15px; color: var(--ink);
 }
 .eb-group > * + * { border-top: 1px solid var(--line); }
-.eb-row:active { background: color-mix(in srgb, var(--ink) 5%, transparent); transform: none !important; }
+.eb-row:active { background: var(--paper-2); transform: none !important; }
 .eb-row-icon {
   width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
+  background: var(--paper-2); color: var(--accent);
 }
-.eb-row-icon.amber { background: color-mix(in srgb, var(--leaf) 16%, transparent); color: var(--leaf-deep); }
+.eb-row-icon.amber { background: var(--paper-2); color: var(--leaf-deep); }
 .eb-row-icon.ink { background: var(--ink); color: var(--cream); }
-.eb-row-icon.danger { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent-deep); }
+.eb-row-icon.danger { background: var(--paper-2); color: var(--accent-deep); }
 .eb-row-body { flex: 1; min-width: 0; }
 .eb-row-sub { display: block; font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; line-height: 1.35; }
 .eb-row-end { color: var(--ink-soft); flex-shrink: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; }
@@ -114,7 +114,7 @@
 .eb-switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
 .eb-switch span {
   position: absolute; inset: 0; border-radius: 15px;
-  background: color-mix(in srgb, var(--ink) 18%, transparent); transition: background .25s;
+  background: var(--sand); transition: background .25s;
 }
 .eb-switch span::after {
   content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
@@ -126,13 +126,26 @@
 .eb-switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Segments (tema, mida del text) */
-.eb-seg { display: flex; gap: 6px; padding: 5px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.eb-seg { display: flex; gap: 6px; padding: 5px; border-radius: var(--r-pill); background: var(--paper-2); }
 .eb-seg button {
   flex: 1; min-height: 42px; border: none; border-radius: var(--r-pill); background: transparent; cursor: pointer;
   font-family: var(--sans); font-size: 14px; color: var(--ink-soft);
   display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 .eb-seg button[aria-pressed="true"] { background: var(--cream); color: var(--ink); box-shadow: var(--shadow-1); }
+
+/* Colors translúcids on el navegador ho entén (alguns mòbils porten navegadors antics
+   que no coneixen color-mix: sense això la barra inferior quedava transparent) */
+@supports (color: color-mix(in srgb, red 50%, blue)) {
+  :root { --line: color-mix(in srgb, var(--ink) 8%, transparent); }
+  .eb-tabbar { background: color-mix(in srgb, var(--paper) 92%, transparent); }
+  .eb-tab-pill { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .eb-row:active { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+  .eb-row-icon, .eb-row-icon.danger { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+  .eb-row-icon.amber { background: color-mix(in srgb, var(--leaf) 16%, transparent); }
+  .eb-switch span { background: color-mix(in srgb, var(--ink) 18%, transparent); }
+  .eb-seg { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .eb-screen, .eb-sheet, .eb-backdrop { animation: none !important; }

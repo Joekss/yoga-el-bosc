@@ -129,6 +129,13 @@ if ('serviceWorker' in navigator) {
     var btn = document.createElement('button'); btn.textContent = T[1];
     btn.onclick = function () { location.reload(); };
     bar.appendChild(span); bar.appendChild(btn); document.body.appendChild(bar);
+    // Al mòbil l'app instal·lada pot quedar oberta en segon pla dies sencers amb la versió vella.
+    // Si hi ha versió nova i l'app torna després de 10 minuts fora, es recarrega sola.
+    var hiddenAt = 0;
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+      if (hiddenAt && Date.now() - hiddenAt > 10 * 60 * 1000) location.reload();
+    });
   });
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('sw.js').then(function (reg) {
