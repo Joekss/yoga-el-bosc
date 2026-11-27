@@ -1,0 +1,29 @@
+name: Proves
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instal·la Playwright
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "1"
+        run: |
+          npm install --no-save --no-package-lock --omit=dev playwright@1.48.2
+          npx playwright install --with-deps chromium
+      - name: Comprova la sintaxi del service worker
+        run: node --check sw.js
+      - name: Proves de fum (Supabase simulat)
+        run: |
+          python3 -m http.server 5000 &
+          until curl -s localhost:5000 > /dev/null; do sleep 1; done
+          node tests/smoke.spec.js
