@@ -333,6 +333,29 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     await q.context().close();
   }
 
+  console.log('14. Avís d\'errors: s\'envia sense dades personals (i mai en local)');
+  {
+    const sent = [];
+    const mk = async (url) => {
+      const ctx = await browser.newContext({ serviceWorkers: 'block' });
+      await ctx.route('**/vendor/supabase.js', r => r.fulfill({ contentType: 'application/javascript', body: FAKE }));
+      await ctx.route('**/*sentry.io/**', r => { sent.push(r.request().postData() || ''); r.fulfill({ status: 200, body: '{}' }); });
+      const p = await ctx.newPage();
+      await p.goto(url);
+      await waitText(p, 'Entra a El Bosc');
+      await p.evaluate(() => setTimeout(() => { throw new Error('Fallada per a anna@example.com a ?inv=abc123'); }, 0));
+      await p.waitForTimeout(1500);
+      await ctx.close();
+    };
+    await mk(BASE);
+    ok(sent.length === 0, 'en local no envia res');
+    const other = BASE.replace('localhost', '127.0.0.2');
+    await mk(other);
+    const all = sent.join('\n');
+    ok(sent.length > 0, 'a la web publicada sí que envia l\'error');
+    ok(!all.includes('anna@example.com') && !all.includes('abc123'), 'sense correus ni paràmetres de l\'adreça');
+  }
+
   await browser.close();
   console.log(failures ? `\n${failures} prova(es) fallida(es)` : '\nTot correcte');
   process.exit(failures ? 1 : 0);

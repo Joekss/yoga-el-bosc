@@ -1,4 +1,4 @@
-const CACHE = 'elbosc-v27';
+const CACHE = 'elbosc-v28';
 
 const SHELL = [
   './',
@@ -30,6 +30,7 @@ const SHELL = [
   './vendor/react-dom.production.min.js',
   './vendor/babel.min.js',
   './vendor/supabase.js',
+  './vendor/sentry.min.js',
   './vendor/fonts/fonts-local.css',
   './vendor/fonts/00245b9a1c71f4b4.woff2',
   './vendor/fonts/0090d91bf7c2283f.woff2',

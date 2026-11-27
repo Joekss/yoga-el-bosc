@@ -43,6 +43,43 @@
 
 <script>window.IS_PROD = true;</script>
 
+<!-- Avís d'errors (Sentry). Només a la web publicada, sense dades personals. -->
+<script src="vendor/sentry.min.js"></script>
+<script>
+(function () {
+  var host = location.hostname;
+  if (!window.Sentry || host === 'localhost' || host === '127.0.0.1' || host === '') return;
+  try {
+    // Treu correus i paràmetres de l'adreça (p. ex. ?inv=) de qualsevol text
+    var clean = function (str) {
+      return typeof str !== 'string' ? str : str
+        .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, '[correu]')
+        .replace(/([?&#])[^\s]*/g, '$1[…]');
+    };
+    Sentry.init({
+      dsn: 'https://df615ca45e71ad17a44d5a6d14b25039@o4511413553922048.ingest.de.sentry.io/4512503694098512',
+      environment: host.indexOf('github.io') !== -1 ? 'production' : host,
+      sendDefaultPii: false,
+      tracesSampleRate: 0,
+      integrations: function (defaults) {
+        // Sense registre de consola ni de clics: hi podria haver textos del xat o del diari
+        return defaults.filter(function (i) { return i.name !== 'Breadcrumbs'; });
+      },
+      beforeSend: function (event) {
+        delete event.user;
+        if (event.request) { event.request.url = clean(event.request.url); delete event.request.cookies; delete event.request.headers; delete event.request.query_string; }
+        if (event.message) event.message = clean(event.message);
+        (event.exception && event.exception.values || []).forEach(function (v) { v.value = clean(v.value); });
+        return event;
+      },
+    });
+    window.EBReportError = function (error, info) {
+      Sentry.captureException(error, { extra: { componentStack: info && info.componentStack ? String(info.componentStack).slice(0, 2000) : undefined } });
+    };
+  } catch (e) {}
+})();
+</script>
+
 <!-- Supabase (backend) — client global a window.sb -->
 <script src="vendor/supabase.js"></script>
 <script>

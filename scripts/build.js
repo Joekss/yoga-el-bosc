@@ -19,7 +19,7 @@ const DIST = path.join(ROOT, 'dist');
 
 const STATIC = ['manifest.webmanifest', 'icon.svg', 'privacitat.html', 'styles', 'icons',
   'vendor/react.production.min.js', 'vendor/react-dom.production.min.js',
-  'vendor/supabase.js', 'vendor/591.supabase.js', 'vendor/fonts'];
+  'vendor/supabase.js', 'vendor/591.supabase.js', 'vendor/sentry.min.js', 'vendor/fonts'];
 
 const copy = (rel) => {
   const src = path.join(ROOT, rel), dst = path.join(DIST, rel);
