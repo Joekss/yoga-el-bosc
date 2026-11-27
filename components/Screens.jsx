@@ -12,7 +12,7 @@ const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, adminPin, onChangePin, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -23,8 +23,6 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
 
   const [avatar, setAvatar] = uS(() => { try { return localStorage.getItem('elbosc-avatar') || null; } catch(e){ return null; } });
   const [showProfile, setShowProfile] = uS(false);
-  const [pinDraft, setPinDraft] = uS('');
-  const [pinMsg, setPinMsg] = uS(null);
   const [showPoseMgr, setShowPoseMgr] = uS(false);
   const [np, setNp] = uS({ name:'', sanskrit:'', level:'principiant', family:'peu' });
   const _slug = (s) => (s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'postura';
@@ -81,11 +79,6 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
     namePh: {ca:'El teu nom', es:'Tu nombre', en:'Your name'}[lang],
     theme: {ca:'Tema', es:'Tema', en:'Theme'}[lang],
     teacherZone: {ca:'Zona professora', es:'Zona profesora', en:'Teacher zone'}[lang],
-    pinPh: {ca:'PIN nou (4–8, lletres o números)', es:'PIN nuevo (4–8, letras o números)', en:'New PIN (4–8, letters or numbers)'}[lang],
-    pinCurrent: {ca:'PIN actual', es:'PIN actual', en:'Current PIN'}[lang],
-    pinSave: {ca:'Desar', es:'Guardar', en:'Save'}[lang],
-    pinOk: {ca:'PIN actualitzat.', es:'PIN actualizado.', en:'PIN updated.'}[lang],
-    pinErr: {ca:'Ha de tenir 4–8 lletres o números.', es:'Debe tener 4–8 letras o números.', en:'Must be 4–8 letters or numbers.'}[lang],
   };
   const themeLabelStyle = { fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', display:'block' };
   const THEMES = [
@@ -93,12 +86,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
     { id:'sage',  label:{ca:'Sàlvia',es:'Salvia',en:'Sage'}[lang], color:'#6B8259' },
     { id:'ocean', label:{ca:'Oceà',es:'Océano',en:'Ocean'}[lang], color:'#4A7B8C' },
   ];
-  const pinValid = /^[A-Za-z0-9]{4,8}$/.test(pinDraft);
-  const savePin = () => {
-    if (!pinValid) { setPinMsg({ type:'err', text: PT.pinErr }); return; }
-    onChangePin && onChangePin(pinDraft);
-    setPinDraft(''); setPinMsg({ type:'ok', text: PT.pinOk });
-  };
+
 
   return (
     <>
@@ -270,20 +258,11 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
           {role === 'teacher' && (
             <div style={{ marginTop:16 }}>
               <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'6px 0 14px' }}/>
-              <label style={themeLabelStyle}>{PT.teacherZone} · PIN</label>
-              <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)', margin:'8px 0 10px' }}>
-                {PT.pinCurrent}: <span style={{ fontFamily:'var(--serif)', fontSize:15, letterSpacing:'0.2em', color:'var(--ink)' }}>{adminPin}</span>
-              </div>
-              <div style={{ display:'flex', gap:8, alignItems:'stretch' }}>
-                <input type="text" value={pinDraft} maxLength={8} placeholder={PT.pinPh}
-                  autoCapitalize="none" autoCorrect="off" spellCheck="false"
-                  onChange={e => { setPinDraft(e.target.value.replace(/[^A-Za-z0-9]/g,'').slice(0,8)); setPinMsg(null); }}
-                  onKeyDown={e => e.key === 'Enter' && savePin()}
-                  style={{ flex:1, minWidth:0, border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'11px 12px', fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', color:'var(--ink)', outline:'none', boxSizing:'border-box' }}/>
-                <button onClick={savePin} disabled={!pinValid}
-                  style={{ flexShrink:0, padding:'0 16px', borderRadius:12, border:'none', background:'var(--accent)', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor: pinValid?'pointer':'default', opacity: pinValid?1:0.5 }}>{PT.pinSave}</button>
-              </div>
-              {pinMsg && <div style={{ fontFamily:'var(--sans)', fontSize:12, color: pinMsg.type==='ok' ? 'var(--leaf-deep)' : 'var(--accent)', marginTop:8 }}>{pinMsg.text}</div>}
+              <label style={themeLabelStyle}>{PT.teacherZone}</label>
+              <button onClick={() => { setShowProfile(false); onOpenStudents && onOpenStudents(); }}
+                style={{ width:'100%', marginTop:10, padding:'12px', borderRadius:12, background:'var(--accent)', border:'none', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
+                {{ca:'Alumnes i accés',es:'Alumnas y acceso',en:'Students and access'}[lang]}
+              </button>
               <button onClick={() => { setShowProfile(false); setShowPoseMgr(true); }}
                 style={{ width:'100%', marginTop:14, padding:'12px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
                 {{ca:'Gestionar postures',es:'Gestionar posturas',en:'Manage poses'}[lang]}
@@ -293,6 +272,13 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
                 {{ca:'Crear rutines',es:'Crear rutinas',en:'Create routines'}[lang]}
               </button>
             </div>
+          )}
+
+          {role !== 'teacher' && onRedoQuiz && (
+            <button onClick={() => { setShowProfile(false); onRedoQuiz(); }}
+              style={{ width:'100%', marginTop:16, padding:'12px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
+              {{ca:'Actualitzar el meu qüestionari',es:'Actualizar mi cuestionario',en:'Update my questionnaire'}[lang]}
+            </button>
           )}
 
           <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
@@ -932,67 +918,4 @@ const TabBar = ({ active, setActive, t, role }) => {
   );
 };
 
-// ── Config (professora): canvi de PIN d'accés ───────────────
-const ConfigScreen = ({ t, lang, currentPin, onChangePin }) => {
-  const [p1, setP1] = uS('');
-  const [p2, setP2] = uS('');
-  const [msg, setMsg] = uS(null); // { type:'ok'|'err', text }
-  const valid = /^\d{4}$/.test(p1) && /^\d{4}$/.test(p2);
-  const L = {
-    kicker: {ca:'PROFESSORA', es:'PROFESORA', en:'TEACHER'}[lang],
-    title:  {ca:'Configuració', es:'Configuración', en:'Settings'}[lang],
-    sec:    {ca:'PIN d\'accés', es:'PIN de acceso', en:'Access PIN'}[lang],
-    desc:   {ca:'Canvia el codi que et demana l\'app per entrar al panell de professora.', es:'Cambia el código que te pide la app para entrar al panel de profesora.', en:'Change the code the app asks to enter the teacher panel.'}[lang],
-    cur:    {ca:'PIN actual', es:'PIN actual', en:'Current PIN'}[lang],
-    l1:     {ca:'PIN nou (4 xifres)', es:'PIN nuevo (4 cifras)', en:'New PIN (4 digits)'}[lang],
-    l2:     {ca:'Repeteix el PIN nou', es:'Repite el PIN nuevo', en:'Repeat new PIN'}[lang],
-    save:   {ca:'Desar PIN', es:'Guardar PIN', en:'Save PIN'}[lang],
-  };
-  const save = () => {
-    if (!/^\d{4}$/.test(p1)) { setMsg({ type:'err', text:{ca:'El PIN ha de tenir 4 xifres.', es:'El PIN debe tener 4 cifras.', en:'PIN must be 4 digits.'}[lang] }); return; }
-    if (p1 !== p2) { setMsg({ type:'err', text:{ca:'Els PINs no coincideixen.', es:'Los PIN no coinciden.', en:'PINs do not match.'}[lang] }); return; }
-    onChangePin && onChangePin(p1);
-    setP1(''); setP2('');
-    setMsg({ type:'ok', text:{ca:'PIN actualitzat correctament.', es:'PIN actualizado correctamente.', en:'PIN updated successfully.'}[lang] });
-  };
-  const inputStyle = { width:'100%', border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:14, padding:'12px 16px', fontFamily:'var(--serif)', fontSize:20, background:'var(--cream)', color:'var(--ink)', outline:'none', letterSpacing:'0.35em', textAlign:'center', boxSizing:'border-box' };
-  const labelStyle = { fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', display:'block', marginBottom:8 };
-  return (
-    <div className="yb-scroll" style={{ height:'100%', overflowY:'auto', background:'var(--paper)' }}>
-      <div style={{ padding:'60px 24px 8px' }}>
-        <div style={{ fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.25em', color:'var(--accent)', marginBottom:4 }}>{L.kicker}</div>
-        <h1 style={{ fontSize:36, fontStyle:'italic', color:'var(--ink)' }}>{L.title}</h1>
-      </div>
-      <div style={{ padding:'16px 24px 100px' }}>
-        <div className="yb-card">
-          <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:6 }}>
-            <Icon name="lock" size={18} color="var(--accent)"/>
-            <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:18, color:'var(--ink)' }}>{L.sec}</div>
-          </div>
-          <div style={{ fontFamily:'var(--sans)', fontSize:13, color:'var(--ink-soft)', marginBottom:18, lineHeight:1.5 }}>{L.desc}</div>
-
-          <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)', marginBottom:18 }}>
-            {L.cur}: <span style={{ fontFamily:'var(--serif)', fontSize:16, letterSpacing:'0.25em', color:'var(--ink)' }}>{currentPin}</span>
-          </div>
-
-          <label style={labelStyle}>{L.l1}</label>
-          <input type="tel" inputMode="numeric" maxLength={4} value={p1}
-            onChange={e => { setP1(e.target.value.replace(/\D/g,'').slice(0,4)); setMsg(null); }}
-            placeholder="————" style={{ ...inputStyle, marginBottom:16 }}/>
-
-          <label style={labelStyle}>{L.l2}</label>
-          <input type="tel" inputMode="numeric" maxLength={4} value={p2}
-            onChange={e => { setP2(e.target.value.replace(/\D/g,'').slice(0,4)); setMsg(null); }}
-            onKeyDown={e => e.key === 'Enter' && save()}
-            placeholder="————" style={{ ...inputStyle, marginBottom:16 }}/>
-
-          {msg && <div style={{ fontFamily:'var(--sans)', fontSize:13, color: msg.type==='ok' ? 'var(--leaf-deep)' : 'var(--accent)', marginBottom:12 }}>{msg.text}</div>}
-
-          <button onClick={save} disabled={!valid} className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: valid?1:0.55 }}>{L.save}</button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-Object.assign(window, { Dashboard, Library, PoseDetail, Calendar, Journal, Progress, Messages, TabBar, ConfigScreen });
+Object.assign(window, { Dashboard, Library, PoseDetail, Calendar, Journal, Progress, Messages, TabBar });

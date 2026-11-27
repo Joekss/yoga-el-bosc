@@ -1,8 +1,7 @@
-const CACHE = 'elbosc-v24';
+const CACHE = 'elbosc-v25';
 
 const SHELL = [
   './',
-  './YOGA El Bosc.html',
   './manifest.webmanifest',
   './icon.svg',
   './styles/tokens.css',
@@ -11,13 +10,13 @@ const SHELL = [
   './styles/shell.css',
   './components/Auth.jsx',
   './components/Chat.jsx',
-  './ios-frame.jsx',
   './tweaks-panel.jsx',
   './components/Icons.jsx',
   './components/Onboarding.jsx',
   './components/PoseIllustrations.jsx',
   './components/Practice.jsx',
   './components/Screens.jsx',
+  './data/backend.jsx',
   './data/asanas.jsx',
   './data/i18n.jsx',
   './data/sequencer.jsx',
@@ -28,6 +27,7 @@ const SHELL = [
   './vendor/react.production.min.js',
   './vendor/react-dom.production.min.js',
   './vendor/babel.min.js',
+  './vendor/supabase.js',
   './vendor/fonts/fonts-local.css',
   './vendor/fonts/00245b9a1c71f4b4.woff2',
   './vendor/fonts/0090d91bf7c2283f.woff2',
@@ -129,23 +129,31 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const req = e.request;
-  // Navegació HTML: sempre des de xarxa (garanteix el codi més nou).
-  // Això és crític per al processament del ?inv= i per a les actualitzacions.
+  // Només gestionem GET del mateix origen. Supabase i altres serveis van
+  // sempre directes a la xarxa (mai a la caché).
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+
+  // Navegació HTML: xarxa primer; sense connexió, la còpia desada.
   if (req.mode === 'navigate') {
     e.respondWith(
       fetch(req).then(res => {
-        // Actualitza la caché amb la versió nova
-        caches.open(CACHE).then(c => c.put(req, res.clone()));
+        const copy = res.clone();
+        caches.open(CACHE).then(c => c.put('./index.html', copy));
         return res;
-      }).catch(() =>
-        // Sense xarxa: serveix des de caché
-        caches.match(req).then(c => c || caches.match('./index.html'))
-      )
+      }).catch(() => caches.match('./index.html'))
     );
     return;
   }
-  // Recursos estàtics (JS, CSS, fonts, imatges): cache-first
+
+  // Recursos: resposta immediata des de la caché i actualització en segon
+  // pla (si es publica un canvi sense pujar CACHE, arriba a la visita següent).
   e.respondWith(
-    caches.match(req).then(cached => cached || fetch(req))
+    caches.open(CACHE).then(c => c.match(req, { ignoreSearch: true }).then(cached => {
+      const net = fetch(req).then(res => {
+        if (res && res.ok) c.put(req, res.clone());
+        return res;
+      }).catch(() => cached);
+      return cached || net;
+    }))
   );
 });

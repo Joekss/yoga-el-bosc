@@ -1,693 +1,484 @@
 // components/Auth.jsx
 // ─────────────────────────────────────────────────────────────────────────────
-// PAQUET INDEPENDENT — Sistema d'accés + Panell d'administració
+// Accés i gestió d'alumnes.
 //
-// Fluxos:
-//   1. Alumna/Professora:  email → [codi 6 dígits simulat] → app
-//   2. Professora (admin): trigger ocult (logo ×7) → PIN 4 dígits → panell admin
+//   <AuthGate lang invite />   Correu → Supabase envia enllaç + codi de 6 dígits.
+//                              Només s'entra amb el correu verificat.
+//   <StudentsPanel lang onClose />  Llista d'alumnes (només professora; la RLS
+//                              de la taula members ho garanteix al servidor).
+//   <AccessScreen kind lang onLogout onRetry />  Pantalles d'espera, accés
+//                              denegat i error.
 //
-// Punts d'entrada:
-//   <AuthGate lang onSuccess(email, role) />
-//
-// Integració real (swap-in):
-//   · Resend:      POST https://api.resend.com/emails  (RESEND_API_KEY)
-//   · EmailJS:     emailjs.send(serviceId, templateId, { to_email, code })
-//   · Supabase:    supabase.auth.signInWithOtp({ email })
-//
-// PIN per defecte: 1234 (configurable via prop adminPin)
-// Codi demo:       123456 (accepta qualsevol codi de 6 dígits en mode prototip)
+// El rol (alumna/professora) es decideix al servidor: veure
+// supabase/migrations/001_acces_i_rols.sql
 // ─────────────────────────────────────────────────────────────────────────────
 
-const { useState: uSAuth, useEffect: uEAuth, useRef: uRAuth, useCallback: uCAuth } = React;
+const { useState: uSAuth, useEffect: uEAuth, useRef: uRAuth } = React;
 
-// ── Traduccions ──────────────────────────────────────────────────────────────
 const AUTH_T = {
   ca: {
     headline: 'Entra a El Bosc',
-    sub: 'Introdueix el teu correu per continuar.',
+    sub: 'Introdueix el teu correu i t\'enviarem un accés segur.',
     emailLabel: 'Correu electrònic',
     emailPh: 'el.teu@correu.cat',
-    sendBtn: 'Continuar',
-    sending: 'Verificant…',
-    codeTitle: 'Benvinguda!',
-    codeSub: 'El teu codi d\'accés personal és:',
-    saveCode: 'Guarda aquest codi per a accessos futurs',
-    codeLabel: 'Codi d\'accés',
-    codePh: '— — — — — —',
+    sendBtn: 'Enviar accés',
+    sending: 'Enviant…',
+    sentTitle: 'Mira el teu correu',
+    sentSub: 'Hem enviat un missatge a {email}. Obre l\'enllaç o escriu aquí el codi de 6 xifres.',
+    codeLabel: 'Codi del correu',
     verify: 'Entrar',
-    verifying: 'Verificant…',
-    wrongCode: 'Codi incorrecte. Torna a intentar-ho.',
-    changeEmail: '← Canviar correu',
-    demoAccess: 'Accés ràpid (demo)',
-    adminTitle: 'Panell d\'administració',
-    adminSub: 'Gestió d\'alumnes · El Bosc',
-    pinTitle: 'Accés professora',
-    pinSub: 'Introdueix el PIN d\'administradora',
-    pinWrong: 'PIN incorrecte',
-    pinForgot: 'PIN oblidat? Contacta el suport.',
-    rosterTitle: 'Alumnes',
+    verifying: 'Comprovant…',
+    resend: 'Tornar a enviar',
+    resent: 'Enviat de nou.',
+    changeEmail: 'Canviar el correu',
+    hint: 'No cal contrasenya. Només tu pots obrir el correu.',
+    errOffline: 'No hi ha connexió. Torna-ho a provar quan en tinguis.',
+    errSend: 'No s\'ha pogut enviar el correu. Espera un minut i torna-ho a provar.',
+    errCode: 'Codi incorrecte o caducat. Revisa\'l o demana\'n un de nou.',
+    errNoBackend: 'No s\'ha pogut carregar el servei d\'accés. Recarrega la pàgina.',
+    loading: 'Obrint El Bosc…',
+    blockedTitle: 'Accés no disponible',
+    revokedSub: 'El teu accés està en pausa. Si creus que és un error, parla amb la Cèlia.',
+    missingSub: 'Aquest correu no és a la llista d\'alumnes. Demana a la Cèlia que t\'hi afegeixi.',
+    errorTitle: 'No s\'ha pogut connectar',
+    errorSub: 'Comprova la connexió i torna-ho a provar.',
+    retry: 'Tornar-ho a provar',
+    logout: 'Sortir',
+    // Alumnes
+    panelTitle: 'Alumnes',
+    panelSub: 'Gestió d\'accés · El Bosc',
     addStudent: 'Afegir alumna',
-    namePh: 'Nom complet',
+    namePh: 'Nom',
     emailPh2: 'correu@exemple.com',
-    levelLabel: 'Nivell',
-    invite: 'Convidar',
+    invite: 'Afegir',
     cancel: 'Cancel·lar',
-    statusActive: 'Activa',
-    statusInvited: 'Convidada',
-    statusRevoked: 'Revocada',
-    revoke: 'Revocar',
-    reinvite: 'Reenviar',
-    restore: 'Restaurar',
-    delete: 'Eliminar',
-    invitedAt: 'Convidada el',
-    lastAccess: 'Darrer accés',
-    enterApp: 'Entrar a l\'app',
-    closeAdmin: 'Tancar',
-    logoCounts: 'Acces administradora',
-    noStudents: 'Cap alumna registrada.',
+    statusActive: 'Activa', statusInvited: 'Convidada', statusRevoked: 'En pausa',
+    revoke: 'Posar en pausa', restore: 'Reactivar', delete: 'Eliminar', confirmDelete: 'Segur? Toca de nou',
+    sendInvite: 'Enviar per WhatsApp', copyLink: 'Copiar enllaç', copied: 'Copiat',
+    invitedAt: 'Afegida el', lastAccess: 'Últim accés',
+    noStudents: 'Encara no hi ha cap alumna. Afegeix-ne una amb el botó de sota.',
     levelOpts: ['Principiant', 'Intermedi', 'Avançat'],
-    teacherEnter: 'Entrar com a professora',
-    studentEnter: 'Entrar com a alumna',
-    demoNote: 'Prototip · Sense backend real',
+    dup: 'Aquest correu ja és a la llista.',
+    loadErr: 'No s\'ha pogut carregar la llista.',
+    inviteMsg: 'El Bosc Ioga 🌿\n\nHola {name}!\nObre aquest enllaç per entrar a l\'app:\n{url}\n\nT\'arribarà un correu a {email} per confirmar que ets tu.',
   },
   es: {
     headline: 'Entra en El Bosc',
-    sub: 'Introduce tu correo para continuar.',
+    sub: 'Escribe tu correo y te enviaremos un acceso seguro.',
     emailLabel: 'Correo electrónico',
     emailPh: 'tu@correo.es',
-    sendBtn: 'Continuar',
-    sending: 'Verificando…',
-    codeTitle: '¡Bienvenida!',
-    codeSub: 'Tu código de acceso personal es:',
-    saveCode: 'Guarda este código para futuros accesos',
-    codeLabel: 'Código de acceso',
-    codePh: '— — — — — —',
+    sendBtn: 'Enviar acceso',
+    sending: 'Enviando…',
+    sentTitle: 'Mira tu correo',
+    sentSub: 'Hemos enviado un mensaje a {email}. Abre el enlace o escribe aquí el código de 6 cifras.',
+    codeLabel: 'Código del correo',
     verify: 'Entrar',
-    verifying: 'Verificando…',
-    wrongCode: 'Código incorrecto. Inténtalo de nuevo.',
-    changeEmail: '← Cambiar correo',
-    demoAccess: 'Acceso rápido (demo)',
-    adminTitle: 'Panel de administración',
-    adminSub: 'Gestión de alumnas · El Bosc',
-    pinTitle: 'Acceso profesora',
-    pinSub: 'Introduce el PIN de administradora',
-    pinWrong: 'PIN incorrecto',
-    pinForgot: '¿PIN olvidado? Contacta soporte.',
-    rosterTitle: 'Alumnas',
+    verifying: 'Comprobando…',
+    resend: 'Volver a enviar',
+    resent: 'Enviado de nuevo.',
+    changeEmail: 'Cambiar el correo',
+    hint: 'No hace falta contraseña. Solo tú puedes abrir tu correo.',
+    errOffline: 'No hay conexión. Vuelve a probar cuando tengas.',
+    errSend: 'No se ha podido enviar el correo. Espera un minuto y vuelve a probar.',
+    errCode: 'Código incorrecto o caducado. Revísalo o pide uno nuevo.',
+    errNoBackend: 'No se ha podido cargar el servicio de acceso. Recarga la página.',
+    loading: 'Abriendo El Bosc…',
+    blockedTitle: 'Acceso no disponible',
+    revokedSub: 'Tu acceso está en pausa. Si crees que es un error, habla con Cèlia.',
+    missingSub: 'Este correo no está en la lista de alumnas. Pide a Cèlia que te añada.',
+    errorTitle: 'No se ha podido conectar',
+    errorSub: 'Comprueba la conexión y vuelve a probar.',
+    retry: 'Volver a probar',
+    logout: 'Salir',
+    panelTitle: 'Alumnas',
+    panelSub: 'Gestión de acceso · El Bosc',
     addStudent: 'Añadir alumna',
-    namePh: 'Nombre completo',
+    namePh: 'Nombre',
     emailPh2: 'correo@ejemplo.com',
-    levelLabel: 'Nivel',
-    invite: 'Invitar',
+    invite: 'Añadir',
     cancel: 'Cancelar',
-    statusActive: 'Activa',
-    statusInvited: 'Invitada',
-    statusRevoked: 'Revocada',
-    revoke: 'Revocar',
-    reinvite: 'Reenviar',
-    restore: 'Restaurar',
-    delete: 'Eliminar',
-    invitedAt: 'Invitada el',
-    lastAccess: 'Último acceso',
-    enterApp: 'Entrar a la app',
-    closeAdmin: 'Cerrar',
-    logoCounts: 'Acceso administradora',
-    noStudents: 'Sin alumnas registradas.',
+    statusActive: 'Activa', statusInvited: 'Invitada', statusRevoked: 'En pausa',
+    revoke: 'Poner en pausa', restore: 'Reactivar', delete: 'Eliminar', confirmDelete: '¿Seguro? Toca otra vez',
+    sendInvite: 'Enviar por WhatsApp', copyLink: 'Copiar enlace', copied: 'Copiado',
+    invitedAt: 'Añadida el', lastAccess: 'Último acceso',
+    noStudents: 'Aún no hay alumnas. Añade una con el botón de abajo.',
     levelOpts: ['Principiante', 'Intermedio', 'Avanzado'],
-    teacherEnter: 'Entrar como profesora',
-    studentEnter: 'Entrar como alumna',
-    demoNote: 'Prototipo · Sin backend real',
+    dup: 'Este correo ya está en la lista.',
+    loadErr: 'No se ha podido cargar la lista.',
+    inviteMsg: 'El Bosc Ioga 🌿\n\n¡Hola {name}!\nAbre este enlace para entrar en la app:\n{url}\n\nTe llegará un correo a {email} para confirmar que eres tú.',
   },
   en: {
-    headline: 'Enter El Bosc',
-    sub: 'Enter your email to continue.',
-    emailLabel: 'Email address',
-    emailPh: 'your@email.com',
-    sendBtn: 'Continue',
-    sending: 'Checking…',
-    codeTitle: 'Welcome!',
-    codeSub: 'Your personal access code is:',
-    saveCode: 'Save this code for future access',
-    codeLabel: 'Access code',
-    codePh: '— — — — — —',
-    verify: 'Enter',
-    verifying: 'Verifying…',
-    wrongCode: 'Wrong code. Please try again.',
-    changeEmail: '← Change email',
-    demoAccess: 'Quick access (demo)',
-    adminTitle: 'Admin panel',
-    adminSub: 'Student management · El Bosc',
-    pinTitle: 'Teacher access',
-    pinSub: 'Enter the admin PIN',
-    pinWrong: 'Wrong PIN',
-    pinForgot: 'Forgot PIN? Contact support.',
-    rosterTitle: 'Students',
+    headline: 'Sign in to El Bosc',
+    sub: 'Enter your email and we\'ll send you a secure sign-in.',
+    emailLabel: 'Email',
+    emailPh: 'you@email.com',
+    sendBtn: 'Send sign-in',
+    sending: 'Sending…',
+    sentTitle: 'Check your email',
+    sentSub: 'We sent a message to {email}. Open the link or type the 6-digit code here.',
+    codeLabel: 'Code from the email',
+    verify: 'Sign in',
+    verifying: 'Checking…',
+    resend: 'Send again',
+    resent: 'Sent again.',
+    changeEmail: 'Use another email',
+    hint: 'No password needed. Only you can open your email.',
+    errOffline: 'You\'re offline. Try again when you\'re connected.',
+    errSend: 'The email couldn\'t be sent. Wait a minute and try again.',
+    errCode: 'Wrong or expired code. Check it or ask for a new one.',
+    errNoBackend: 'The sign-in service didn\'t load. Reload the page.',
+    loading: 'Opening El Bosc…',
+    blockedTitle: 'Access unavailable',
+    revokedSub: 'Your access is paused. If you think this is a mistake, talk to Cèlia.',
+    missingSub: 'This email isn\'t on the student list. Ask Cèlia to add you.',
+    errorTitle: 'Couldn\'t connect',
+    errorSub: 'Check your connection and try again.',
+    retry: 'Try again',
+    logout: 'Sign out',
+    panelTitle: 'Students',
+    panelSub: 'Access management · El Bosc',
     addStudent: 'Add student',
-    namePh: 'Full name',
+    namePh: 'Name',
     emailPh2: 'email@example.com',
-    levelLabel: 'Level',
-    invite: 'Invite',
+    invite: 'Add',
     cancel: 'Cancel',
-    statusActive: 'Active',
-    statusInvited: 'Invited',
-    statusRevoked: 'Revoked',
-    revoke: 'Revoke',
-    reinvite: 'Resend',
-    restore: 'Restore',
-    delete: 'Delete',
-    invitedAt: 'Invited on',
-    lastAccess: 'Last access',
-    enterApp: 'Enter app',
-    closeAdmin: 'Close',
-    logoCounts: 'Teacher access',
-    noStudents: 'No students registered.',
+    statusActive: 'Active', statusInvited: 'Invited', statusRevoked: 'Paused',
+    revoke: 'Pause access', restore: 'Reactivate', delete: 'Delete', confirmDelete: 'Sure? Tap again',
+    sendInvite: 'Send via WhatsApp', copyLink: 'Copy link', copied: 'Copied',
+    invitedAt: 'Added on', lastAccess: 'Last access',
+    noStudents: 'No students yet. Add one with the button below.',
     levelOpts: ['Beginner', 'Intermediate', 'Advanced'],
-    teacherEnter: 'Enter as teacher',
-    studentEnter: 'Enter as student',
-    demoNote: 'Prototype · No real backend',
+    dup: 'This email is already on the list.',
+    loadErr: 'The list couldn\'t be loaded.',
+    inviteMsg: 'El Bosc Yoga 🌿\n\nHi {name}!\nOpen this link to enter the app:\n{url}\n\nYou\'ll get an email at {email} to confirm it\'s you.',
   },
 };
 
-// ── Llista inicial d'alumnes (el panell admin la edita) ──────────────────────
-const ROSTER_KEY = 'elbosc-roster-v1';
-const loadRoster = () => { try { const s=localStorage.getItem(ROSTER_KEY); if(s) return JSON.parse(s); } catch(e){} return null; };
-const saveRoster = (r) => { try { localStorage.setItem(ROSTER_KEY, JSON.stringify(r)); } catch(e){} };
+const fmt = (s, vars) => s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] != null ? vars[k] : ''));
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// ── Codi determinista: igual en QUALSEVOL dispositiu per al mateix correu ─────
-// L'alumna posa el correu → l'app calcula el codi → el mostra → accés automàtic
-const _APP_KEY = 'el-bosc-yoga-2025';
-const computeCode = (email) => {
-  const s = _APP_KEY + email.toLowerCase().trim();
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) & 0x7fffffff;
-  return String(100000 + (h % 900000));
+// Enllaç d'invitació: només omple el correu. Mai dóna accés per si sol.
+const buildInviteUrl = (email, name) => {
+  const base = window.location.origin + window.location.pathname;
+  const payload = btoa(unescape(encodeURIComponent(`${email}|${name || ''}`)));
+  return `${base}?inv=${encodeURIComponent(payload)}`;
 };
-const genCode = computeCode; // per als registres nous, usa el codi determinista
 
-const INITIAL_ROSTER = [
-  { id:'nuria',  name:'Núria Prat',    initials:'N', accent:'#B8744A', email:'nuria@example.com',  level:'principiant', status:'active',  code:'847293', invitedAt:'12 abr 2025', lastAccess:'Avui' },
-  { id:'marta',  name:'Marta Vidal',   initials:'M', accent:'#5A8C42', email:'marta@example.com',  level:'intermedi',   status:'active',  code:'362815', invitedAt:'5 abr 2025',  lastAccess:'Ahir' },
-  { id:'joana',  name:'Joana Ferrer',  initials:'J', accent:'#3F7AAA', email:'joana@example.com',  level:'avancat',     status:'active',  code:'591472', invitedAt:'1 mar 2025',  lastAccess:'Fa 2 dies' },
-  { id:'aina',   name:'Aina Bosch',    initials:'A', accent:'#D97A2A', email:'aina@example.com',   level:'principiant', status:'invited', code:'743068', invitedAt:'28 abr 2025', lastAccess:'—' },
-  { id:'laia',   name:'Laia Tort',     initials:'L', accent:'#7A4A8A', email:'laia@example.com',   level:'intermedi',   status:'active',  code:'219854', invitedAt:'20 mar 2025', lastAccess:'Avui' },
-  { id:'roser',  name:'Roser Camps',   initials:'R', accent:'#3D3D8A', email:'roser@example.com',  level:'principiant', status:'revoked', code:'638247', invitedAt:'1 abr 2025',  lastAccess:'Fa 7 dies' },
-];
+const Logo = () => (
+  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap: 12, userSelect:'none' }}>
+    <svg viewBox="0 0 80 80" width={72} height={72} aria-hidden="true" style={{ filter:'drop-shadow(0 4px 12px color-mix(in srgb, var(--accent) 25%, transparent))' }}>
+      <circle cx="40" cy="40" r="40" fill="color-mix(in srgb, var(--accent) 12%, var(--cream))"/>
+      <g stroke="var(--accent)" strokeWidth="1.5" fill="none" strokeLinecap="round">
+        <path d="M40 20 Q32 34 32 44 Q32 54 40 58 Q48 54 48 44 Q48 34 40 20z"/>
+        <line x1="40" y1="20" x2="40" y2="58"/>
+        <path d="M32 36 Q24 30 22 22 Q28 24 32 36z"/>
+        <path d="M48 38 Q56 32 58 24 Q52 26 48 38z"/>
+      </g>
+    </svg>
+    <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', color:'var(--ink)', letterSpacing:'-0.01em' }}>El Bosc</div>
+    <div style={{ fontFamily:'var(--sans)', fontSize: 10, letterSpacing:'0.3em', color:'var(--accent)', textTransform:'uppercase' }}>Ioga personalitzat</div>
+  </div>
+);
 
-// ── Paleta d'accents per a noves alumnes ────────────────────────────────────
-const ACCENT_PALETTE = ['#B8744A','#5A8C42','#3F7AAA','#D97A2A','#7A4A8A','#3D3D8A','#9AAA82','#6E6757'];
+const fieldBox = (hasErr) => ({
+  display:'flex', alignItems:'center', gap: 10, background:'var(--cream)', borderRadius: 16,
+  border:'1.5px solid ' + (hasErr ? 'var(--accent)' : 'color-mix(in srgb, var(--ink) 10%, transparent)'),
+  padding:'12px 16px', marginBottom: 16,
+});
+const labelStyle = { fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--accent)', marginBottom: 8, display:'block' };
+const inputStyle = { flex:1, minWidth:0, border:'none', outline:'none', background:'transparent', fontFamily:'var(--sans)', fontSize: 16, color:'var(--ink)' };
 
-// ── Pantalla 1: Introducció del correu ───────────────────────────────────────
-const EmailScreen = ({ t, lang, onSend, onAdminTrigger, checkEmail }) => {
-  const [email, setEmail] = uSAuth('');
+const errText = (t, code) => ({
+  offline: t.errOffline, 'no-backend': t.errNoBackend, 'bad-code': t.errCode,
+}[code] || t.errSend);
+
+// ── Accés ────────────────────────────────────────────────────────────────────
+const AuthGate = ({ lang = 'ca', invite }) => {
+  const t = AUTH_T[lang] || AUTH_T.ca;
+  const [step, setStep] = uSAuth('email');   // email | code
+  const [email, setEmail] = uSAuth((invite && invite.email) || '');
+  const [code, setCode] = uSAuth('');
+  const [busy, setBusy] = uSAuth(false);
   const [err, setErr] = uSAuth('');
-  const tapCount = uRAuth(0);
-  const tapTimer = uRAuth(null);
+  const [note, setNote] = uSAuth('');
 
-  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  const isValid = EMAIL_RE.test(email.trim());
+  const codeValid = /^\d{6,8}$/.test(code);
 
-  const [magicMsg, setMagicMsg] = uSAuth('');
-  const sendMagic = async () => {
-    if (!isValid) return;
-    if (!window.sb) { setMagicMsg('⚠ Supabase'); return; }
-    setMagicMsg({ ca:'Enviant…', es:'Enviando…', en:'Sending…' }[lang]);
+  const send = async (resend) => {
+    if (!isValid || busy) return;
+    setBusy(true); setErr(''); setNote('');
     try {
-      const { error } = await window.sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin + window.location.pathname } });
-      setMagicMsg(error ? ('⚠ ' + error.message) : { ca:'T\'hem enviat un enllaç al correu. Obre\'l per entrar.', es:'Te enviamos un enlace al correo. Ábrelo para entrar.', en:'We sent a link to your email. Open it to sign in.' }[lang]);
-    } catch (e) { setMagicMsg('⚠ ' + String(e)); }
+      await window.EBBackend.sendLoginEmail(email);
+      setStep('code');
+      if (resend) setNote(t.resent);
+    } catch (e) { setErr(errText(t, e.code)); }
+    setBusy(false);
   };
 
-  const handleSend = () => {
-    if (!isValid) return;
-    const result = checkEmail ? checkEmail(email) : { ok: true };
-    if (!result.ok) {
-      setErr(result.reason === 'revoked'
-        ? { ca:'El teu accés ha estat suspès. Contacta amb la Cèlia.', es:'Tu acceso ha sido suspendido. Contacta con Cèlia.', en:'Your access has been revoked. Contact Cèlia.' }[lang]
-        : { ca:'Correu no registrat. Contacta amb la Cèlia.', es:'Correo no registrado. Contacta con Cèlia.', en:'Email not registered. Contact Cèlia.' }[lang]
-      );
-      return;
-    }
-    onSend(email);
-  };
-
-  // Trigger ocult: 7 taps al logo en < 3s
-  const handleLogoTap = () => {
-    tapCount.current += 1;
-    clearTimeout(tapTimer.current);
-    if (tapCount.current >= 7) { tapCount.current = 0; onAdminTrigger(); return; }
-    tapTimer.current = setTimeout(() => { tapCount.current = 0; }, 3000);
+  const verify = async () => {
+    if (!codeValid || busy) return;
+    setBusy(true); setErr('');
+    try {
+      await window.EBBackend.verifyCode(email, code);
+      // L'app reacciona a onAuthStateChange i carrega el compte
+    } catch (e) { setErr(errText(t, e.code)); setBusy(false); }
   };
 
   return (
-    <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--paper)', padding:'0 28px' }}>
-      {/* Logo */}
-      <div onClick={handleLogoTap} style={{ paddingTop: 72, paddingBottom: 32, display:'flex', flexDirection:'column', alignItems:'center', gap: 12, cursor:'default', userSelect:'none' }}>
-        <svg viewBox="0 0 80 80" width={72} height={72} style={{ filter:'drop-shadow(0 4px 12px color-mix(in srgb, var(--accent) 25%, transparent))' }}>
-          <circle cx="40" cy="40" r="40" fill="color-mix(in srgb, var(--accent) 12%, var(--cream))"/>
-          <g stroke="var(--accent)" strokeWidth="1.5" fill="none" strokeLinecap="round">
-            <path d="M40 20 Q32 34 32 44 Q32 54 40 58 Q48 54 48 44 Q48 34 40 20z"/>
-            <line x1="40" y1="20" x2="40" y2="58"/>
-            <path d="M32 36 Q24 30 22 22 Q28 24 32 36z"/>
-            <path d="M48 38 Q56 32 58 24 Q52 26 48 38z"/>
-          </g>
-        </svg>
-        <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', color:'var(--ink)', letterSpacing:'-0.01em' }}>El Bosc</div>
-        <div style={{ fontFamily:'var(--sans)', fontSize: 10, letterSpacing:'0.3em', color:'var(--accent)', textTransform:'uppercase' }}>Ioga personalitzat</div>
-      </div>
+    <div className="yb-scroll" style={{ height:'100%', overflowY:'auto', display:'flex', flexDirection:'column', background:'var(--paper)', padding:'0 28px' }}>
+      <div style={{ paddingTop: 72, paddingBottom: 32 }}><Logo/></div>
 
-      {/* Form */}
-      <div style={{ flex: 1, display:'flex', flexDirection:'column', justifyContent:'center', gap: 0 }}>
-        <h1 style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize: 30, color:'var(--ink)', marginBottom: 8 }}>
-          {t.headline}
-        </h1>
-        <p style={{ fontFamily:'var(--sans)', fontSize: 13, color:'var(--ink-soft)', marginBottom: 28, lineHeight: 1.5 }}>
-          {t.sub}
-        </p>
-
-        <label style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--accent)', marginBottom: 8, display:'block' }}>
-          {t.emailLabel}
-        </label>
-        <div style={{ display:'flex', alignItems:'center', gap: 10, background:'var(--cream)', borderRadius: 16,
-                      border:'1.5px solid ' + (err ? 'var(--accent)' : 'color-mix(in srgb, var(--ink) 10%, transparent)'),
-                      padding:'12px 16px', marginBottom: 16 }}>
-          <Icon name="mail" size={18} color="var(--ink-soft)"/>
-          <input type="email" value={email} onChange={e => { setEmail(e.target.value); setErr(''); }}
-            onKeyDown={e => e.key === 'Enter' && sendMagic()}
-            placeholder={t.emailPh} autoFocus
-            style={{ flex:1, border:'none', outline:'none', background:'transparent',
-                     fontFamily:'var(--sans)', fontSize: 16, color:'var(--ink)' }}/>
+      <div style={{ flex: 1, display:'flex', flexDirection:'column', justifyContent:'center' }}>
+        {step === 'email' ? (
+          <form onSubmit={e => { e.preventDefault(); send(false); }}>
+            <h1 style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize: 30, color:'var(--ink)', marginBottom: 8 }}>{t.headline}</h1>
+            <p style={{ fontFamily:'var(--sans)', fontSize: 13, color:'var(--ink-soft)', marginBottom: 28, lineHeight: 1.5 }}>{t.sub}</p>
+            <label htmlFor="eb-email" style={labelStyle}>{t.emailLabel}</label>
+            <div style={fieldBox(!!err)}>
+              <Icon name="mail" size={18} color="var(--ink-soft)"/>
+              <input id="eb-email" type="email" inputMode="email" autoComplete="email" value={email}
+                onChange={e => { setEmail(e.target.value); setErr(''); }}
+                placeholder={t.emailPh} autoFocus style={inputStyle}/>
+            </div>
+            <button type="submit" disabled={!isValid || busy}
+              className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: (!isValid || busy) ? 0.55 : 1, marginBottom: 10 }}>
+              {busy ? t.sending : t.sendBtn}
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={e => { e.preventDefault(); verify(); }}>
+            <h1 style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize: 30, color:'var(--ink)', marginBottom: 8 }}>{t.sentTitle}</h1>
+            <p style={{ fontFamily:'var(--sans)', fontSize: 13, color:'var(--ink-soft)', marginBottom: 24, lineHeight: 1.5 }}>{fmt(t.sentSub, { email: email.trim() })}</p>
+            <label htmlFor="eb-code" style={labelStyle}>{t.codeLabel}</label>
+            <div style={fieldBox(!!err)}>
+              <Icon name="key" size={18} color="var(--ink-soft)"/>
+              <input id="eb-code" inputMode="numeric" autoComplete="one-time-code" maxLength={8} value={code}
+                onChange={e => { setCode(e.target.value.replace(/\D/g, '').slice(0, 8)); setErr(''); }}
+                placeholder="000000" autoFocus style={{ ...inputStyle, letterSpacing:'0.4em', fontSize: 20 }}/>
+            </div>
+            <button type="submit" disabled={!codeValid || busy}
+              className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: (!codeValid || busy) ? 0.55 : 1, marginBottom: 14 }}>
+              {busy ? t.verifying : t.verify}
+            </button>
+            <div style={{ display:'flex', justifyContent:'space-between', gap: 12 }}>
+              <button type="button" onClick={() => { setStep('email'); setCode(''); setErr(''); setNote(''); }}
+                style={{ background:'none', border:'none', padding: 4, cursor:'pointer', color:'var(--ink-soft)', fontFamily:'var(--sans)', fontSize: 13 }}>
+                {t.changeEmail}
+              </button>
+              <button type="button" onClick={() => send(true)} disabled={busy}
+                style={{ background:'none', border:'none', padding: 4, cursor:'pointer', color:'var(--accent)', fontFamily:'var(--sans)', fontSize: 13 }}>
+                {t.resend}
+              </button>
+            </div>
+          </form>
+        )}
+        <div role="status" aria-live="polite" style={{ fontFamily:'var(--sans)', fontSize:12, color: err ? 'var(--accent)' : 'var(--ink-soft)', textAlign:'center', lineHeight:1.5, minHeight:18, marginTop: 10 }}>
+          {err || note || (step === 'email' ? t.hint : '')}
         </div>
-        {err && <div style={{ fontFamily:'var(--sans)', fontSize: 12, color:'var(--accent)', marginBottom: 10 }}>{err}</div>}
-
-        <button onClick={sendMagic} disabled={!isValid}
-          className="yb-btn yb-btn-clay" style={{ width:'100%', opacity: !isValid ? 0.55 : 1, marginBottom: 10 }}>
-          {t.sendBtn}
-        </button>
-        <div style={{ fontFamily:'var(--sans)', fontSize:12, color: magicMsg && magicMsg.indexOf('⚠')===0 ? 'var(--accent)' : 'var(--ink-soft)', textAlign:'center', lineHeight:1.5, minHeight:18 }}>
-          {magicMsg || { ca:'T\'enviarem un enllaç per entrar de forma segura.', es:'Te enviaremos un enlace para entrar de forma segura.', en:'We\'ll email you a secure sign-in link.' }[lang]}
-        </div>
-
       </div>
-
       <div style={{ height: 36 }}/>
     </div>
   );
 };
 
-// ── Pantalla 2: Mostra el codi i accés automàtic ─────────────────────────────
-const CodeScreen = ({ t, lang, email, correctCode, onVerified, onBack }) => {
-  const [digits, setDigits] = uSAuth(['','','','','','']);
-  const [ready, setReady] = uSAuth(false);
-
-  // Auto-omple els quadres dígit a dígit i entra automàticament
-  uEAuth(() => {
-    if (!correctCode || correctCode.length < 6) return;
-    const chars = correctCode.split('');
-    let i = 0;
-    const iv = setInterval(() => {
-      if (i < chars.length) {
-        const idx = i++;
-        setDigits(prev => { const next = [...prev]; next[idx] = chars[idx]; return next; });
-      } else {
-        clearInterval(iv);
-        setReady(true);
-        setTimeout(() => onVerified(email, 'student'), 600);
-      }
-    }, 90);
-    return () => clearInterval(iv);
-  }, []);
-
+// ── Pantalles d'estat: carregant, accés denegat, error ──────────────────────
+const AccessScreen = ({ kind, lang = 'ca', onLogout, onRetry }) => {
+  const t = AUTH_T[lang] || AUTH_T.ca;
+  const content = {
+    loading: { title: t.loading },
+    revoked: { title: t.blockedTitle, sub: t.revokedSub },
+    missing: { title: t.blockedTitle, sub: t.missingSub },
+    error:   { title: t.errorTitle, sub: t.errorSub },
+  }[kind] || { title: t.loading };
   return (
-    <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--paper)', padding:'0 28px' }}>
-      {/* Back */}
-      <div style={{ paddingTop: 56, marginBottom: 20 }}>
-        <button onClick={onBack} style={{ background:'transparent', border:'none', cursor:'pointer', padding: 4 }}>
-          <Icon name="back" size={22} color="var(--ink)"/>
-        </button>
+    <div style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap: 24, background:'var(--paper)', padding:'0 32px', textAlign:'center' }}>
+      <Logo/>
+      <div role="status" aria-live="polite">
+        <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize: 24, color:'var(--ink)', marginBottom: 8 }}>{content.title}</div>
+        {content.sub && <p style={{ fontFamily:'var(--sans)', fontSize: 14, color:'var(--ink-soft)', lineHeight: 1.55, maxWidth: 320, margin:'0 auto' }}>{content.sub}</p>}
       </div>
-
-      {/* Icon */}
-      <div style={{ display:'flex', justifyContent:'center', marginBottom: 20 }}>
-        <div style={{ width: 64, height: 64, borderRadius:'50%', background:'color-mix(in srgb, var(--leaf) 18%, var(--cream))',
-                      display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <Icon name="shield" size={28} color="var(--leaf-deep)"/>
+      {kind !== 'loading' && (
+        <div style={{ display:'flex', flexDirection:'column', gap: 10, width:'100%', maxWidth: 300 }}>
+          {onRetry && <button onClick={onRetry} className="yb-btn yb-btn-clay" style={{ width:'100%' }}>{t.retry}</button>}
+          {onLogout && <button onClick={onLogout} className="yb-btn yb-btn-ghost" style={{ width:'100%' }}>{t.logout}</button>}
         </div>
-      </div>
-
-      <h1 style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize: 32, color:'var(--ink)', textAlign:'center', marginBottom: 6 }}>
-        {t.codeTitle}
-      </h1>
-      <p style={{ fontFamily:'var(--sans)', fontSize: 13, color:'var(--accent)', textAlign:'center', marginBottom: 28, fontWeight: 500 }}>
-        {email}
-      </p>
-
-      {/* Codi en gran */}
-      <div style={{ textAlign:'center', marginBottom: 6 }}>
-        <div style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.18em', textTransform:'uppercase', color:'var(--ink-soft)', marginBottom: 10 }}>
-          {t.codeSub}
-        </div>
-        <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize: 46, letterSpacing:'0.22em', color:'var(--ink)', lineHeight: 1 }}>
-          {correctCode}
-        </div>
-        <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)', marginTop: 8 }}>
-          {t.saveCode}
-        </div>
-      </div>
-
-      <div style={{ marginBottom: 24 }}/>
-
-      {/* Quadres animats */}
-      <div style={{ display:'flex', gap: 8, justifyContent:'center', marginBottom: 28 }}>
-        {digits.map((d, i) => (
-          <div key={i}
-            style={{ width: 44, height: 54, display:'flex', alignItems:'center', justifyContent:'center',
-                     border: '2px solid ' + (d ? 'var(--leaf-deep)' : 'color-mix(in srgb, var(--ink) 10%, transparent)'),
-                     borderRadius: 14, fontFamily:'var(--serif)', fontSize: 26, color:'var(--ink)',
-                     background: d ? 'color-mix(in srgb, var(--leaf) 10%, var(--cream))' : 'var(--paper)',
-                     transition:'all .12s' }}>
-            {d}
-          </div>
-        ))}
-      </div>
-
-      <button onClick={() => onVerified(email, 'student')}
-        className="yb-btn yb-btn-clay" style={{ width:'100%' }}>
-        {ready ? t.verify : t.verifying}
-      </button>
+      )}
     </div>
   );
 };
 
-// ── Pantalla PIN (trigger ocult → admin) ─────────────────────────────────────
-const PinScreen = ({ t, lang = 'ca', adminPin, onSuccess, onClose }) => {
-  const [input, setInput] = uSAuth('');
-  const [shake, setShake] = uSAuth(false);
+// ── Gestió d'alumnes (professora) ────────────────────────────────────────────
+const ACCENT_PALETTE = ['#B8744A','#5A8C42','#3F7AAA','#D97A2A','#7A4A8A','#3D3D8A','#9AAA82','#6E6757'];
+const accentFor = (email) => { let h = 0; for (const c of email) h = (h * 31 + c.charCodeAt(0)) >>> 0; return ACCENT_PALETTE[h % ACCENT_PALETTE.length]; };
 
-  const submit = () => {
-    if (input.length < 4) return;
-    if (input === adminPin) { setTimeout(() => onSuccess(), 150); }
-    else { setShake(true); setTimeout(() => { setShake(false); setInput(''); }, 700); }
-  };
-
-  return (
-    <div style={{ position:'absolute', inset:0, background:'var(--ink)', zIndex:100, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center' }}>
-      <button onClick={onClose} style={{ position:'absolute', top:52, right:20, background:'transparent', border:'none', cursor:'pointer', color:'color-mix(in srgb, var(--cream) 50%, transparent)' }}>
-        <Icon name="close" size={22} color="currentColor"/>
-      </button>
-
-      <div style={{ width:48, height:48, borderRadius:'50%', background:'color-mix(in srgb, var(--cream) 10%, transparent)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:20 }}>
-        <Icon name="shield" size={22} color="var(--cream)"/>
-      </div>
-      <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:26, color:'var(--cream)', marginBottom:6 }}>{t.pinTitle}</div>
-      <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'color-mix(in srgb, var(--cream) 55%, transparent)', marginBottom:32, letterSpacing:'0.05em' }}>{t.pinSub}</div>
-
-      {/* Camp de PIN — alfanumèric, fins a 8 caràcters */}
-      <div style={{ width:'100%', maxWidth:280, animation: shake ? 'ybShake 0.5s ease' : 'none' }}>
-        <input type="text" inputMode="text" autoCapitalize="none" autoCorrect="off" spellCheck="false" autoFocus
-          value={input} maxLength={8}
-          onChange={e => setInput(e.target.value.replace(/[^A-Za-z0-9]/g,'').slice(0,8))}
-          onKeyDown={e => e.key === 'Enter' && submit()}
-          placeholder="••••••"
-          style={{ width:'100%', textAlign:'center', letterSpacing:'0.35em', fontFamily:'var(--serif)', fontSize:24,
-                   padding:'14px 16px', borderRadius:16, boxSizing:'border-box', outline:'none',
-                   border:'2px solid color-mix(in srgb, var(--cream) 25%, transparent)',
-                   background:'color-mix(in srgb, var(--cream) 8%, transparent)', color:'var(--cream)' }}/>
-        <button onClick={submit} disabled={input.length < 4}
-          className="yb-btn yb-btn-clay" style={{ width:'100%', marginTop:16, opacity: input.length < 4 ? 0.5 : 1 }}>
-          {({ca:'Entrar',es:'Entrar',en:'Enter'})[lang]}
-        </button>
-      </div>
-
-      <div style={{ marginTop:24, fontFamily:'var(--sans)', fontSize:11, color:'color-mix(in srgb, var(--cream) 35%, transparent)' }}>
-        {t.pinForgot}
-      </div>
-
-      <style>{`@keyframes ybShake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-5px)} 80%{transform:translateX(5px)} }`}</style>
-    </div>
-  );
-};
-
-// ── Panell d'administració ────────────────────────────────────────────────────
-const AdminPanel = ({ t, lang, onClose, onEnterAsTeacher, roster, setRoster }) => {
+const StudentsPanel = ({ lang = 'ca', onClose }) => {
+  const t = AUTH_T[lang] || AUTH_T.ca;
+  const locale = lang === 'ca' ? 'ca-ES' : lang;
+  const [members, setMembers] = uSAuth(null);   // null = carregant
+  const [loadErr, setLoadErr] = uSAuth('');
   const [addOpen, setAddOpen] = uSAuth(false);
   const [newName, setNewName] = uSAuth('');
   const [newEmail, setNewEmail] = uSAuth('');
   const [newLevel, setNewLevel] = uSAuth('principiant');
-  const [tab, setTab] = uSAuth('roster'); // 'roster' | 'settings'
+  const [formErr, setFormErr] = uSAuth('');
+  const [busy, setBusy] = uSAuth(false);
+  const [confirmDel, setConfirmDel] = uSAuth(null);
+  const [copied, setCopied] = uSAuth(null);
 
   const statusColor = { active:'var(--leaf-deep)', invited:'var(--accent)', revoked:'var(--ink-soft)' };
   const statusLabel = { active: t.statusActive, invited: t.statusInvited, revoked: t.statusRevoked };
   const levelKeys = ['principiant','intermedi','avancat'];
 
-  const addStudent = () => {
-    if (!newName.trim() || !newEmail.trim()) return;
-    const colors = ACCENT_PALETTE;
-    const accent = colors[roster.length % colors.length];
-    setRoster(prev => [...prev, {
-      id: 'u_' + Date.now(),
-      name: newName.trim(),
-      initials: newName.trim().charAt(0).toUpperCase(),
-      accent, email: newEmail.trim(),
-      level: newLevel, status:'invited',
-      code: genCode(newEmail.trim().toLowerCase()),
-      invitedAt: new Date().toLocaleDateString('ca-ES',{day:'numeric',month:'short',year:'numeric'}),
-      lastAccess:'—',
-    }]);
-    setNewName(''); setNewEmail(''); setAddOpen(false);
+  const reload = async () => {
+    setLoadErr('');
+    try { setMembers(await window.EBBackend.listMembers()); }
+    catch (e) { setLoadErr(e.code === 'offline' ? t.errOffline : t.loadErr); setMembers(m => m || []); }
+  };
+  uEAuth(() => { reload(); }, []);
+
+  const run = async (fn) => {
+    setBusy(true);
+    try { await fn(); await reload(); }
+    catch (e) { setLoadErr(e.code === 'offline' ? t.errOffline : t.loadErr); }
+    setBusy(false);
   };
 
-  const setStatus = (id, status) => setRoster(prev => prev.map(s => s.id===id ? {...s, status} : s));
-  const removeStudent = (id) => setRoster(prev => prev.filter(s => s.id!==id));
+  const add = async () => {
+    const em = newEmail.trim().toLowerCase();
+    if (!newName.trim() || !EMAIL_RE.test(em)) return;
+    setBusy(true); setFormErr('');
+    try {
+      await window.EBBackend.addMember({ email: em, name: newName, level: newLevel });
+      setNewName(''); setNewEmail(''); setAddOpen(false);
+      await reload();
+    } catch (e) {
+      setFormErr(e.code === 'duplicate' ? t.dup : e.code === 'offline' ? t.errOffline : t.loadErr);
+    }
+    setBusy(false);
+  };
+
+  const inviteText = (s) => fmt(t.inviteMsg, { name: s.name, email: s.email, url: buildInviteUrl(s.email, s.name) });
+  const copy = async (s) => {
+    try { await navigator.clipboard.writeText(buildInviteUrl(s.email, s.name)); setCopied(s.email); setTimeout(() => setCopied(null), 1800); } catch (e) {}
+  };
+  const fmtDate = (iso) => { try { return new Date(iso).toLocaleDateString(locale, { day:'numeric', month:'short', year:'numeric' }); } catch (e) { return ''; } };
+  const pill = (border, color) => ({ padding:'5px 10px', borderRadius:999, border:`1px solid ${border}`, background:'transparent', color, fontFamily:'var(--sans)', fontSize:11, cursor:'pointer', display:'inline-flex', alignItems:'center', gap:4 });
+  const inp = { padding:'10px 14px', borderRadius:12, border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', fontFamily:'var(--sans)', fontSize:15, background:'var(--cream)', outline:'none', color:'var(--ink)', minWidth:0 };
 
   return (
-    <div style={{ position:'absolute', inset:0, background:'var(--paper)', zIndex:90, display:'flex', flexDirection:'column', animation:'ybFadeUp .3s ease' }}>
-      {/* Header */}
-      <div style={{ padding:'50px 20px 12px', borderBottom:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)', display:'flex', alignItems:'center', gap:12 }}>
+    <div style={{ position:'fixed', inset:0, background:'var(--paper)', zIndex:9999, display:'flex', flexDirection:'column' }}>
+      <div style={{ padding:'calc(env(safe-area-inset-top, 0px) + 20px) 20px 12px', borderBottom:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)', display:'flex', alignItems:'center', gap:12 }}>
         <div style={{ width:40, height:40, borderRadius:'50%', background:'var(--ink)', display:'flex', alignItems:'center', justifyContent:'center' }}>
           <Icon name="shield" size={18} color="var(--cream)"/>
         </div>
-        <div style={{ flex:1 }}>
-          <div style={{ fontFamily:'var(--sans)', fontSize:10, letterSpacing:'0.2em', color:'var(--accent)', textTransform:'uppercase' }}>{t.adminSub}</div>
-          <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:22, color:'var(--ink)' }}>{t.adminTitle}</div>
+        <div style={{ flex:1, minWidth:0 }}>
+          <div style={{ fontFamily:'var(--sans)', fontSize:10, letterSpacing:'0.2em', color:'var(--accent)', textTransform:'uppercase' }}>{t.panelSub}</div>
+          <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:22, color:'var(--ink)' }}>{t.panelTitle}{members ? ` (${members.length})` : ''}</div>
         </div>
-        <button onClick={onClose} style={{ background:'transparent', border:'none', cursor:'pointer', padding:6 }}>
+        <button onClick={onClose} aria-label={t.cancel} style={{ background:'transparent', border:'none', cursor:'pointer', padding:6 }}>
           <Icon name="close" size={20} color="var(--ink-soft)"/>
         </button>
       </div>
 
-      {/* Tabs */}
-      <div style={{ display:'flex', gap:0, padding:'10px 20px 0', borderBottom:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)' }}>
-        {['roster','settings'].map(tb => (
-          <button key={tb} onClick={()=>setTab(tb)}
-            style={{ flex:1, padding:'8px 4px', background:'transparent', border:'none', cursor:'pointer',
-                     fontFamily:'var(--sans)', fontSize:12, color: tab===tb ? 'var(--accent)':'var(--ink-soft)',
-                     borderBottom: tab===tb ? '2px solid var(--accent)':'2px solid transparent', marginBottom:-1 }}>
-            {tb==='roster' ? `${t.rosterTitle} (${roster.length})` : {ca:'Configuració',es:'Configuración',en:'Settings'}[lang]}
-          </button>
+      <div className="yb-scroll" style={{ flex:1, overflowY:'auto', padding:'10px 14px' }}>
+        {loadErr && <div role="alert" style={{ fontFamily:'var(--sans)', fontSize:13, color:'var(--accent)', padding:'10px', textAlign:'center' }}>{loadErr}</div>}
+        {members === null && <div style={{ textAlign:'center', padding:'32px 0', fontFamily:'var(--sans)', fontSize:13, color:'var(--ink-soft)' }}>…</div>}
+        {members && members.length === 0 && !loadErr && (
+          <div style={{ textAlign:'center', padding:'32px 12px', fontFamily:'var(--sans)', fontSize:13, color:'var(--ink-soft)', lineHeight:1.5 }}>{t.noStudents}</div>
+        )}
+        {(members || []).map(s => (
+          <div key={s.email} style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'12px 10px', borderRadius:14, marginBottom:4, opacity: s.status==='revoked' ? 0.65 : 1 }}>
+            <div aria-hidden="true" style={{ width:40, height:40, borderRadius:'50%', background: s.status==='revoked' ? 'var(--sand)' : accentFor(s.email), color:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--serif)', fontSize:17, flexShrink:0 }}>
+              {(s.name || s.email).charAt(0).toUpperCase()}
+            </div>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                <span style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:16 }}>{s.name || s.email}</span>
+                <span style={{ fontFamily:'var(--sans)', fontSize:10, padding:'2px 8px', borderRadius:999, background:`color-mix(in srgb, ${statusColor[s.status]} 16%, transparent)`, color: statusColor[s.status], letterSpacing:'0.05em' }}>
+                  {statusLabel[s.status]}
+                </span>
+              </div>
+              <div style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{s.email}</div>
+              <div style={{ fontFamily:'var(--sans)', fontSize:10, color:'var(--ink-soft)', marginTop:3, display:'flex', gap:10, flexWrap:'wrap' }}>
+                <span>{t.levelOpts[Math.max(0, levelKeys.indexOf(s.level))]}</span>
+                <span>{t.invitedAt} {fmtDate(s.invited_at)}</span>
+                {s.last_access && <span>{t.lastAccess}: {fmtDate(s.last_access)}</span>}
+              </div>
+              <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
+                {s.status !== 'revoked' && (
+                  <a href={'https://wa.me/?text=' + encodeURIComponent(inviteText(s))} target="_blank" rel="noopener"
+                    style={{ ...pill('color-mix(in srgb, var(--accent) 40%, transparent)', 'var(--accent)'), textDecoration:'none' }}>
+                    <Icon name="send" size={10} color="currentColor"/> {t.sendInvite}
+                  </a>
+                )}
+                {s.status !== 'revoked' && (
+                  <button onClick={() => copy(s)} style={pill('color-mix(in srgb, var(--ink) 15%, transparent)', 'var(--ink-soft)')}>
+                    {copied === s.email ? t.copied : t.copyLink}
+                  </button>
+                )}
+                {s.status !== 'revoked' ? (
+                  <button disabled={busy} onClick={() => run(() => window.EBBackend.setMemberStatus(s.email, 'revoked'))} style={pill('color-mix(in srgb, var(--accent) 40%, transparent)', 'var(--accent)')}>
+                    <Icon name="lock" size={10} color="currentColor"/> {t.revoke}
+                  </button>
+                ) : (
+                  <button disabled={busy} onClick={() => run(() => window.EBBackend.setMemberStatus(s.email, 'active'))} style={pill('color-mix(in srgb, var(--leaf) 50%, transparent)', 'var(--leaf-deep)')}>
+                    <Icon name="refresh" size={10} color="currentColor"/> {t.restore}
+                  </button>
+                )}
+                <button disabled={busy}
+                  onClick={() => { if (confirmDel === s.email) { setConfirmDel(null); run(() => window.EBBackend.removeMember(s.email)); } else { setConfirmDel(s.email); setTimeout(() => setConfirmDel(c => c === s.email ? null : c), 3000); } }}
+                  style={pill('color-mix(in srgb, var(--ink) 15%, transparent)', confirmDel === s.email ? 'var(--accent)' : 'var(--ink-soft)')}>
+                  <Icon name="trash" size={10} color="currentColor"/> {confirmDel === s.email ? t.confirmDelete : t.delete}
+                </button>
+              </div>
+            </div>
+          </div>
         ))}
+        <div style={{ height:8 }}/>
       </div>
 
-      {tab === 'roster' && (
-        <>
-          <div className="yb-scroll" style={{ flex:1, overflowY:'auto', padding:'10px 14px' }}>
-            {roster.length === 0 && (
-              <div style={{ textAlign:'center', padding:'32px 0', fontFamily:'var(--sans)', fontSize:13, color:'var(--ink-soft)' }}>
-                {t.noStudents}
-              </div>
-            )}
-            {roster.map(s => (
-              <div key={s.id} style={{ display:'flex', gap:12, alignItems:'flex-start', padding:'12px 10px',
-                                       borderRadius:14, marginBottom:4,
-                                       background: s.status==='revoked' ? 'color-mix(in srgb, var(--ink) 3%, transparent)' : 'transparent',
-                                       opacity: s.status==='revoked' ? 0.6 : 1 }}>
-                {/* Avatar */}
-                <div style={{ width:40, height:40, borderRadius:'50%', background: s.status==='revoked' ? 'var(--sand)':s.accent,
-                              color:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center',
-                              fontFamily:'var(--serif)', fontSize:17, flexShrink:0 }}>
-                  {s.initials}
-                </div>
-                <div style={{ flex:1, minWidth:0 }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
-                    <span style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:16 }}>{s.name}</span>
-                    <span style={{ fontFamily:'var(--sans)', fontSize:10, padding:'2px 8px', borderRadius:999,
-                                   background:`color-mix(in srgb, ${statusColor[s.status]} 16%, transparent)`,
-                                   color: statusColor[s.status], letterSpacing:'0.05em' }}>
-                      {statusLabel[s.status]}
-                    </span>
-                  </div>
-                  <div style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)', marginTop:2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                    {s.email}
-                  </div>
-                  <div style={{ fontFamily:'var(--sans)', fontSize:10, color:'var(--ink-soft)', marginTop:3, display:'flex', gap:10, flexWrap:'wrap' }}>
-                    <span>{s.level}</span>
-                    <span>{t.invitedAt} {s.invitedAt}</span>
-                  </div>
-                  {/* Code */}
-                  {s.email && (
-                    <div style={{ display:'flex', alignItems:'center', gap:6, marginTop:6, flexWrap:'wrap' }}>
-                      <span style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)' }}>{({ca:'Codi:',es:'Código:',en:'Code:'})[lang]}</span>
-                      <span style={{ fontFamily:'var(--serif)', fontSize:16, letterSpacing:'0.25em', color:'var(--ink)', fontStyle:'italic' }}>{computeCode(s.email.toLowerCase())}</span>
-                      <button onClick={()=>{
-                        const base = window.location.origin + window.location.pathname;
-                        const code = computeCode(s.email.toLowerCase());
-                        const inv  = btoa(`${s.email}|${code}|${s.name}`);
-                        const url  = `${base}?inv=${inv}`;
-                        const msg  = {
-                          ca:`El Bosc Ioga 🌿\n\nHola ${s.name}!\nPer entrar a l'app:\n1. Obre: ${base}\n2. Posa el teu correu: ${s.email}\nEl teu codi: ${code}\n\nAccés directe: ${url}`,
-                          es:`El Bosc Ioga 🌿\n\n¡Hola ${s.name}!\nPara entrar en la app:\n1. Abre: ${base}\n2. Pon tu correo: ${s.email}\nTu código: ${code}\n\nAcceso directo: ${url}`,
-                          en:`El Bosc Ioga 🌿\n\nHi ${s.name}!\nTo enter the app:\n1. Open: ${base}\n2. Enter your email: ${s.email}\nYour code: ${code}\n\nDirect link: ${url}`,
-                        }[lang] || '';
-                        window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
-                      }}
-                        style={{ padding:'3px 10px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', background:'color-mix(in srgb, var(--accent) 8%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:10, cursor:'pointer' }}>
-                        {({ca:'Enviar per WhatsApp',es:'Enviar por WhatsApp',en:'Send via WhatsApp'})[lang]}
-                      </button>
-                    </div>
-                  )}
-                  {/* Actions */}
-                  <div style={{ display:'flex', gap:6, marginTop:8, flexWrap:'wrap' }}>
-                    {s.status==='active' && (
-                      <button onClick={()=>setStatus(s.id,'revoked')}
-                        style={{ padding:'5px 10px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', background:'transparent', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:11, cursor:'pointer' }}>
-                        <Icon name="lock" size={10} color="currentColor"/> {t.revoke}
-                      </button>
-                    )}
-                    {s.status==='invited' && (
-                      <button onClick={()=>setStatus(s.id,'active')}
-                        style={{ padding:'5px 10px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--leaf) 50%, transparent)', background:'transparent', color:'var(--leaf-deep)', fontFamily:'var(--sans)', fontSize:11, cursor:'pointer' }}>
-                        <Icon name="refresh" size={10} color="currentColor"/> {t.reinvite}
-                      </button>
-                    )}
-                    {s.status==='revoked' && (
-                      <button onClick={()=>setStatus(s.id,'active')}
-                        style={{ padding:'5px 10px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--leaf) 50%, transparent)', background:'transparent', color:'var(--leaf-deep)', fontFamily:'var(--sans)', fontSize:11, cursor:'pointer' }}>
-                        {t.restore}
-                      </button>
-                    )}
-                    <button onClick={()=>removeStudent(s.id)}
-                      style={{ padding:'5px 10px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--ink) 15%, transparent)', background:'transparent', color:'var(--ink-soft)', fontFamily:'var(--sans)', fontSize:11, cursor:'pointer' }}>
-                      <Icon name="trash" size={10} color="currentColor"/> {t.delete}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-            <div style={{ height:8 }}/>
+      {addOpen ? (
+        <form onSubmit={e => { e.preventDefault(); add(); }}
+          style={{ padding:'14px 18px calc(env(safe-area-inset-bottom, 0px) + 14px)', borderTop:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)', display:'flex', flexDirection:'column', gap:10 }}>
+          <input id="eb-new-name" aria-label={t.namePh} value={newName} onChange={e => setNewName(e.target.value)} placeholder={t.namePh} style={inp}/>
+          <input id="eb-new-email" aria-label={t.emailPh2} value={newEmail} onChange={e => { setNewEmail(e.target.value); setFormErr(''); }} placeholder={t.emailPh2} type="email" autoCapitalize="none" style={inp}/>
+          <select id="eb-new-level" aria-label="level" value={newLevel} onChange={e => setNewLevel(e.target.value)} style={inp}>
+            {levelKeys.map((lk, i) => <option key={lk} value={lk}>{t.levelOpts[i]}</option>)}
+          </select>
+          {formErr && <div role="alert" style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--accent)' }}>{formErr}</div>}
+          <div style={{ display:'flex', gap:8 }}>
+            <button type="submit" disabled={busy || !newName.trim() || !EMAIL_RE.test(newEmail.trim())} className="yb-btn yb-btn-clay" style={{ flex:1, padding:'11px' }}>
+              <Icon name="user-plus" size={14} color="var(--cream)"/> {t.invite}
+            </button>
+            <button type="button" onClick={() => setAddOpen(false)} className="yb-btn yb-btn-ghost" style={{ flex:1, padding:'11px' }}>{t.cancel}</button>
           </div>
-
-          {/* Add student */}
-          {addOpen ? (
-            <div style={{ padding:'14px 18px calc(env(safe-area-inset-bottom,12px)+14px)', borderTop:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)', display:'flex', flexDirection:'column', gap:10 }}>
-              <input value={newName} onChange={e=>setNewName(e.target.value)} placeholder={t.namePh}
-                style={{ padding:'10px 14px', borderRadius:12, border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)',
-                         fontFamily:'var(--serif)', fontSize:15, background:'var(--cream)', outline:'none', color:'var(--ink)' }}/>
-              <input value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder={t.emailPh2} type="email"
-                style={{ padding:'10px 14px', borderRadius:12, border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)',
-                         fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', outline:'none', color:'var(--ink)' }}/>
-              <div style={{ display:'flex', gap:8 }}>
-                <select value={newLevel} onChange={e=>setNewLevel(e.target.value)}
-                  style={{ flex:1, padding:'10px 12px', borderRadius:12, border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)',
-                           fontFamily:'var(--sans)', fontSize:13, background:'var(--cream)', color:'var(--ink)', outline:'none' }}>
-                  {levelKeys.map((lk,i) => <option key={lk} value={lk}>{t.levelOpts[i]}</option>)}
-                </select>
-              </div>
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={addStudent} className="yb-btn yb-btn-clay" style={{ flex:1, padding:'11px' }}>
-                  <Icon name="user-plus" size={14} color="var(--cream)"/> {t.invite}
-                </button>
-                <button onClick={()=>setAddOpen(false)} className="yb-btn yb-btn-ghost" style={{ flex:1, padding:'11px' }}>
-                  {t.cancel}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div style={{ padding:'10px 18px calc(env(safe-area-inset-bottom,12px)+10px)', borderTop:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)', display:'flex', gap:8 }}>
-              <button onClick={()=>setAddOpen(true)} className="yb-btn yb-btn-primary" style={{ flex:1, padding:'12px' }}>
-                <Icon name="user-plus" size={14} color="currentColor"/> {t.addStudent}
-              </button>
-              <button onClick={onEnterAsTeacher} className="yb-btn yb-btn-clay" style={{ flex:1, padding:'12px' }}>
-                {t.enterApp}
-              </button>
-            </div>
-          )}
-        </>
-      )}
-
-      {tab === 'settings' && (
-        <div className="yb-scroll" style={{ flex:1, overflowY:'auto', padding:'14px 18px' }}>
-          <div className="yb-card">
-            <div className="yb-divider-leaf" style={{ marginBottom:12 }}>PIN</div>
-            <p style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)', lineHeight:1.55, margin:0 }}>
-              {({ca:'PIN actual: ',es:'PIN actual: ',en:'Current PIN: '})[lang]}
-              <span style={{ fontFamily:'var(--serif)', fontSize:18, letterSpacing:'0.3em', color:'var(--ink)' }}>{(function(){try{return localStorage.getItem('elbosc-admin-pin')||'1234';}catch(e){return '1234';}})()}</span>
-            </p>
-            <p style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)', marginTop:8, lineHeight:1.5 }}>
-              {({ca:'Canvia el PIN des de ⚙ Configuració (pestanya Inici).',es:'Cambia el PIN desde ⚙ Configuración (pestaña Inicio).',en:'Change the PIN from ⚙ Settings (Home tab).'})[lang]}
-            </p>
-          </div>
-          <div style={{ height:80 }}/>
+        </form>
+      ) : (
+        <div style={{ padding:'10px 18px calc(env(safe-area-inset-bottom, 0px) + 10px)', borderTop:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)' }}>
+          <button onClick={() => setAddOpen(true)} className="yb-btn yb-btn-primary" style={{ width:'100%', padding:'12px' }}>
+            <Icon name="user-plus" size={14} color="currentColor"/> {t.addStudent}
+          </button>
         </div>
       )}
     </div>
   );
 };
 
-// ── Punt d'entrada: AuthGate ─────────────────────────────────────────────────
-const AuthGate = ({ lang = 'ca', adminPin = '1234', onSuccess }) => {
-  const t = AUTH_T[lang] || AUTH_T.ca;
-  const [screen, setScreen] = uSAuth('email'); // email | code | pin | admin
-  const [sentEmail, setSentEmail] = uSAuth('');
-  const [studentCode, setStudentCode] = uSAuth('');
-
-  // Roster persistent en localStorage
-  const [roster, setRosterState] = uSAuth(() => loadRoster() || INITIAL_ROSTER);
-  const setRoster = (updater) => {
-    setRosterState(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      saveRoster(next);
-      return next;
-    });
-  };
-
-  const checkEmail = (email) => {
-    const em = email.trim().toLowerCase();
-    // Únic cas de bloqueig: accés revocat per la Cèlia al panell admin
-    // (el roster NOMÉS existeix al dispositiu de la Cèlia, per la resta d'alumnes
-    //  el roster estarà buit i NO s'ha de bloquejar l'entrada)
-    const s = roster.find(x => x.email.toLowerCase() === em);
-    if (s && s.status === 'revoked') return { ok: false, reason: 'revoked' };
-    // Qualsevol correu vàlid pot entrar → el codi es calcula deterministament
-    return { ok: true };
-  };
-
-  const handleSend = (email) => {
-    const em = email.trim().toLowerCase();
-    // Codi determinista: sempre el mateix per al mateix correu, en qualsevol dispositiu
-    const code = computeCode(em);
-    setStudentCode(code);
-    setSentEmail(email);
-    setScreen('code');
-  };
-  const handleVerified = (email, role) => onSuccess(email, role);
-  const handleAdminTrigger = () => setScreen('pin');
-  const handlePinSuccess = () => setScreen('admin');
-  const handleEnterAsTeacher = () => onSuccess('celia@elbosc.cat', 'teacher');
-
-  return (
-    <div style={{ height:'100%', position:'relative', overflow:'hidden', background:'var(--paper)' }}>
-      {screen === 'email' && (
-        <EmailScreen t={t} lang={lang} onSend={handleSend} onAdminTrigger={handleAdminTrigger} checkEmail={checkEmail}/>
-      )}
-      {screen === 'code' && (
-        <CodeScreen t={t} lang={lang} email={sentEmail} correctCode={studentCode} onVerified={handleVerified} onBack={()=>setScreen('email')}/>
-      )}
-      {screen === 'pin' && (
-        <PinScreen t={t} lang={lang} adminPin={adminPin} onSuccess={handlePinSuccess} onClose={()=>setScreen('email')}/>
-      )}
-      {screen === 'admin' && (
-        <AdminPanel t={t} lang={lang} roster={roster} setRoster={setRoster} onClose={()=>setScreen('email')} onEnterAsTeacher={handleEnterAsTeacher}/>
-      )}
-    </div>
-  );
+// Llegeix ?inv= (format nou "correu|nom" o antic "correu|codi|nom" / "correu:codi").
+// Només en treu el correu i el nom per omplir el formulari.
+const readInvite = () => {
+  try {
+    const raw = new URLSearchParams(window.location.search).get('inv');
+    if (!raw) return null;
+    let dec;
+    try { dec = decodeURIComponent(escape(atob(raw))); } catch (e) { dec = atob(raw); }
+    const parts = dec.indexOf('|') !== -1 ? dec.split('|') : dec.split(':');
+    const email = (parts[0] || '').trim().toLowerCase();
+    if (!EMAIL_RE.test(email)) return null;
+    const name = (parts.length >= 3 ? parts[2] : (parts.length === 2 && !/^\d{6}$/.test(parts[1]) ? parts[1] : '')).trim();
+    return { email, name };
+  } catch (e) { return null; }
 };
 
-window.AuthGate = AuthGate;
+Object.assign(window, { AuthGate, AccessScreen, StudentsPanel, readInvite });

@@ -41,43 +41,10 @@
 <script src="vendor/react-dom.production.min.js"></script>
 <script src="vendor/babel.min.js"></script>
 
-<script>
-// Processa l'accés via enllaç d'invitació (?inv=base64(email:codi))
-// S'executa AQUÍ (index.html) perquè les URLs amb ?inv= sempre es serveixen
-// des de la xarxa, no des de la caché del Service Worker.
-(function () {
-  try {
-    var inv = new URLSearchParams(window.location.search).get('inv');
-    if (inv) {
-      var dec = atob(inv);
-      var email, code, name;
-      if (dec.indexOf('|') !== -1) {
-        // Format nou: email|code|nom
-        var parts = dec.split('|');
-        email = parts[0].toLowerCase().trim();
-        code  = (parts[1] || '').trim();
-        name  = (parts[2] || '').trim();
-      } else {
-        // Format antic: email:code
-        var sep = dec.indexOf(':');
-        email = dec.slice(0, sep).toLowerCase().trim();
-        code  = dec.slice(sep + 1).trim();
-        name  = '';
-      }
-      if (email && code) {
-        localStorage.setItem('elbosc-credential', JSON.stringify({ email: email, code: code, name: name }));
-        localStorage.setItem('elbosc-session',    JSON.stringify({ email: email, role: 'student', name: name }));
-        window.__elBoscInvite = { email: email, code: code, name: name };
-        // NO netegem l'URL: el link guardat als marcadors funciona sempre
-      }
-    }
-  } catch (e) {}
-})();
-window.IS_PROD = true;
-</script>
+<script>window.IS_PROD = true;</script>
 
 <!-- Supabase (backend) — client global a window.sb -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="vendor/supabase.js"></script>
 <script>
   window.SUPABASE_URL = 'https://nvyjdjznmavukxhesiqd.supabase.co';
   window.SUPABASE_KEY = 'sb_publishable_XUvv0NDwAzaGhaO1MSRQSg_gaejJaBr';
@@ -90,6 +57,7 @@ window.IS_PROD = true;
   } catch (e) { console.warn('Supabase init failed', e); }
 </script>
 <script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="data/backend.jsx"></script>
 <script type="text/babel" src="data/asanas.jsx"></script>
 <script type="text/babel" src="data/i18n.jsx"></script>
 <script type="text/babel" src="data/sequencer.jsx"></script>

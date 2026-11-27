@@ -1,38 +1,19 @@
-// app.jsx — App principal: estat global, navegació, integració Tweaks
+// app.jsx — App principal: estat global, accés, navegació
 
-const { useState: uSA, useEffect: uEA, useMemo: uMA } = React;
+const { useState: uSA, useEffect: uEA, useMemo: uMA, useRef: uRA } = React;
 
-// ── Processa l'enllaç d'invitació (?inv=base64) ─────────────────────────────
-(function () {
-  try {
-    const inv = new URLSearchParams(window.location.search).get('inv');
-    if (inv) {
-      const dec = atob(inv);
-      const i = dec.indexOf(':');
-      const email = dec.slice(0, i).toLowerCase().trim();
-      const code  = dec.slice(i + 1).trim();
-      if (email && code) {
-        localStorage.setItem('elbosc-credential', JSON.stringify({ email, code }));
-        localStorage.setItem('elbosc-session', JSON.stringify({ email, role: 'student' }));
-        window.__elBoscInvite = { email, code };
-        // NO netegem l'URL: el link guardat als marcadors funciona sempre
-      }
-    }
-  } catch (e) {}
-})();
-
+// Perfil neutre: el real ve del qüestionari desat al compte
 const DEFAULT_PROFILE = {
-  name: 'Núria',
-  age: 38, gender: 'Dona', height: 165, weight: 60,
-  lifestyle: 'Moderat', sleep: 7, stress: 6,
-  level: 'principiant', years: 1, style: 'Hatha',
-  meditation: 'Alguna', pranayama: 'Cap',
-  flexibility: 5, strength: 5, balance: 6,
-  currentInjuries: ['Esquena baixa'], pastInjuries: [], conditions: [],
-  goals: ['Relaxació', 'Flexibilitat', 'Dormir millor'],
-  focusZones: ['Esquena', 'Malucs'], avoidZones: [],
+  name: '',
+  age: 35, gender: '', height: 165, weight: 60,
+  lifestyle: 'Moderat', sleep: 7, stress: 5,
+  level: 'principiant', years: 0, style: 'Hatha',
+  meditation: 'Cap', pranayama: 'Cap',
+  flexibility: 5, strength: 5, balance: 5,
+  currentInjuries: [], pastInjuries: [], conditions: [],
+  goals: [], focusZones: [], avoidZones: [],
   duration: 30, frequency: 3, timeOfDay: 'Matí',
-  material: ['Estoreta', 'Blocs', 'Coixí'], space: 'Mitjà',
+  material: ['Estoreta'], space: 'Mitjà',
 };
 
 const DEFAULTS = /*EDITMODE-BEGIN*/{
@@ -46,54 +27,128 @@ const DEFAULTS = /*EDITMODE-BEGIN*/{
   "role": "student"
 }/*EDITMODE-END*/;
 
+// Claus del sistema d'accés antic (codis i PIN). S'esborren en obrir l'app.
+const LEGACY_KEYS = ['elbosc-session', 'elbosc-credential', 'elbosc-admin-pin', 'elbosc-roster-v1'];
+const LANG_KEY = 'elbosc-lang';
+const ls = {
+  get: (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} },
+  del: (k) => { try { localStorage.removeItem(k); } catch (e) {} },
+};
+LEGACY_KEYS.forEach(ls.del);
+
+// ── Xarxa de seguretat: un error de pantalla no deixa l'app en blanc ────────
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(error) { return { error }; }
+  componentDidCatch(error, info) {
+    try { console.error('[El Bosc]', error, info && info.componentStack); } catch (e) {}
+    try { window.EBReportError && window.EBReportError(error, info); } catch (e) {}
+  }
+  render() {
+    if (!this.state.error) return this.props.children;
+    const lang = ls.get(LANG_KEY, 'ca');
+    const T = {
+      ca: ['Alguna cosa ha fallat', 'Les teves dades estan a salvo. Torna a obrir aquesta pantalla.', 'Tornar a l\'inici'],
+      es: ['Algo ha fallado', 'Tus datos están a salvo. Vuelve a abrir esta pantalla.', 'Volver al inicio'],
+      en: ['Something went wrong', 'Your data is safe. Open this screen again.', 'Back to home'],
+    }[lang] || [];
+    return (
+      <div role="alert" style={{ height:'100%', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:16, padding:32, textAlign:'center', background:'var(--paper)' }}>
+        <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:26, color:'var(--ink)' }}>{T[0]}</div>
+        <p style={{ fontFamily:'var(--sans)', fontSize:14, color:'var(--ink-soft)', maxWidth:300, lineHeight:1.5, margin:0 }}>{T[1]}</p>
+        <button className="yb-btn yb-btn-clay" onClick={() => { this.setState({ error: null }); this.props.onReset && this.props.onReset(); }}>{T[2]}</button>
+      </div>
+    );
+  }
+}
+
 function App() {
   const isProd = typeof IS_PROD !== 'undefined' && IS_PROD;
-  const [tweaks, setTweak] = useTweaks(DEFAULTS);
+  const [tweaks, setTweak] = useTweaks({ ...DEFAULTS, lang: ls.get(LANG_KEY, DEFAULTS.lang) });
   const lang = tweaks.lang || 'ca';
-  const t = I18N[lang];
+  const t = I18N[lang] || I18N.ca;
 
-  const [stage, setStage] = uSA(() => {
-    if (window.__elBoscInvite) return 'welcome'; // enllaç d'invitació: accés directe
-    try {
-      const sess = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
-      if (sess?.role) return sess.role === 'teacher' ? 'app' : 'app';
-    } catch (e) {}
-    return tweaks.stage || 'auth';
-  }); // auth | welcome | quiz | app | practice
+  // auth | loading | revoked | missing | error | welcome | quiz | app | practice
+  const [stage, setStage] = uSA(isProd ? 'loading' : (tweaks.stage || 'auth'));
   const [tab, setTab] = uSA('home');
-  const [profile, setProfile] = uSA(() => {
-    // Nom real de l'alumna: invite link → nom desat al dispositiu → sessió → per defecte
-    try {
-      const inv  = window.__elBoscInvite;
-      if (inv?.name) return { ...DEFAULT_PROFILE, name: inv.name };
-      const saved = localStorage.getItem('elbosc-name');
-      if (saved) return { ...DEFAULT_PROFILE, name: saved };
-      const sess = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
-      if (sess?.name) return { ...DEFAULT_PROFILE, name: sess.name };
-    } catch (e) {}
-    return DEFAULT_PROFILE;
-  });
-  const [poseDetail, setPoseDetail] = uSA(null);
-  const [adminPin, setAdminPin] = uSA(() => { try { return localStorage.getItem('elbosc-admin-pin') || '1234'; } catch (e) { return '1234'; } });
-  const changeAdminPin = (p) => { try { localStorage.setItem('elbosc-admin-pin', p); } catch (e) {} setAdminPin(p); };
-  const [dueNotes, setDueNotes] = uSA([]);
-  const [theme, setTheme] = uSA(() => { try { return localStorage.getItem('elbosc-theme') || 'bosc'; } catch (e) { return 'bosc'; } });
-  const changeTheme = (v) => { try { localStorage.setItem('elbosc-theme', v); } catch (e) {} setTheme(v); };
-  const [posesVersion, setPosesVersion] = uSA(0);
-  const [textSize, setTextSize] = uSA(() => { try { return localStorage.getItem('elbosc-textsize') || 'm'; } catch (e) { return 'm'; } });
-  const changeTextSize = (v) => { try { localStorage.setItem('elbosc-textsize', v); } catch (e) {} setTextSize(v); };
+  const [account, setAccount] = uSA(null);   // { userId, email, name, role, status, data }
+  const [profile, setProfile] = uSA(DEFAULT_PROFILE);
+  const [invite] = uSA(() => (window.readInvite ? window.readInvite() : null));
+  const [showStudents, setShowStudents] = uSA(false);
+  const role = isProd ? ((account && account.role) || 'student') : (tweaks.role || 'student');
 
-  // React to tweak stage change (only in dev mode)
+  const [poseDetail, setPoseDetail] = uSA(null);
+  const [dueNotes, setDueNotes] = uSA([]);
+  const [theme, setTheme] = uSA(() => ls.get('elbosc-theme', 'bosc'));
+  const changeTheme = (v) => { ls.set('elbosc-theme', v); setTheme(v); };
+  const [posesVersion, setPosesVersion] = uSA(0);
+  const [textSize, setTextSize] = uSA(() => ls.get('elbosc-textsize', 'm'));
+  const changeTextSize = (v) => { ls.set('elbosc-textsize', v); setTextSize(v); };
+
+  const setLang = (l) => { ls.set(LANG_KEY, l); setTweak('lang', l); };
+
+  // Només en mode disseny: el panell Tweaks pot forçar l'etapa
   uEA(() => { if (!isProd && tweaks.stage) setStage(tweaks.stage); }, [tweaks.stage]);
 
-  // Restaura el rol de sessió guardada
-  uEA(() => {
+  // ── Accés: la sessió de Supabase i el compte del servidor manen ──────────
+  const loadSeq = uRA(0);
+  const enterWith = async (session) => {
+    const seq = ++loadSeq.current;
+    if (!session) { setAccount(null); setStage('auth'); return; }
+    setStage(s => (s === 'app' || s === 'practice') ? s : 'loading');
     try {
-      const sess = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
-      if (sess?.role) setTweak('role', sess.role);
-      if (window.__elBoscInvite) { setTweak('role', 'student'); window.__elBoscInvite = null; }
-    } catch (e) {}
+      const acc = await window.EBBackend.loadAccount(session);
+      if (seq !== loadSeq.current) return;
+      setAccount(acc);
+      if (acc.status === 'revoked' || acc.status === 'missing') { setStage(acc.status); return; }
+      const saved = acc.data && acc.data.profile;
+      const name = acc.name || (saved && saved.name) || (invite && invite.email === acc.email ? invite.name : '') || '';
+      setProfile({ ...DEFAULT_PROFILE, ...(saved || {}), name });
+      // Treu ?inv= i restes de l'enllaç màgic de la barra d'adreces
+      try { if (window.location.search || window.location.hash) history.replaceState(null, '', window.location.pathname); } catch (e) {}
+      if (acc.role === 'teacher') { setStage(s => s === 'practice' ? s : 'app'); setTab(tb => tb === 'home' ? 'messages' : tb); return; }
+      setStage(s => (s === 'app' || s === 'practice') ? s : (acc.data && acc.data.quizDone ? 'app' : 'welcome'));
+    } catch (e) {
+      if (seq !== loadSeq.current) return;
+      setStage('error');
+    }
+  };
+
+  uEA(() => {
+    if (!isProd) return;
+    if (!window.EBBackend || !window.EBBackend.available()) { setStage('auth'); return; }
+    let alive = true;
+    window.EBBackend.getSession().then(s => { if (alive) enterWith(s); }).catch(() => alive && setStage('auth'));
+    const off = window.EBBackend.onAuthChange((event, session) => {
+      if (event === 'SIGNED_IN') enterWith(session);
+      if (event === 'SIGNED_OUT') { setAccount(null); setStage('auth'); }
+    });
+    return () => { alive = false; off(); };
   }, []);
+
+  const retry = () => { window.EBBackend.getSession().then(enterWith).catch(() => setStage('error')); };
+  const logout = async () => {
+    await window.EBBackend.signOut();
+    setAccount(null); setProfile(DEFAULT_PROFILE); setTab('home'); setStage('auth');
+  };
+
+  // Desa el perfil al compte (agrupa canvis seguits, p. ex. en escriure el nom)
+  const saveTimer = uRA(null);
+  const accountRef = uRA(account);
+  accountRef.current = account;
+  const persistProfile = (next, extra) => {
+    const acc = accountRef.current;
+    if (!acc || !isProd) return;
+    const data = { ...(acc.data || {}), profile: next, ...(extra || {}) };
+    const patch = { data, name: next.name || '' };
+    accountRef.current = { ...acc, ...patch };
+    setAccount(accountRef.current);
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      window.EBBackend.saveProfile(acc.userId, patch).catch(() => {});
+    }, extra ? 0 : 800);
+  };
 
   // Avisos del calendari: revisa notes vençudes (a l'obrir i cada 20s)
   uEA(() => {
@@ -115,29 +170,6 @@ function App() {
     return () => clearInterval(iv);
   }, []);
 
-  // Desa el nom al dispositiu perquè no es perdi en recarregar
-  uEA(() => { try { if (profile.name && profile.name !== DEFAULT_PROFILE.name) localStorage.setItem('elbosc-name', profile.name); } catch (e) {} }, [profile.name]);
-
-  // Supabase: si l'usuària torna d'un enllaç màgic (o ja té sessió), entra a l'app
-  uEA(() => {
-    if (!window.sb) return;
-    const enter = (session) => {
-      if (!session || !session.user) return;
-      const email = session.user.email || '';
-      try {
-        const existing = JSON.parse(localStorage.getItem('elbosc-session') || 'null');
-        if (!(existing && existing.role)) localStorage.setItem('elbosc-session', JSON.stringify({ email, role: 'student' }));
-      } catch (e) {}
-      setTweak('role', 'student');
-      setStage('app'); setTab('home');
-      try { if (window.location.hash) history.replaceState(null, '', window.location.pathname + window.location.search); } catch (e) {}
-    };
-    window.sb.auth.getSession().then(({ data }) => enter(data && data.session)).catch(() => {});
-    let sub;
-    try { sub = window.sb.auth.onAuthStateChange((_e, session) => enter(session)).data; } catch (e) {}
-    return () => { try { sub && sub.subscription && sub.subscription.unsubscribe(); } catch (e) {} };
-  }, []);
-
   const asanas = uMA(() => (window.EBPoses ? window.EBPoses.effective() : ASANAS), [posesVersion]);
   const sequence = uMA(() => generateSequence(profile, asanas), [profile, asanas]);
 
@@ -149,59 +181,48 @@ function App() {
     root.setAttribute('data-typeface', tweaks.typeface || 'cormorant');
     root.setAttribute('data-density', tweaks.density || 'normal');
     root.setAttribute('data-textsize', textSize || 'm');
-  }, [theme, textSize, tweaks.mode, tweaks.typeface, tweaks.density]);
+    root.setAttribute('lang', lang);
+  }, [theme, textSize, tweaks.mode, tweaks.typeface, tweaks.density, lang]);
 
-  const setLang = (l) => setTweak('lang', l);
+  const goHome = () => { setPoseDetail(null); setShowStudents(false); setTab('home'); if (stage === 'practice') setStage('app'); };
 
   const appContent = (
     <div className="yb-app" style={{ height: '100%', position: 'relative', overflow: 'hidden' }}>
-      {stage === 'auth' && (
-        <AuthGate lang={lang} adminPin={adminPin}
-          onSuccess={(email, role) => {
-            localStorage.setItem('elbosc-session', JSON.stringify({ email, role }));
-            if (role === 'teacher') {
-              setTweak('role', 'teacher');
-              setStage('app'); setTab('messages');
-            } else {
-              setTweak('role', 'student');
-              setStage('welcome');
-            }
-          }}/>
-      )}
+      <ErrorBoundary onReset={goHome}>
+      {stage === 'loading' && <AccessScreen kind="loading" lang={lang}/>}
+      {(stage === 'revoked' || stage === 'missing') && <AccessScreen kind={stage} lang={lang} onLogout={logout}/>}
+      {stage === 'error' && <AccessScreen kind="error" lang={lang} onRetry={retry} onLogout={logout}/>}
+      {stage === 'auth' && <AuthGate lang={lang} invite={invite}/>}
       {stage === 'welcome' && (
         <Welcome t={t} lang={lang} setLang={setLang} onStart={() => setStage('quiz')}/>
       )}
       {stage === 'quiz' && (
         <Questionnaire t={t} profile={profile} setProfile={setProfile}
           onBack={() => setStage('welcome')}
-          onComplete={() => { setStage('app'); setTab('home'); }}/>
+          onComplete={() => { persistProfile(profile, { quizDone: true }); setStage('app'); setTab('home'); }}/>
       )}
       {stage === 'app' && (
         <>
           {tab === 'home' && <Dashboard t={t} profile={profile} sequence={sequence} lang={lang}
-            role={tweaks.role || 'student'}
+            role={role}
             theme={theme} onChangeTheme={changeTheme}
             textSize={textSize} onChangeTextSize={changeTextSize}
-            adminPin={adminPin} onChangePin={changeAdminPin}
+            onOpenStudents={() => setShowStudents(true)}
+            onRedoQuiz={() => setStage('quiz')}
             asanas={asanas} onPosesChanged={() => setPosesVersion(v => v + 1)}
             onStartPractice={() => setStage('practice')}
             onOpenPose={(p) => setPoseDetail(p)}
             illustrationStyle={tweaks.illustrationStyle}
-            onChangeName={(nm) => setProfile(p => ({ ...p, name: nm }))}
-            onLogout={() => {
-              try {
-                localStorage.removeItem('elbosc-session');
-                localStorage.removeItem('elbosc-credential');
-              } catch (e) {}
-              setStage('auth');
-            }}/>}
+            onChangeName={(nm) => { const next = { ...profile, name: nm }; setProfile(next); persistProfile(next); }}
+            onLogout={logout}/>}
           {tab === 'library' && <Library t={t} lang={lang} asanas={asanas}
             onOpenPose={(p) => setPoseDetail(p)} illustrationStyle={tweaks.illustrationStyle}/>}
           {tab === 'calendar' && <Calendar t={t} lang={lang} profile={profile}/>}
           {tab === 'journal' && <Journal t={t} lang={lang}/>}
-          {tab === 'messages' && <Chat t={t} lang={lang} role={tweaks.role || 'student'} asanas={asanas}/>}
-          <TabBar active={tab} setActive={setTab} t={t} role={tweaks.role || 'student'}/>
+          {tab === 'messages' && <Chat t={t} lang={lang} role={role} asanas={asanas}/>}
+          <TabBar active={tab} setActive={setTab} t={t} role={role}/>
           {poseDetail && <PoseDetail t={t} lang={lang} asana={poseDetail} onClose={() => setPoseDetail(null)} illustrationStyle={tweaks.illustrationStyle}/>}
+          {showStudents && role === 'teacher' && <StudentsPanel lang={lang} onClose={() => setShowStudents(false)}/>}
         </>
       )}
       {stage === 'practice' && (
@@ -210,6 +231,7 @@ function App() {
           onExit={() => setStage('app')}
           onComplete={() => setStage('app')}/>
       )}
+      </ErrorBoundary>
     </div>
   );
 
@@ -267,7 +289,7 @@ function App() {
               ]}/>
           </TweakSection>
           <TweakSection title="Idioma">
-            <TweakRadio value={tweaks.lang} onChange={v => setTweak('lang', v)}
+            <TweakRadio value={tweaks.lang} onChange={setLang}
               options={[
                 { value: 'ca', label: 'Català' },
                 { value: 'es', label: 'Castellà' },
@@ -286,7 +308,7 @@ function App() {
       {dueNotes.length > 0 && (
         <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(20,18,14,0.55)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}
           onClick={() => setDueNotes([])}>
-          <div onClick={e => e.stopPropagation()} style={{ width:'100%', maxWidth:360, background:'var(--paper)', borderRadius:20, padding:'26px 22px', boxShadow:'0 20px 60px rgba(0,0,0,0.35)' }}>
+          <div role="dialog" aria-modal="true" onClick={e => e.stopPropagation()} style={{ width:'100%', maxWidth:360, background:'var(--paper)', borderRadius:20, padding:'26px 22px', boxShadow:'0 20px 60px rgba(0,0,0,0.35)' }}>
             <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:14 }}>
               <div style={{ width:40, height:40, borderRadius:'50%', background:'color-mix(in srgb, var(--accent) 16%, transparent)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <Icon name="bell" size={20} color="var(--accent)"/>
