@@ -1,4 +1,4 @@
-const CACHE = 'elbosc-v33';
+const CACHE = 'elbosc-v34';
 
 const SHELL = [
   './',
@@ -8,6 +8,7 @@ const SHELL = [
   './app.jsx',
   './index.html',
   './styles/shell.css',
+  './styles/modern.css',
   './components/Auth.jsx',
   './components/Consent.jsx',
   './components/Checkin.jsx',

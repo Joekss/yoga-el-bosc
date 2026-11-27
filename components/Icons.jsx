@@ -1,8 +1,10 @@
 // components/Icons.jsx — Icones lineals minimalistes
 
-const Icon = ({ name, size = 22, color = 'currentColor', strokeWidth = 1.6 }) => {
+// Restyling: totes les icones un 15% més grans i amb el traç més definit
+const Icon = ({ name, size = 22, color = 'currentColor', strokeWidth = 1.75 }) => {
+  const px = Math.round(size * 1.15);
   const props = {
-    width: size, height: size, viewBox: '0 0 24 24',
+    width: px, height: px, viewBox: '0 0 24 24', 'aria-hidden': true,
     fill: 'none', stroke: color, strokeWidth,
     strokeLinecap: 'round', strokeLinejoin: 'round',
   };
@@ -36,6 +38,7 @@ const Icon = ({ name, size = 22, color = 'currentColor', strokeWidth = 1.6 }) =>
     search: <><circle cx="11" cy="11" r="7"/><line x1="16" y1="16" x2="21" y2="21"/></>,
     filter: <><path d="M3 5h18M6 12h12M10 19h4"/></>,
     chakra: <><circle cx="12" cy="12" r="3"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3"/><circle cx="12" cy="12" r="9" strokeOpacity="0.3"/></>,
+    chart: <><path d="M4 20V10M10 20V4M16 20v-7M21 20H3"/></>,
     download: <><path d="M12 3v12M7 11l5 5 5-5"/><path d="M4 19h16"/></>,
     chat: <><path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H9l-5 4V6a1 1 0 0 1 1-1z"/></>,
     send: <><path d="M4 12l16-8-7 18-3-7-6-3z"/></>,

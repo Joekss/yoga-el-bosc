@@ -12,7 +12,7 @@ const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
 // ── Avisos: missatges nous i recordatori diari (notificacions push) ──
-const NotificationSettings = ({ lang, role }) => {
+const NotificationSettings = ({ lang, role, onOpenInstall }) => {
   const [support] = uS(() => (window.EBPush ? window.EBPush.support() : 'unsupported'));
   const [on, setOn] = uS(false);
   const [messages, setMessages] = uS(true);
@@ -31,7 +31,8 @@ const NotificationSettings = ({ lang, role }) => {
     saved: {ca:'Avisos desats.', es:'Avisos guardados.', en:'Notifications saved.'}[lang],
     disabled: {ca:'Avisos desactivats.', es:'Avisos desactivados.', en:'Notifications turned off.'}[lang],
     ios: {ca:'A l\'iPhone, primer afegeix l\'app a la pantalla d\'inici (Compartir → Afegir a la pantalla d\'inici) i obre-la des d\'allà.', es:'En el iPhone, primero añade la app a la pantalla de inicio (Compartir → Añadir a pantalla de inicio) y ábrela desde allí.', en:'On iPhone, first add the app to your Home Screen (Share → Add to Home Screen) and open it from there.'}[lang],
-    unsupported: {ca:'Aquest navegador no permet avisos.', es:'Este navegador no permite avisos.', en:'This browser doesn\'t support notifications.'}[lang],
+    unsupported: {ca:'Aquest navegador no pot enviar avisos. Obre l\'app amb Chrome (Android) o Safari (iPhone), o instal·la-la.', es:'Este navegador no puede enviar avisos. Abre la app con Chrome (Android) o Safari (iPhone), o instálala.', en:'This browser can\'t send notifications. Open the app in Chrome (Android) or Safari (iPhone), or install it.'}[lang],
+    install: {ca:'Com instal·lar l\'app', es:'Cómo instalar la app', en:'How to install the app'}[lang],
     denied: {ca:'Els avisos estan bloquejats. Activa\'ls als ajustos del mòbil per a aquesta app.', es:'Los avisos están bloqueados. Actívalos en los ajustes del móvil para esta app.', en:'Notifications are blocked. Allow them in your phone settings for this app.'}[lang],
     error: {ca:'No s\'han pogut activar. Torna-ho a provar.', es:'No se han podido activar. Vuelve a probar.', en:'Couldn\'t turn them on. Try again.'}[lang],
     note: {ca:'Per privacitat, l\'avís no mostra el text del missatge. Si ja has practicat aquell dia, no et recordarem res.', es:'Por privacidad, el aviso no muestra el texto del mensaje. Si ya has practicado ese día, no te recordaremos nada.', en:'For privacy, the notification doesn\'t show the message text. If you\'ve already practised that day, we won\'t remind you.'}[lang],
@@ -47,37 +48,54 @@ const NotificationSettings = ({ lang, role }) => {
     setBusy(false);
   };
   const off = async () => { setBusy(true); await window.EBPush.disable(); setOn(false); setMsg({ ok: true, text: L.disabled }); setBusy(false); };
-  const lbl = { fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', display:'block' };
-  const row = { display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'8px 0', fontFamily:'var(--sans)', fontSize:14, color:'var(--ink)' };
+  const Switch = ({ id, checked, onChange, label }) => (
+    <span className="eb-switch"><input id={id} type="checkbox" role="switch" aria-label={label} checked={checked} onChange={e => onChange(e.target.checked)}/><span/></span>
+  );
   return (
     <div>
-      <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
-      <label style={lbl}>{L.title}</label>
-      {support !== 'ok' ? (
-        <p style={{ fontFamily:'var(--sans)', fontSize:13, color:'var(--ink-soft)', lineHeight:1.5, margin:'10px 0 0' }}>{L[support === 'ios-install' ? 'ios' : support]}</p>
-      ) : (
-        <div style={{ marginTop:6 }}>
-          <label htmlFor="eb-push-msg" style={row}>{L.messages}
-            <input id="eb-push-msg" type="checkbox" checked={messages} onChange={e => setMessages(e.target.checked)} style={{ width:20, height:20, accentColor:'var(--accent)' }}/>
-          </label>
-          <label htmlFor="eb-push-rem" style={row}>{L.reminder}
-            <input id="eb-push-rem" type="checkbox" checked={reminder} onChange={e => setReminder(e.target.checked)} style={{ width:20, height:20, accentColor:'var(--accent)' }}/>
-          </label>
-          {reminder && (
-            <div style={{ ...row, justifyContent:'flex-start' }}>
-              <span style={{ color:'var(--ink-soft)' }}>{L.at}</span>
-              <input id="eb-push-time" aria-label={L.reminder} type="time" value={time} step="900" onChange={e => setTime(e.target.value || '09:00')}
-                style={{ border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:10, padding:'6px 10px', background:'var(--cream)', color:'var(--ink)', fontFamily:'var(--sans)', fontSize:15 }}/>
+      <div className="eb-group-title">{L.title}</div>
+      <div className="eb-group">
+        {support !== 'ok' ? (
+          <div className="eb-row" style={{ cursor:'default', alignItems:'flex-start' }}>
+            <span className="eb-row-icon amber"><Icon name="bell" size={18} color="currentColor"/></span>
+            <span className="eb-row-body" style={{ fontSize:14, lineHeight:1.45 }}>{L[support === 'ios-install' ? 'ios' : support]}</span>
+          </div>
+        ) : (
+          <>
+            <label htmlFor="eb-push-msg" className="eb-row">
+              <span className="eb-row-icon"><Icon name="chat" size={18} color="currentColor"/></span>
+              <span className="eb-row-body">{L.messages}</span>
+              <Switch id="eb-push-msg" checked={messages} onChange={setMessages} label={L.messages}/>
+            </label>
+            <label htmlFor="eb-push-rem" className="eb-row">
+              <span className="eb-row-icon amber"><Icon name="bell" size={18} color="currentColor"/></span>
+              <span className="eb-row-body">{L.reminder}</span>
+              <Switch id="eb-push-rem" checked={reminder} onChange={setReminder} label={L.reminder}/>
+            </label>
+            {reminder && (
+              <div className="eb-row" style={{ cursor:'default' }}>
+                <span className="eb-row-icon"><Icon name="clock" size={18} color="currentColor"/></span>
+                <span className="eb-row-body">{L.at}</span>
+                <input id="eb-push-time" aria-label={L.reminder} type="time" value={time} step="900" onChange={e => setTime(e.target.value || '09:00')}
+                  style={{ border:'none', borderRadius:10, padding:'8px 10px', background:'color-mix(in srgb, var(--ink) 6%, transparent)', color:'var(--ink)', fontFamily:'var(--sans)', fontSize:16, fontWeight:600 }}/>
+              </div>
+            )}
+            <div style={{ padding:'12px 16px 14px', display:'flex', flexDirection:'column', gap:8 }}>
+              <button disabled={busy} onClick={save} className="yb-btn yb-btn-clay" style={{ width:'100%' }}>{on ? L.save : L.enable}</button>
+              {on && <button disabled={busy} onClick={off} className="yb-btn yb-btn-ghost" style={{ width:'100%' }}>{L.off}</button>}
+              <span style={{ fontFamily:'var(--sans)', fontSize:12.5, color:'var(--ink-soft)', lineHeight:1.45 }}>{L.note}</span>
             </div>
-          )}
-          <button disabled={busy} onClick={save} style={{ width:'100%', marginTop:8, padding:'11px', borderRadius:12, border:'none', background:'var(--accent)', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer' }}>
-            {on ? L.save : L.enable}
+          </>
+        )}
+        {onOpenInstall && (
+          <button className="eb-row" onClick={onOpenInstall}>
+            <span className="eb-row-icon"><Icon name="download" size={18} color="currentColor"/></span>
+            <span className="eb-row-body">{L.install}</span>
+            <span className="eb-row-end"><Icon name="next" size={16} color="currentColor"/></span>
           </button>
-          {on && <button disabled={busy} onClick={off} style={{ width:'100%', marginTop:8, padding:'10px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--ink) 15%, transparent)', color:'var(--ink-soft)', fontFamily:'var(--sans)', fontSize:13, cursor:'pointer' }}>{L.off}</button>}
-          <p style={{ fontFamily:'var(--sans)', fontSize:11.5, color:'var(--ink-soft)', lineHeight:1.5, margin:'8px 0 0' }}>{L.note}</p>
-        </div>
-      )}
-      {msg && <div role="status" style={{ fontFamily:'var(--sans)', fontSize:12, color: msg.ok ? 'var(--leaf-deep)' : 'var(--accent)', marginTop:6 }}>{msg.text}</div>}
+        )}
+      </div>
+      {msg && <div role="status" style={{ fontFamily:'var(--sans)', fontSize:13, color: msg.ok ? 'var(--leaf-deep)' : '#B0432F', margin:'8px 4px 0' }}>{msg.text}</div>}
     </div>
   );
 };
@@ -227,9 +245,9 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
   };
   const themeLabelStyle = { fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', display:'block' };
   const THEMES = [
-    { id:'bosc',  label:{ca:'Bosc',es:'Bosc',en:'Forest'}[lang], color:'#B8744A' },
-    { id:'sage',  label:{ca:'Sàlvia',es:'Salvia',en:'Sage'}[lang], color:'#6B8259' },
-    { id:'ocean', label:{ca:'Oceà',es:'Océano',en:'Ocean'}[lang], color:'#4A7B8C' },
+    { id:'bosc',  label:{ca:'Bosc',es:'Bosc',en:'Forest'}[lang], color:'#2E6B4F' },
+    { id:'sage',  label:{ca:'Sàlvia',es:'Salvia',en:'Sage'}[lang], color:'#5E7A3E' },
+    { id:'ocean', label:{ca:'Oceà',es:'Océano',en:'Ocean'}[lang], color:'#2F6D80' },
   ];
 
 
@@ -256,7 +274,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
       <div style={{ padding: '0 24px' }}>
         <div onClick={onStartPractice} style={{
           position: 'relative', borderRadius: 24, overflow: 'hidden',
-          background: 'linear-gradient(140deg, var(--leaf-deep) 0%, var(--leaf) 60%, var(--accent) 130%)',
+          background: 'radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--glow) 60%, transparent) 0, transparent 34%), linear-gradient(155deg, var(--accent-deep) 0%, var(--accent) 52%, var(--leaf) 120%)',
           padding: '24px', color: 'var(--cream)', cursor: 'pointer',
           boxShadow: 'var(--shadow-2)', minHeight: 200,
         }}>
@@ -271,7 +289,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
           </svg>
           <div style={{ position:'relative', zIndex: 1 }}>
             <div style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.25em', opacity: 0.85, marginBottom: 8 }}>
-              {t.todayPractice.toUpperCase()}
+              {t.todayPractice}
             </div>
             <h2 style={{ fontSize: 28, fontStyle:'italic', marginBottom: 12, lineHeight: 1.15, maxWidth: 250 }}>
               {{ ca:'Pràctica per al teu cos d\'avui', es:'Práctica para tu cuerpo de hoy', en:'Practice for your body today' }[lang]}
@@ -363,7 +381,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
       {/* Stats row */}
       <div style={{ padding: '24px', display:'grid', gridTemplateColumns:'1fr 1fr', gap: 12 }}>
         <div className="yb-card" style={{ padding: 16 }}>
-          <Icon name="flame" size={18} color="var(--accent)"/>
+          <Icon name="flame" size={18} color="var(--glow)"/>
           <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>{(stats && stats.streak) || 0}</div>
           <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)' }}>{t.progress_.streak}</div>
         </div>
@@ -380,7 +398,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
       </div>
 
       {/* Teacher note */}
-      <div style={{ padding: '0 24px 100px' }}>
+      <div style={{ padding: '0 24px 120px' }}>
         <div className="yb-card" style={{ background:'color-mix(in srgb, var(--accent) 8%, var(--cream))', display:'flex', gap: 14 }}>
           <div style={{ width: 44, height: 44, borderRadius:'50%', background:'var(--accent)', flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--cream)', fontFamily:'var(--serif)', fontSize: 20 }}>C</div>
           <div>
@@ -393,138 +411,116 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
       </div>
     </div>
 
-    {showProfile && (
-      <div onClick={() => setShowProfile(false)}
-        style={{ position:'fixed', inset:0, zIndex:9998, background:'rgba(20,18,14,0.5)', backdropFilter:'blur(4px)', WebkitBackdropFilter:'blur(4px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
-        <div onClick={e => e.stopPropagation()}
-          style={{ width:'100%', maxWidth:430, background:'var(--paper)', borderTopLeftRadius:24, borderTopRightRadius:24, padding:'22px 24px calc(28px + env(safe-area-inset-bottom, 0px))', boxShadow:'0 -10px 40px rgba(0,0,0,0.25)' }}>
-          <div style={{ width:40, height:4, borderRadius:2, background:'color-mix(in srgb, var(--ink) 15%, transparent)', margin:'0 auto 18px' }}/>
-          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:16, marginBottom:20 }}>
-            <div style={{ width:96, height:96, borderRadius:'50%', overflow:'hidden', background:'var(--cream)', border:'1px solid color-mix(in srgb, var(--ink) 8%, transparent)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              {avatar
-                ? <img src={avatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
-                : <Icon name="user" size={40} color="var(--ink-soft)"/>}
-            </div>
-            <div style={{ width:'100%' }}>
-              <label style={{ fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', display:'block', marginBottom:8, textAlign:'center' }}>{PT.nameLabel}</label>
-              <input type="text" value={profile.name || ''} onChange={e => onChangeName && onChangeName(e.target.value)}
-                placeholder={PT.namePh}
-                style={{ width:'100%', border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:14, padding:'12px 16px', fontFamily:'var(--serif)', fontStyle:'italic', fontSize:20, background:'var(--cream)', color:'var(--ink)', outline:'none', textAlign:'center', boxSizing:'border-box' }}/>
+    {showProfile && (() => {
+      const close = () => setShowProfile(false);
+      const L = (o) => o[lang] || o.ca;
+      const Row = ({ icon, tone, title, sub, end, onClick, danger, href }) => {
+        const inner = (
+          <>
+            <span className={'eb-row-icon' + (tone ? ' ' + tone : '')}><Icon name={icon} size={18} color="currentColor"/></span>
+            <span className="eb-row-body">{title}{sub && <span className="eb-row-sub">{sub}</span>}</span>
+            <span className="eb-row-end">{end !== undefined ? end : <Icon name="next" size={16} color="currentColor"/>}</span>
+          </>
+        );
+        return href
+          ? <a className={'eb-row' + (danger ? ' danger' : '')} href={href} target="_blank" rel="noopener" style={{ textDecoration:'none' }}>{inner}</a>
+          : <button className={'eb-row' + (danger ? ' danger' : '')} onClick={onClick}>{inner}</button>;
+      };
+      return (
+      <div className="eb-backdrop" onClick={close}
+        style={{ position:'fixed', inset:0, zIndex:9998, background:'rgba(10,18,13,0.45)', backdropFilter:'blur(6px)', WebkitBackdropFilter:'blur(6px)', display:'flex', alignItems:'flex-end', justifyContent:'center' }}>
+        <div className="eb-sheet yb-scroll" role="dialog" aria-modal="true" aria-label={PT.title} onClick={e => e.stopPropagation()}
+          style={{ width:'100%', maxWidth:430, maxHeight:'92dvh', overflowY:'auto', background:'var(--paper)', borderTopLeftRadius:30, borderTopRightRadius:30, padding:'10px 18px calc(28px + env(safe-area-inset-bottom, 0px))', boxShadow:'0 -10px 40px rgba(0,0,0,0.25)' }}>
+          <div style={{ position:'sticky', top:-10, zIndex:2, background:'var(--paper)', padding:'8px 0 6px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ width:40 }}/>
+            <div style={{ width:40, height:5, borderRadius:3, background:'color-mix(in srgb, var(--ink) 18%, transparent)' }}/>
+            <button aria-label={L({ca:'Tancar',es:'Cerrar',en:'Close'})} onClick={close}
+              style={{ width:40, height:40, borderRadius:'50%', border:'none', background:'var(--cream)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--ink)' }}>
+              <Icon name="close" size={18} color="currentColor"/>
+            </button>
+          </div>
+
+          {/* Perfil */}
+          <div style={{ display:'flex', alignItems:'center', gap:16, padding:'6px 4px 4px' }}>
+            <label htmlFor="eb-avatar" style={{ position:'relative', width:76, height:76, borderRadius:'50%', overflow:'hidden', background:'var(--cream)', border:'1px solid var(--line)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
+              {avatar ? <img src={avatar} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : <Icon name="user" size={32} color="var(--ink-soft)"/>}
+              <span style={{ position:'absolute', right:2, bottom:2, width:26, height:26, borderRadius:'50%', background:'var(--accent)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 0 0 3px var(--paper)' }}><Icon name="image" size={12} color="currentColor"/></span>
+              <input id="eb-avatar" type="file" accept="image/*" onChange={onPickPhoto} style={{ display:'none' }}/>
+            </label>
+            <div style={{ flex:1, minWidth:0 }}>
+              <label htmlFor="eb-name" style={{ fontFamily:'var(--sans)', fontSize:13, fontWeight:600, color:'var(--ink-soft)' }}>{PT.nameLabel}</label>
+              <input id="eb-name" type="text" value={profile.name || ''} onChange={e => onChangeName && onChangeName(e.target.value)} placeholder={PT.namePh}
+                style={{ width:'100%', border:'none', borderBottom:'1.5px solid var(--line)', padding:'6px 0', fontFamily:'var(--serif)', fontSize:26, background:'transparent', color:'var(--ink)', outline:'none' }}/>
+              {avatar && <button onClick={removePhoto} style={{ background:'none', border:'none', padding:'6px 0 0', color:'var(--ink-soft)', fontFamily:'var(--sans)', fontSize:13, cursor:'pointer' }}>{PT.remove}</button>}
             </div>
           </div>
 
-          <label style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8, width:'100%', padding:'13px', borderRadius:14, background:'var(--accent)', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:15, cursor:'pointer', marginBottom:4, boxSizing:'border-box' }}>
-            <Icon name="image" size={18} color="var(--cream)"/>
-            {PT.change}
-            <input type="file" accept="image/*" onChange={onPickPhoto} style={{ display:'none' }}/>
-          </label>
-          <div style={{ fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)', textAlign:'center', marginBottom:14 }}>{PT.hint}</div>
-
-          {avatar && (
-            <button onClick={removePhoto} style={{ width:'100%', padding:'12px', borderRadius:14, background:'transparent', border:'1px solid color-mix(in srgb, var(--ink) 12%, transparent)', color:'var(--ink)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', marginBottom:10, boxSizing:'border-box' }}>{PT.remove}</button>
-          )}
-
-          {/* Tema */}
-          <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'10px 0 14px' }}/>
-          <label style={themeLabelStyle}>{PT.theme}</label>
-          <div style={{ display:'flex', gap:10, marginTop:12, marginBottom:4 }}>
-            {THEMES.map(th => (
-              <button key={th.id} onClick={() => onChangeTheme && onChangeTheme(th.id)}
-                style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', gap:8, background:'transparent', border:'none', cursor:'pointer', padding:'6px 0' }}>
-                <div style={{ width:42, height:42, borderRadius:'50%', background:th.color, boxShadow: theme===th.id ? ('0 0 0 3px var(--paper), 0 0 0 5px '+th.color) : 'none' }}/>
-                <span style={{ fontFamily:'var(--sans)', fontSize:12, color: theme===th.id ? 'var(--ink)' : 'var(--ink-soft)' }}>{th.label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Mida del text (accessibilitat) */}
-          <label style={{ ...themeLabelStyle, marginTop:18 }}>{{ca:'Mida del text',es:'Tamaño del texto',en:'Text size'}[lang]}</label>
-          <div style={{ display:'flex', gap:8, marginTop:10 }}>
-            {[{id:'m',l:'A'},{id:'l',l:'A+'},{id:'xl',l:'A++'}].map(o => (
-              <button key={o.id} onClick={() => onChangeTextSize && onChangeTextSize(o.id)}
-                style={{ flex:1, padding:'10px', borderRadius:12, cursor:'pointer', fontFamily:'var(--serif)', fontWeight:500,
-                         fontSize: o.id==='m'?15:o.id==='l'?18:22,
-                         border:'1px solid ' + ((textSize||'m')===o.id ? 'var(--accent)' : 'color-mix(in srgb, var(--ink) 12%, transparent)'),
-                         background: (textSize||'m')===o.id ? 'color-mix(in srgb, var(--accent) 15%, transparent)' : 'transparent',
-                         color: (textSize||'m')===o.id ? 'var(--accent)' : 'var(--ink)' }}>{o.l}</button>
-            ))}
+          {/* Aparença */}
+          <div className="eb-group-title">{L({ca:'Aparença',es:'Apariencia',en:'Appearance'})}</div>
+          <div className="eb-group" style={{ padding:14, display:'flex', flexDirection:'column', gap:12 }}>
+            <div className="eb-seg" role="group" aria-label={PT.theme}>
+              {THEMES.map(th => (
+                <button key={th.id} aria-pressed={theme === th.id} onClick={() => onChangeTheme && onChangeTheme(th.id)}>
+                  <span aria-hidden="true" style={{ width:14, height:14, borderRadius:'50%', background:th.color }}/>{th.label}
+                </button>
+              ))}
+            </div>
+            <div className="eb-seg" role="group" aria-label={L({ca:'Mida del text',es:'Tamaño del texto',en:'Text size'})}>
+              {[{id:'m',l:'A',f:15},{id:'l',l:'A',f:19},{id:'xl',l:'A',f:23}].map(o => (
+                <button key={o.id} aria-pressed={(textSize||'m') === o.id} aria-label={o.id} onClick={() => onChangeTextSize && onChangeTextSize(o.id)} style={{ fontSize:o.f, fontFamily:'var(--serif)' }}>{o.l}</button>
+              ))}
+            </div>
           </div>
 
           {role === 'teacher' && (
-            <div style={{ marginTop:16 }}>
-              <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'6px 0 14px' }}/>
-              <label style={themeLabelStyle}>{PT.teacherZone}</label>
-              <button onClick={() => { setShowProfile(false); onOpenTracking && onOpenTracking(); }}
-                style={{ width:'100%', marginTop:10, padding:'12px', borderRadius:12, background:'var(--ink)', border:'none', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
-                {{ca:'Seguiment de les alumnes',es:'Seguimiento de las alumnas',en:'Student progress'}[lang]}
-              </button>
-              <button onClick={() => { setShowProfile(false); onOpenStudents && onOpenStudents(); }}
-                style={{ width:'100%', marginTop:10, padding:'12px', borderRadius:12, background:'var(--accent)', border:'none', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
-                {{ca:'Alumnes i accés',es:'Alumnas y acceso',en:'Students and access'}[lang]}
-              </button>
-              <button onClick={() => { setShowProfile(false); setShowPoseMgr(true); }}
-                style={{ width:'100%', marginTop:14, padding:'12px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
-                {{ca:'Gestionar postures',es:'Gestionar posturas',en:'Manage poses'}[lang]}
-              </button>
-              <button onClick={() => { setShowProfile(false); setShowRoutineMgr(true); }}
-                style={{ width:'100%', marginTop:8, padding:'12px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
-                {{ca:'Crear rutines',es:'Crear rutinas',en:'Create routines'}[lang]}
-              </button>
-            </div>
+            <>
+              <div className="eb-group-title">{PT.teacherZone}</div>
+              <div className="eb-group">
+                <Row icon="chart" tone="ink" title={L({ca:'Seguiment de les alumnes',es:'Seguimiento de las alumnas',en:'Student progress'})} sub={L({ca:'Qui practica, molèsties i informes',es:'Quién practica, molestias e informes',en:'Who practises, discomfort and reports'})} onClick={() => { close(); onOpenTracking && onOpenTracking(); }}/>
+                <Row icon="user-plus" title={L({ca:'Alumnes i accés',es:'Alumnas y acceso',en:'Students and access'})} sub={L({ca:'Afegir, posar en pausa, convidar',es:'Añadir, poner en pausa, invitar',en:'Add, pause, invite'})} onClick={() => { close(); onOpenStudents && onOpenStudents(); }}/>
+                <Row icon="flower" title={L({ca:'Postures',es:'Posturas',en:'Poses'})} sub={L({ca:'Afegir o treure postures',es:'Añadir o quitar posturas',en:'Add or remove poses'})} onClick={() => { close(); setShowPoseMgr(true); }}/>
+                <Row icon="sparkle" title={L({ca:'Rutines',es:'Rutinas',en:'Routines'})} sub={L({ca:'Crear seqüències per assignar',es:'Crear secuencias para asignar',en:'Create sequences to assign'})} onClick={() => { close(); setShowRoutineMgr(true); }}/>
+              </div>
+            </>
           )}
 
           {role !== 'teacher' && onRedoQuiz && (
-            <button onClick={() => { setShowProfile(false); onRedoQuiz(); }}
-              style={{ width:'100%', marginTop:16, padding:'12px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
-              {{ca:'Actualitzar el meu qüestionari',es:'Actualizar mi cuestionario',en:'Update my questionnaire'}[lang]}
-            </button>
+            <>
+              <div className="eb-group-title">{L({ca:'La meva pràctica',es:'Mi práctica',en:'My practice'})}</div>
+              <div className="eb-group">
+                <Row icon="leaf" title={L({ca:'Actualitzar el qüestionari',es:'Actualizar el cuestionario',en:'Update questionnaire'})} sub={L({ca:'Objectius, nivell, lesions',es:'Objetivos, nivel, lesiones',en:'Goals, level, injuries'})} onClick={() => { close(); onRedoQuiz(); }}/>
+              </div>
+            </>
           )}
 
-          <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
-          <NotificationSettings lang={lang} role={role}/>
-          {onOpenInstall && (
-            <button onClick={() => { setShowProfile(false); onOpenInstall(); }} style={{ background:'none', border:'none', padding:'8px 0 0', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:13, cursor:'pointer' }}>
-              {{ca:'Com instal·lar l\'app al mòbil',es:'Cómo instalar la app en el móvil',en:'How to install the app'}[lang]}
-            </button>
-          )}
-          <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
-          <label style={themeLabelStyle}>{{ca:'Privacitat',es:'Privacidad',en:'Privacy'}[lang]}</label>
-          <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:10 }}>
-            <a href="privacitat.html" target="_blank" rel="noopener" style={{ fontFamily:'var(--sans)', fontSize:13, color:'var(--accent)' }}>
-              {{ca:'Política de privacitat',es:'Política de privacidad',en:'Privacy policy'}[lang]}
-            </a>
-            {onExportData && (
-              <button onClick={onExportData}
-                style={{ width:'100%', padding:'11px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--ink) 15%, transparent)', color:'var(--ink)', fontFamily:'var(--sans)', fontSize:13, cursor:'pointer', boxSizing:'border-box' }}>
-                {{ca:'Descarregar les meves dades',es:'Descargar mis datos',en:'Download my data'}[lang]}
-              </button>
-            )}
+          <NotificationSettings lang={lang} role={role} onOpenInstall={onOpenInstall ? () => { close(); onOpenInstall(); } : null}/>
+
+          <div className="eb-group-title">{L({ca:'Privacitat',es:'Privacidad',en:'Privacy'})}</div>
+          <div className="eb-group">
+            <Row icon="shield" title={L({ca:'Política de privacitat',es:'Política de privacidad',en:'Privacy policy'})} href="privacitat.html"/>
+            {onExportData && <Row icon="download" title={L({ca:'Descarregar les meves dades',es:'Descargar mis datos',en:'Download my data'})} onClick={onExportData}/>}
             {onDeleteAccount && (
-              <button disabled={deleting}
+              <Row icon="trash" tone="danger" danger end={deleting ? '…' : ''}
+                title={confirmDelete ? L({ca:'Segur? Toca de nou per esborrar-ho tot',es:'¿Seguro? Toca otra vez para borrarlo todo',en:'Sure? Tap again to delete everything'}) : L({ca:'Esborrar el meu compte',es:'Borrar mi cuenta',en:'Delete my account'})}
                 onClick={async () => {
+                  if (deleting) return;
                   if (!confirmDelete) { setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 4000); return; }
                   setDeleting(true); setDeleteErr('');
-                  try { await onDeleteAccount(); setShowProfile(false); }
-                  catch (e) { setDeleteErr({ca:'No s\'ha pogut esborrar. Comprova la connexió.',es:'No se ha podido borrar. Comprueba la conexión.',en:'Couldn\'t delete. Check your connection.'}[lang]); }
+                  try { await onDeleteAccount(); close(); }
+                  catch (e) { setDeleteErr(L({ca:'No s\'ha pogut esborrar. Comprova la connexió.',es:'No se ha podido borrar. Comprueba la conexión.',en:'Couldn\'t delete. Check your connection.'})); }
                   setDeleting(false); setConfirmDelete(false);
-                }}
-                style={{ width:'100%', padding:'11px', borderRadius:12, background: confirmDelete ? 'var(--accent)' : 'transparent', border:'1px solid var(--accent)', color: confirmDelete ? 'var(--cream)' : 'var(--accent)', fontFamily:'var(--sans)', fontSize:13, cursor:'pointer', boxSizing:'border-box' }}>
-                {confirmDelete
-                  ? {ca:'Segur? S\'esborrarà tot. Toca de nou',es:'¿Seguro? Se borrará todo. Toca otra vez',en:'Sure? Everything will be deleted. Tap again'}[lang]
-                  : {ca:'Esborrar el meu compte',es:'Borrar mi cuenta',en:'Delete my account'}[lang]}
-              </button>
+                }}/>
             )}
-            {deleteErr && <div role="alert" style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--accent)' }}>{deleteErr}</div>}
           </div>
+          {deleteErr && <div role="alert" style={{ fontFamily:'var(--sans)', fontSize:13, color:'#B0432F', margin:'8px 4px' }}>{deleteErr}</div>}
 
-          <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
-          <button onClick={() => { setShowProfile(false); onLogout && onLogout(); }}
-            style={{ width:'100%', padding:'13px', borderRadius:14, background:'transparent', border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:15, cursor:'pointer', boxSizing:'border-box' }}>
-            {PT.logout}
-          </button>
+          <div className="eb-group" style={{ marginTop:22 }}>
+            <Row icon="back" title={PT.logout} end="" onClick={() => { close(); onLogout && onLogout(); }}/>
+          </div>
         </div>
       </div>
-    )}
+      );
+    })()}
 
     {showPoseMgr && (() => {
       const inp = { width:'100%', border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:12, padding:'11px 12px', fontFamily:'var(--sans)', fontSize:14, background:'var(--cream)', color:'var(--ink)', outline:'none', boxSizing:'border-box' };
@@ -641,7 +637,7 @@ const Library = ({ t, lang, asanas, onOpenPose, illustrationStyle }) => {
         ))}
       </div>
 
-      <div style={{ padding: '8px 24px 100px', display:'grid', gridTemplateColumns:'1fr 1fr', gap: 12 }}>
+      <div style={{ padding: '8px 24px 120px', display:'grid', gridTemplateColumns:'1fr 1fr', gap: 12 }}>
         {filtered.map(a => (
           <div key={a.id} onClick={() => onOpenPose(a)} style={{
             background: 'var(--cream)', borderRadius: 16, padding: 14, cursor: 'pointer',
@@ -812,7 +808,7 @@ const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle, role }) => {
         </div>
 
         {/* Sections */}
-        <div style={{ padding: '0 24px 100px', display:'flex', flexDirection:'column', gap: 16 }}>
+        <div style={{ padding: '0 24px 120px', display:'flex', flexDirection:'column', gap: 16 }}>
           <div className="yb-card">
             <div className="yb-divider-leaf" style={{ marginBottom: 14 }}>{t.pose.benefits}</div>
             <ul style={{ margin: 0, paddingLeft: 20, fontFamily:'var(--serif)', fontSize: 16, lineHeight: 1.6, color:'var(--ink)' }}>
@@ -1128,12 +1124,12 @@ const Messages = ({ t, lang }) => {
     <div className="yb-scroll" style={{ height:'100%', overflowY:'auto', background:'var(--paper)' }}>
       <div style={{ padding: '60px 24px 16px' }}>
         <div style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.25em', color:'var(--accent)', marginBottom: 4 }}>
-          {t.messages_.from.toUpperCase()}
+          {t.messages_.from}
         </div>
         <h1 style={{ fontSize: 36, fontStyle:'italic', color:'var(--ink)' }}>{t.messages_.title}</h1>
       </div>
 
-      <div style={{ padding: '0 24px 100px' }}>
+      <div style={{ padding: '0 24px 120px' }}>
         {msgs.map((m, i) => (
           <div key={i} className="yb-card" style={{ marginBottom: 12 }}>
             <div style={{ display:'flex', alignItems:'center', gap: 10, marginBottom: 10 }}>
@@ -1152,7 +1148,7 @@ const Messages = ({ t, lang }) => {
 };
 
 // ── Tab bar ──────────────────────────────────────────────────
-const TabBar = ({ active, setActive, t, role }) => {
+const TabBar = ({ active, setActive, t, role, badges }) => {
   const tabs = [
     { id:'home', icon:'home', label: t.nav.home },
     { id:'library', icon:'library', label: t.nav.library },
@@ -1161,26 +1157,17 @@ const TabBar = ({ active, setActive, t, role }) => {
     { id:'messages', icon:'chat', label: t.nav.messages },
   ];
   return (
-    <div style={{
-      position: 'absolute', bottom: 0, left: 0, right: 0,
-      padding: '10px 12px 30px',
-      background: 'color-mix(in srgb, var(--paper) 92%, transparent)',
-      backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-      borderTop: '1px solid color-mix(in srgb, var(--ink) 6%, transparent)',
-      display: 'flex', justifyContent: 'space-around',
-    }}>
+    <nav className="eb-tabbar" aria-label="El Bosc">
       {tabs.map(tab => (
-        <button key={tab.id} onClick={() => setActive(tab.id)} style={{
-          background:'transparent', border:'none', cursor:'pointer',
-          display:'flex', flexDirection:'column', alignItems:'center', gap: 4,
-          padding: '6px 10px', minWidth: 56,
-          color: active === tab.id ? 'var(--accent)' : 'var(--ink-soft)',
-        }}>
-          <Icon name={tab.icon} size={20} color="currentColor" strokeWidth={active === tab.id ? 1.8 : 1.5}/>
-          <div style={{ fontFamily:'var(--sans)', fontSize: 10, letterSpacing:'0.05em' }}>{tab.label}</div>
+        <button key={tab.id} className="eb-tab" aria-current={active === tab.id ? 'page' : undefined}
+          onClick={() => { if (active !== tab.id) { try { navigator.vibrate && navigator.vibrate(8); } catch (e) {} setActive(tab.id); } }}>
+          <span className="eb-tab-pill" aria-hidden="true"/>
+          <Icon name={tab.icon} size={22} color="currentColor" strokeWidth={active === tab.id ? 2.1 : 1.75}/>
+          <span>{tab.label}</span>
+          {badges && badges[tab.id] ? <span className="eb-tab-dot" aria-label="nou"/> : null}
         </button>
       ))}
-    </div>
+    </nav>
   );
 };
 

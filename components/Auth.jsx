@@ -176,7 +176,7 @@ const Logo = () => (
       </g>
     </svg>
     <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', color:'var(--ink)', letterSpacing:'-0.01em' }}>El Bosc</div>
-    <div style={{ fontFamily:'var(--sans)', fontSize: 10, letterSpacing:'0.3em', color:'var(--accent)', textTransform:'uppercase' }}>Ioga personalitzat</div>
+    <div style={{ fontFamily:'var(--serif)', fontSize: 17, color:'var(--accent)' }}>Ioga personalitzat</div>
   </div>
 );
 

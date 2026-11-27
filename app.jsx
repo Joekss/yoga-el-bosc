@@ -266,6 +266,7 @@ function App() {
   const appContent = (
     <div className="yb-app" style={{ height: '100%', position: 'relative', overflow: 'hidden' }}>
       <ErrorBoundary onReset={goHome}>
+      <div key={'stage-' + (stage === 'app' ? 'app' : stage)} className="eb-screen">
       {stage === 'loading' && <AccessScreen kind="loading" lang={lang}/>}
       {(stage === 'revoked' || stage === 'missing') && <AccessScreen kind={stage} lang={lang} onLogout={logout}/>}
       {stage === 'error' && <AccessScreen kind="error" lang={lang} onRetry={retry} onLogout={logout}/>}
@@ -284,6 +285,7 @@ function App() {
       )}
       {stage === 'app' && (
         <>
+          <div key={'tab-' + tab} className="eb-screen">
           {tab === 'home' && <Dashboard t={t} profile={profile} sequence={sequence} lang={lang}
             role={role}
             theme={theme} onChangeTheme={changeTheme}
@@ -312,6 +314,7 @@ function App() {
           {tab === 'calendar' && <Calendar t={t} lang={lang} profile={profile}/>}
           {tab === 'journal' && <Journal t={t} lang={lang}/>}
           {tab === 'messages' && <Chat t={t} lang={lang} role={role} asanas={asanas} account={isProd ? account : null}/>}
+          </div>
           <TabBar active={tab} setActive={setTab} t={t} role={role}/>
           {poseDetail && <PoseDetail t={t} lang={lang} asana={poseDetail} role={role} onClose={() => setPoseDetail(null)} illustrationStyle={tweaks.illustrationStyle}/>}
           {showStudents && role === 'teacher' && <StudentsPanel lang={lang} onClose={() => setShowStudents(false)}/>}
@@ -335,6 +338,7 @@ function App() {
           onExit={() => { activeAssignment.current = null; setPracticeSeq(null); setStage('app'); }}
           onComplete={completePractice}/>
       )}
+      </div>
       </ErrorBoundary>
     </div>
   );

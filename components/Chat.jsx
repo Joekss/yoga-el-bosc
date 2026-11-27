@@ -1117,7 +1117,7 @@ const StudentInbox = ({ t, lang, students, conversations, onOpen, onBroadcast })
     <div style={{ height:'100%', display:'flex', flexDirection:'column', background:'var(--paper)' }}>
       <div style={{ padding:'60px 24px 12px' }}>
         <div style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.25em', color:'var(--accent)', marginBottom: 4 }}>
-          {t.teacherTitle.toUpperCase()}
+          {t.teacherTitle}
         </div>
         <h1 style={{ fontSize: 34, fontStyle:'italic', color:'var(--ink)', margin: 0 }}>{t.inboxTitle}</h1>
       </div>
