@@ -11,8 +11,76 @@ const ebDayKey = (y, m, d) => `${y}-${ebPad(m+1)}-${ebPad(d)}`;
 const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number); const [h,mi] = String(n.time||'00:00').split(':').map(Number); return new Date(Y, (M||1)-1, D||1, h||0, mi||0, 0, 0); };
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
+// ── Calendari de constància: últimes 12 setmanes i petits hitos ──
+const ConstancyCalendar = ({ lang, log }) => {
+  const WEEKS = 12;
+  const dayKey = (d) => d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  const perDay = {};
+  log.forEach(x => { const k = dayKey(new Date(x.completed_at)); perDay[k] = (perDay[k] || 0) + (x.duration_sec || 0); });
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const start = new Date(today); start.setDate(start.getDate() - ((start.getDay() + 6) % 7) - (WEEKS - 1) * 7);
+  const weeks = [];
+  for (let w = 0; w < WEEKS; w++) {
+    const col = [];
+    for (let d = 0; d < 7; d++) { const day = new Date(start); day.setDate(start.getDate() + w * 7 + d); col.push(day); }
+    weeks.push(col);
+  }
+  const level = (sec) => sec <= 0 ? 0 : sec < 600 ? 1 : sec < 1500 ? 2 : 3;
+  const bg = ['color-mix(in srgb, var(--ink) 7%, transparent)', 'color-mix(in srgb, var(--leaf) 35%, transparent)', 'color-mix(in srgb, var(--leaf) 65%, transparent)', 'var(--leaf-deep)'];
+  const totalMin = Math.round(log.reduce((s, x) => s + (x.duration_sec || 0), 0) / 60);
+  const days = Object.keys(perDay).length;
+  let best = 0, run = 0;
+  for (let i = 0; i < 400; i++) { const d = new Date(today); d.setDate(d.getDate() - i); if (perDay[dayKey(d)]) { run++; best = Math.max(best, run); } else run = 0; }
+  const L = {
+    title: {ca:'La teva constància', es:'Tu constancia', en:'Your consistency'}[lang],
+    days:  {ca:'dies practicats', es:'días practicados', en:'days practised'}[lang],
+    less:  {ca:'Menys', es:'Menos', en:'Less'}[lang], more: {ca:'Més', es:'Más', en:'More'}[lang],
+  };
+  const MILESTONES = [
+    [log.length >= 1, {ca:'Primera pràctica', es:'Primera práctica', en:'First practice'}],
+    [best >= 3, {ca:'3 dies seguits', es:'3 días seguidos', en:'3 days in a row'}],
+    [best >= 7, {ca:'Una setmana seguida', es:'Una semana seguida', en:'A full week'}],
+    [log.length >= 10, {ca:'10 pràctiques', es:'10 prácticas', en:'10 practices'}],
+    [totalMin >= 300, {ca:'5 hores', es:'5 horas', en:'5 hours'}],
+    [log.length >= 50, {ca:'50 pràctiques', es:'50 prácticas', en:'50 practices'}],
+  ];
+  const fmtDay = (d) => { try { return d.toLocaleDateString(lang === 'ca' ? 'ca-ES' : lang, { day:'numeric', month:'short' }); } catch (e) { return ''; } };
+  return (
+    <div className="yb-card" style={{ padding:16 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:12, gap:8, flexWrap:'wrap' }}>
+        <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:20 }}>{L.title}</div>
+        <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)' }}>{days} {L.days}</div>
+      </div>
+      <div role="img" aria-label={L.title + ': ' + days + ' ' + L.days} style={{ display:'grid', gridTemplateColumns:`repeat(${WEEKS}, 1fr)`, gap:4 }}>
+        {weeks.map((col, w) => (
+          <div key={w} style={{ display:'grid', gridTemplateRows:'repeat(7, 1fr)', gap:4 }}>
+            {col.map((d, i) => {
+              const sec = perDay[dayKey(d)] || 0;
+              const future = d > today;
+              return <div key={i} title={fmtDay(d) + (sec ? ' · ' + Math.round(sec / 60) + ' min' : '')}
+                style={{ aspectRatio:'1', borderRadius:3, background: future ? 'transparent' : bg[level(sec)], outline: d.getTime() === today.getTime() ? '1.5px solid var(--accent)' : 'none' }}/>;
+            })}
+          </div>
+        ))}
+      </div>
+      <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:4, marginTop:8, fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)' }}>
+        {L.less}{bg.map((c, i) => <span key={i} style={{ width:10, height:10, borderRadius:2, background:c, display:'inline-block' }}/>)}{L.more}
+      </div>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:12 }}>
+        {MILESTONES.map(([got, label], i) => (
+          <span key={i} style={{ fontFamily:'var(--sans)', fontSize:11.5, padding:'4px 10px', borderRadius:999,
+            border:'1px solid ' + (got ? 'color-mix(in srgb, var(--leaf) 60%, transparent)' : 'color-mix(in srgb, var(--ink) 10%, transparent)'),
+            color: got ? 'var(--leaf-deep)' : 'var(--ink-soft)', opacity: got ? 1 : 0.6 }}>
+            {got ? '✓ ' : ''}{label[lang]}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, onRepeat, lastPoseIds, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, onRepeat, lastPoseIds, onOpenBreath, practiceLog, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -149,6 +217,23 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
         </div>
       </div>
 
+      {/* Respira i Medita */}
+      <div style={{ padding:'16px 24px 0', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        {[['breath', 'breath', {ca:'Respira',es:'Respira',en:'Breathe'}, {ca:'3–10 min',es:'3–10 min',en:'3–10 min'}],
+          ['meditate', 'moon', {ca:'Medita',es:'Medita',en:'Meditate'}, {ca:'5–30 min',es:'5–30 min',en:'5–30 min'}]].map(([m, ic, l, sub]) => (
+          <button key={m} onClick={() => onOpenBreath && onOpenBreath(m)} className="yb-card"
+            style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', cursor:'pointer', border:'none', textAlign:'left', color:'var(--ink)' }}>
+            <span style={{ width:36, height:36, borderRadius:'50%', background:'color-mix(in srgb, var(--accent) 14%, transparent)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <Icon name={ic} size={18} color="var(--accent)"/>
+            </span>
+            <span>
+              <span style={{ display:'block', fontFamily:'var(--serif)', fontStyle:'italic', fontSize:20 }}>{l[lang]}</span>
+              <span style={{ display:'block', fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)' }}>{sub[lang]}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Repetir i sessions desades */}
       {(lastPoseIds || savedSessions.length > 0) && (
         <div style={{ padding: '16px 24px 0', display:'flex', gap: 8, overflowX:'auto' }} className="yb-scroll">
@@ -212,10 +297,15 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
         </div>
       </div>
 
+      {/* Calendari de constància */}
+      <div style={{ padding: '0 24px 24px' }}>
+        <ConstancyCalendar lang={lang} log={practiceLog || []}/>
+      </div>
+
       {/* Teacher note */}
       <div style={{ padding: '0 24px 100px' }}>
         <div className="yb-card" style={{ background:'color-mix(in srgb, var(--accent) 8%, var(--cream))', display:'flex', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius:'50%', background:'var(--accent)', flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--cream)', fontFamily:'var(--serif)', fontSize: 20 }}>M</div>
+          <div style={{ width: 44, height: 44, borderRadius:'50%', background:'var(--accent)', flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--cream)', fontFamily:'var(--serif)', fontSize: 20 }}>C</div>
           <div>
             <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--accent)', letterSpacing:'0.15em', textTransform:'uppercase' }}>{t.messages_.from}</div>
             <div style={{ fontFamily:'var(--serif)', fontSize: 15, lineHeight: 1.5, color:'var(--ink)', marginTop: 4, fontStyle:'italic' }}>

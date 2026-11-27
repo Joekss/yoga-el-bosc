@@ -11,6 +11,7 @@ const SHELL = [
   './components/Auth.jsx',
   './components/Consent.jsx',
   './components/Checkin.jsx',
+  './components/Breath.jsx',
   './privacitat.html',
   './components/Chat.jsx',
   './tweaks-panel.jsx',

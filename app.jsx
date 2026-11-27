@@ -278,6 +278,8 @@ function App() {
             asanas={asanas} onPosesChanged={() => setPosesVersion(v => v + 1)}
             onStartPractice={() => setStage('checkin')}
             onRepeat={repeatSession}
+            practiceLog={practiceLog}
+            onOpenBreath={(m) => setStage(m === 'meditate' ? 'meditate' : 'breath')}
             lastPoseIds={(practiceLog.slice().reverse().find(x => x.pose_ids && x.pose_ids.length) || {}).pose_ids || null}
             onOpenPose={(p) => setPoseDetail(p)}
             illustrationStyle={tweaks.illustrationStyle}
@@ -292,6 +294,10 @@ function App() {
           {poseDetail && <PoseDetail t={t} lang={lang} asana={poseDetail} onClose={() => setPoseDetail(null)} illustrationStyle={tweaks.illustrationStyle}/>}
           {showStudents && role === 'teacher' && <StudentsPanel lang={lang} onClose={() => setShowStudents(false)}/>}
         </>
+      )}
+      {(stage === 'breath' || stage === 'meditate') && (
+        <BreathScreen lang={lang} mode={stage} onExit={() => setStage('app')}
+          onDone={(r) => { if (account) window.EBBackend.logPractice(account.userId, { durationSec: r.durationSec, poses: 0, checkin: { type: r.type } }).finally(() => setPracticeLog(window.EBBackend.readPracticeLog(account.userId))); }}/>
       )}
       {stage === 'checkin' && (
         <CheckinScreen lang={lang} defaultMinutes={profile.duration} onBack={() => setStage('app')} onStart={startFromCheckin}/>

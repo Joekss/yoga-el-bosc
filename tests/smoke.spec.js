@@ -379,6 +379,42 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     ok(!all.includes('anna@example.com') && !all.includes('abc123'), 'sense correus ni paràmetres de l\'adreça');
   }
 
+  console.log('15. Respiració i meditació');
+  {
+    const p = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna' });
+    await p.clock.install();
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'anna@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Començar pràctica');
+    await p.click('button:has-text("Respira")');
+    await waitText(p, 'Quadrada');
+    await p.click('button:text-is("4-7-8")');
+    await p.click('button:text-is("3 min")');
+    await p.click('button:text-is("Començar")');
+    await waitText(p, 'Inspira');
+    await p.clock.fastForward('00:05');
+    await waitText(p, 'Reté');
+    ok(true, 'segueix les fases inspira → reté');
+    await p.clock.fastForward('03:00');
+    await waitText(p, 'minuts de calma');
+    ok(true, 'en acabar el temps mostra el resum');
+    await p.waitForTimeout(400);
+    const practice = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-practice') || '[]'));
+    ok(practice.some(r => r.checkin && r.checkin.type === 'respiracio' && r.duration_sec === 180), 'compta com a pràctica (3 min de respiració)');
+    await p.click('text=Tornar a l\'inici');
+    await p.click('button:has-text("Medita")');
+    await waitText(p, 'Campana cada 5 minuts');
+    ok(true, 'obre la meditació amb temporitzador');
+    await p.click('button[aria-label="Sortir"]');
+    await waitText(p, 'La teva constància');
+    ok((await text(p)).includes('1 dies practicats') && (await text(p)).includes('✓ Primera pràctica'), 'el calendari de constància mostra el dia d\'avui');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+  }
+
   await browser.close();
   console.log(failures ? `\n${failures} prova(es) fallida(es)` : '\nTot correcte');
   process.exit(failures ? 1 : 0);
