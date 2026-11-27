@@ -6,7 +6,7 @@ La app ya no decide quién entra ni quién es profesora: lo decide Supabase. Hay
 
 1. Abre **SQL Editor → New query**.
 2. Pega el contenido de `migrations/001_acces_i_rols.sql` y pulsa **Run**.
-3. Repite con `migrations/002_practiques_i_privacitat.sql` y con cada archivo nuevo de `migrations/`, en orden.
+3. Repite con `002_practiques_i_privacitat.sql`, `003_cataleg.sql` y cada archivo nuevo de `migrations/`, en orden.
 
 ## 2. Hacer profesora a Cèlia
 

@@ -109,6 +109,7 @@ function App() {
       setProfile({ ...DEFAULT_PROFILE, ...(saved || {}), name });
       setPracticeLog(window.EBBackend.readPracticeLog(acc.userId));
       window.EBBackend.refreshPractice(acc.userId).then(log => { if (seq === loadSeq.current) setPracticeLog(log); }).catch(() => {});
+      if (window.EBCatalog) window.EBCatalog.sync(acc.role).then(changed => { if (changed) setPosesVersion(v => v + 1); });
       // Treu ?inv= i restes de l'enllaç màgic de la barra d'adreces
       try { if (window.location.search || window.location.hash) history.replaceState(null, '', window.location.pathname); } catch (e) {}
       if (acc.role === 'teacher') { setStage(s => s === 'practice' ? s : 'app'); setTab(tb => tb === 'home' ? 'messages' : tb); return; }
@@ -130,6 +131,17 @@ function App() {
     });
     return () => { alive = false; off(); };
   }, []);
+
+  // En recuperar la connexió, envia el que s'hagi fet sense xarxa
+  uEA(() => {
+    if (!account) return;
+    const onOnline = () => {
+      window.EBBackend.refreshPractice(account.userId).then(setPracticeLog).catch(() => {});
+      if (window.EBCatalog) window.EBCatalog.sync(account.role).then(changed => { if (changed) setPosesVersion(v => v + 1); });
+    };
+    window.addEventListener('online', onOnline);
+    return () => window.removeEventListener('online', onOnline);
+  }, [account && account.userId, account && account.role]);
 
   const retry = () => { window.EBBackend.getSession().then(enterWith).catch(() => setStage('error')); };
   const logout = async () => {

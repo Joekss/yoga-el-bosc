@@ -12,7 +12,7 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
 async function page(browser, scenario) {
   const ctx = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
   await ctx.route('**/vendor/supabase.js', r => r.fulfill({ contentType: 'application/javascript', body: FAKE }));
-  await ctx.addInitScript(s => { if (!sessionStorage.getItem('init')) { localStorage.clear(); if (s) localStorage.setItem('fake-sb', JSON.stringify(s)); sessionStorage.setItem('init', '1'); } }, scenario);
+  await ctx.addInitScript(s => { if (!sessionStorage.getItem('init')) { localStorage.clear(); if (s) localStorage.setItem('fake-sb', JSON.stringify(s)); if (s && s.catalog) localStorage.setItem('fake-sb-catalog', JSON.stringify(s.catalog)); sessionStorage.setItem('init', '1'); } }, scenario);
   const p = await ctx.newPage();
   p.errors = [];
   p.on('pageerror', e => p.errors.push(e.message));
@@ -215,6 +215,39 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     const left = await p.evaluate(() => Object.keys(localStorage).filter(k => k.startsWith('elbosc-')));
     ok(left.length === 0, 'no deixa dades al dispositiu: ' + left.join(','));
     await p.context().close();
+  }
+
+  console.log('11. Postures de la professora arriben a les alumnes');
+  {
+    const p = await page(browser, { role: 'teacher' });
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'celia@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Inici');
+    await p.click('text=Inici');
+    await p.click('button[aria-label="El teu perfil"]');
+    await p.click('text=Gestionar postures');
+    await p.fill('input[placeholder="Nom"]', 'Postura del roure');
+    await p.click('button:text-is("Afegir")');
+    await p.waitForTimeout(800);
+    const cat = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-catalog') || '[]'));
+    ok(cat.some(r => r.kind === 'pose' && r.payload.name.ca === 'Postura del roure'), 'la postura es desa al servidor');
+    await p.context().close();
+
+    const q = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna', catalog: cat });
+    await q.goto(BASE);
+    await q.fill('#eb-email', 'anna@example.com');
+    await q.click('button[type=submit]');
+    await q.fill('#eb-code', '123456');
+    await q.click('button[type=submit]');
+    await waitText(q, 'Començar pràctica');
+    await q.getByRole('button', { name: 'Postures', exact: true }).click();
+    await waitText(q, 'Postura del roure');
+    ok(true, 'l\'alumna la veu a la biblioteca');
+    ok(q.errors.length === 0, 'sense errors JS: ' + q.errors.join(' | '));
+    await q.context().close();
   }
 
   await browser.close();

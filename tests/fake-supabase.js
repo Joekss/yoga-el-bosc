@@ -37,6 +37,14 @@
         c.members = m; localStorage.setItem('fake-sb', JSON.stringify(c));
         return { data: null, error: null };
       }
+      if (table === 'catalog') {
+        let rows = JSON.parse(localStorage.getItem('fake-sb-catalog') || '[]');
+        if (st.op === 'upsert') { if (c.role !== 'teacher') return { data: null, error: { message: 'rls' } }; rows = rows.filter(r => !(r.kind === st.payload.kind && r.id === st.payload.id)).concat([st.payload]); }
+        if (st.op === 'delete') { if (c.role !== 'teacher') return { data: null, error: { message: 'rls' } }; const f = Object.fromEntries(st.filters); rows = rows.filter(r => !(r.kind === f.kind && r.id === f.id)); }
+        if (st.op === 'select') return { data: rows, error: null };
+        localStorage.setItem('fake-sb-catalog', JSON.stringify(rows));
+        return { data: null, error: null };
+      }
       if (table === 'practice_sessions') {
         const rows = JSON.parse(localStorage.getItem('fake-sb-practice') || '[]');
         if (st.op === 'upsert') { localStorage.setItem('fake-sb-practice', JSON.stringify(rows.concat(st.payload))); return { data: null, error: null }; }
