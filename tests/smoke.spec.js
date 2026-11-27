@@ -251,7 +251,7 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     await waitText(p, 'Inici');
     await p.click('text=Inici');
     await p.click('button[aria-label="El teu perfil"]');
-    await p.click('text=Gestionar postures');
+    await p.click('text=Afegir o treure postures');
     await p.fill('input[placeholder="Nom"]', 'Postura del roure');
     await p.click('button:text-is("Afegir")');
     await p.waitForTimeout(800);

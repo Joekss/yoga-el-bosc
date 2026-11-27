@@ -52,7 +52,7 @@ const Welcome = ({ t, onStart, lang, setLang }) => (
           </g>
         </svg>
         <div style={{ fontFamily: 'var(--sans)', fontSize: 11, letterSpacing: '0.4em', color: 'var(--accent)', marginBottom: 8 }}>
-          {t.appSubtitle.toUpperCase()}
+          {t.appSubtitle}
         </div>
         <h1 style={{ fontSize: 56, fontWeight: 400, lineHeight: 1, color: 'var(--ink)', fontStyle: 'italic', letterSpacing: '-0.02em' }}>
           el bosc

@@ -109,10 +109,10 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
   return (
     <div style={{
       height: '100%', display: 'flex', flexDirection: 'column', position: 'relative',
-      background: 'var(--ink)', color: 'var(--cream)',
+      background: 'var(--ink)', color: 'var(--cream)', '--accent': '#5FB487',
     }}>
       {/* Header */}
-      <div style={{ padding: '60px 24px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ padding: 'calc(env(safe-area-inset-top, 0px) + 20px) 20px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <button onClick={() => { window.EBSound && window.EBSound.stopAll(); onExit(); }} aria-label={PL.exit} style={{ background:'transparent', border:'none', color:'var(--cream)', cursor:'pointer', padding: 8 }}>
           <Icon name="close" size={22}/>
         </button>
@@ -134,7 +134,7 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
         </h2>
 
         {/* Breathing circle + pose */}
-        <div style={{ position: 'relative', width: 240, height: 240, marginBottom: 24 }}>
+        <div style={{ position: 'relative', width: 'min(240px, 30vh)', height: 'min(240px, 30vh)', marginBottom: 16 }}>
           <svg viewBox="0 0 240 240" style={{ position:'absolute', inset:0 }}>
             <circle cx="120" cy="120" r="110" fill="none" stroke="color-mix(in srgb, var(--accent) 30%, transparent)" strokeWidth="1"/>
             <circle cx="120" cy="120" r="110" fill="none" stroke="var(--accent)" strokeWidth="2"
@@ -144,11 +144,11 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
               style={{ transition: 'stroke-dashoffset 1s linear' }}/>
           </svg>
           <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--cream)' }}>
-            <PoseSVG id={current.id} size={150} color="var(--cream)" style={illustrationStyle}/>
+            <div style={{ width:"62%", height:"62%", display:"flex", alignItems:"center", justifyContent:"center" }}><PoseSVG id={current.id} size={150} color="var(--cream)" style={illustrationStyle}/></div>
           </div>
         </div>
 
-        <div style={{ fontFamily: 'var(--serif)', fontSize: 64, lineHeight: 1, color: 'var(--cream)' }}>
+        <div style={{ fontFamily: 'var(--serif)', fontSize: 'min(64px, 8vh)', lineHeight: 1, color: 'var(--cream)', fontVariantNumeric: 'tabular-nums' }}>
           {fmtTime(remaining)}
         </div>
         <div style={{ fontFamily: 'var(--sans)', fontSize: 13, opacity: 0.7, marginTop: 8 }}>
@@ -157,7 +157,7 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
       </div>
 
       {/* Controls */}
-      <div style={{ padding: '24px 32px 40px' }}>
+      <div style={{ padding: '16px 28px calc(env(safe-area-inset-bottom, 0px) + 24px)' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
           <button aria-label={PL.prev} onClick={() => { if(idx>0){ setIdx(idx-1); setRemaining(sequence[idx-1].duration); } }}
             disabled={idx === 0}
@@ -166,7 +166,7 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
           </button>
 
           <button aria-label={paused ? PL.play : PL.pause} onClick={() => setPaused(!paused)}
-            style={{ background:'var(--accent)', border:'none', borderRadius:'50%', width:72, height:72, color:'var(--cream)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: '0 8px 24px rgba(184,116,74,0.4)' }}>
+            style={{ background:'var(--accent)', border:'none', borderRadius:'50%', width:72, height:72, color:'var(--cream)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow: '0 10px 28px color-mix(in srgb, var(--accent) 45%, transparent)' }}>
             <Icon name={paused ? 'play' : 'pause'} size={26} color="var(--cream)"/>
           </button>
 
