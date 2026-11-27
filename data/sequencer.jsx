@@ -14,6 +14,8 @@ function generateSequence(profile, asanas) {
   const avoid = avoidZones.map(slug).filter(Boolean);
   const safe = asanas.filter(a => {
     if ((a.contraindications || []).some(c => injuries.includes(c))) return false;
+    // Les postures avançades només entren a la rutina automàtica de qui té nivell avançat
+    if (a.level === 'avancat' && level !== 'avancat') return false;
     // Zones a evitar (avui o sempre): fora les postures que les treballen directament
     if (avoid.length && (a.target || []).some(t => avoid.some(z => slug(t).startsWith(z.slice(0, 5))))) return false;
     return true;
@@ -83,7 +85,8 @@ function generateSequence(profile, asanas) {
   // 2. Warmup (~15%)
   const warmupSec = Math.round(totalSec * 0.15);
   addPose(findOne(a => a.id === 'marjariasana'), Math.round(warmupSec * 0.6));
-  addPose(findOne(a => a.family === 'mobilitat'), Math.round(warmupSec * 0.4));
+  // (la salutació al sol és de nivell intermedi: no entra a l'escalfament de principiants)
+  addPose(findOne(a => a.family === 'mobilitat' && (a.level === 'principiant' || level !== 'principiant')), Math.round(warmupSec * 0.4));
 
   // 3. Main (~50%)
   const mainSec = Math.round(totalSec * 0.50);

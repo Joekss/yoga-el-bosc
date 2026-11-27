@@ -612,11 +612,11 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
 // ── Library ─────────────────────────────────────────────────
 const Library = ({ t, lang, asanas, onOpenPose, illustrationStyle }) => {
   const [filter, setFilter] = uS('all');
-  const families = ['all','fav','peu','equilibri','flexio','extensio','torsio','restauratiu','meditacio','mobilitat'];
-  const familyLabels = { all: { ca:'Totes', es:'Todas', en:'All' }, fav: { ca:'♥ Preferides', es:'♥ Favoritas', en:'♥ Favourites' }, peu:'Peu', equilibri:'Equilibri', flexio:'Flexió', extensio:'Extensió', torsio:'Torsió', restauratiu:'Restaurativa', meditacio:'Meditació', mobilitat:'Mobilitat' };
+  const families = ['all','fav','ashtanga','peu','equilibri','flexio','extensio','torsio','inversio','restauratiu','meditacio','mobilitat'];
+  const familyLabels = { all: { ca:'Totes', es:'Todas', en:'All' }, fav: { ca:'♥ Preferides', es:'♥ Favoritas', en:'♥ Favourites' }, peu:'Peu', equilibri:'Equilibri', flexio:'Flexió', extensio:'Extensió', torsio:'Torsió', restauratiu:'Restaurativa', meditacio:'Meditació', mobilitat:'Mobilitat', inversio:{ ca:'Inversió', es:'Inversión', en:'Inversion' }, ashtanga:'Ashtanga' };
 
   const favIds = filter === 'fav' && window.EBFavorites ? window.EBFavorites.list() : [];
-  const filtered = filter === 'all' ? asanas : filter === 'fav' ? asanas.filter(a => favIds.includes(a.id)) : asanas.filter(a => a.family === filter);
+  const filtered = filter === 'all' ? asanas : filter === 'fav' ? asanas.filter(a => favIds.includes(a.id)) : filter === 'ashtanga' ? asanas.filter(a => a.series === 'ashtanga') : asanas.filter(a => a.family === filter);
 
   return (
     <div className="yb-scroll" style={{ height: '100%', overflowY: 'auto', background: 'var(--paper)' }}>
