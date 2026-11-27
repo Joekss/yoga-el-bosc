@@ -77,6 +77,9 @@ function App() {
   const [invite] = uSA(() => (window.readInvite ? window.readInvite() : null));
   const [showStudents, setShowStudents] = uSA(false);
   const [practiceLog, setPracticeLog] = uSA([]);
+  const [practiceSeq, setPracticeSeq] = uSA(null);     // seqüència d'avui (ajustada o repetida)
+  const [todayCheckin, setTodayCheckin] = uSA(null);
+  const [lastEntryId, setLastEntryId] = uSA(null);
   const stats = uMA(() => window.EBBackend ? window.EBBackend.practiceStats(practiceLog) : { streak: 0, total: 0, minutes: 0, thisWeek: 0 }, [practiceLog]);
   const role = isProd ? ((account && account.role) || 'student') : (tweaks.role || 'student');
 
@@ -154,10 +157,38 @@ function App() {
     await window.EBBackend.deleteAccount();
     setAccount(null); setProfile(DEFAULT_PROFILE); setPracticeLog([]); setTab('home'); setStage('auth');
   };
+  const startFromCheckin = (checkin) => {
+    setTodayCheckin(checkin);
+    setPracticeSeq(generateSequence(adjustProfileForToday(profile, checkin), asanas));
+    setStage('practice');
+  };
+  // Repeteix una sessió a partir de les postures (si alguna ja no existeix, se salta)
+  const repeatSession = (poseIds) => {
+    const byId = Object.fromEntries(asanas.map(a => [a.id, a]));
+    const seq = (poseIds || []).map(id => byId[id]).filter(Boolean).map(a => ({ ...a }));
+    if (!seq.length) return;
+    window.EBSound && window.EBSound.unlock();
+    setTodayCheckin(null); setPracticeSeq(seq); setStage('practice');
+  };
   const completePractice = (result) => {
-    setStage('app');
-    if (!account || !result) return;
-    window.EBBackend.logPractice(account.userId, result).finally(() => setPracticeLog(window.EBBackend.readPracticeLog(account.userId)));
+    if (!result) { setStage('app'); return; }
+    if (!account) { setStage('feedback'); return; }
+    window.EBBackend.logPractice(account.userId, { ...result, checkin: todayCheckin })
+      .then(entry => setLastEntryId(entry.id))
+      .finally(() => setPracticeLog(window.EBBackend.readPracticeLog(account.userId)));
+    lastPoseIds.current = result.poseIds;
+    setStage('feedback');
+  };
+  const lastPoseIds = uRA(null);
+  const saveFeedback = (fb) => {
+    if (fb && fb.saveSession && lastPoseIds.current && window.EBSessions) {
+      const d = new Date().toLocaleDateString(lang === 'ca' ? 'ca-ES' : lang, { day:'numeric', month:'short' });
+      window.EBSessions.save(fb.sessionName || d, lastPoseIds.current);
+    }
+    if (fb && fb.feeling && account && lastEntryId) {
+      window.EBBackend.ratePractice(account.userId, lastEntryId, fb).finally(() => setPracticeLog(window.EBBackend.readPracticeLog(account.userId)));
+    }
+    setPracticeSeq(null); setTodayCheckin(null); setStage('app');
   };
   const hasConsent = () => !isProd || !!(account && account.data && account.data.consent);
 
@@ -245,7 +276,9 @@ function App() {
             onExportData={() => window.EBBackend.exportData(account)}
             onDeleteAccount={isProd && role !== 'teacher' ? deleteAccount : null}
             asanas={asanas} onPosesChanged={() => setPosesVersion(v => v + 1)}
-            onStartPractice={() => setStage('practice')}
+            onStartPractice={() => setStage('checkin')}
+            onRepeat={repeatSession}
+            lastPoseIds={(practiceLog.slice().reverse().find(x => x.pose_ids && x.pose_ids.length) || {}).pose_ids || null}
             onOpenPose={(p) => setPoseDetail(p)}
             illustrationStyle={tweaks.illustrationStyle}
             onChangeName={(nm) => { const next = { ...profile, name: nm }; setProfile(next); persistProfile(next); }}
@@ -260,10 +293,16 @@ function App() {
           {showStudents && role === 'teacher' && <StudentsPanel lang={lang} onClose={() => setShowStudents(false)}/>}
         </>
       )}
+      {stage === 'checkin' && (
+        <CheckinScreen lang={lang} defaultMinutes={profile.duration} onBack={() => setStage('app')} onStart={startFromCheckin}/>
+      )}
+      {stage === 'feedback' && (
+        <FeedbackScreen lang={lang} onSave={saveFeedback} onSkip={() => saveFeedback(null)}/>
+      )}
       {stage === 'practice' && (
-        <PracticeMode t={t} sequence={sequence} lang={lang}
+        <PracticeMode t={t} sequence={practiceSeq || sequence} lang={lang}
           illustrationStyle={tweaks.illustrationStyle}
-          onExit={() => setStage('app')}
+          onExit={() => { setPracticeSeq(null); setStage('app'); }}
           onComplete={completePractice}/>
       )}
       </ErrorBoundary>

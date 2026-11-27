@@ -178,18 +178,41 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     const saves = calls.filter(c => c.table === 'profiles' && c.op === 'update');
     ok(saves.some(c => c.payload.data && c.payload.data.consent && c.payload.data.consent.version), 'desa el consentiment amb versió');
     ok(saves.some(c => c.payload.data && c.payload.data.quizDone && c.payload.data.profile), 'desa el qüestionari');
-    // Pràctica: entra i salta totes les postures
+    // Com et trobes avui? → pràctica → valoració
     await p.click('text=Començar pràctica');
+    await waitText(p, 'Com et trobes avui?');
+    await p.click('button:text-is("Cansada")');
+    await p.click('button:text-is("10 min")');
+    await p.click('button:text-is("Genolls")');
+    await p.click('text=Preparar la pràctica');
+    await p.waitForSelector('button[aria-label="Postura següent"]');
     for (let i = 0; i < 60; i++) {
-      const done = await p.evaluate(() => document.body.innerText.includes('Començar pràctica'));
+      const done = await p.evaluate(() => document.body.innerText.includes('Com t\'has sentit?'));
       if (done) break;
       await p.click('button[aria-label="Postura següent"]', { timeout: 2000 }).catch(() => {});
       await p.waitForTimeout(50);
     }
+    await waitText(p, 'Com t\'has sentit?');
+    ok(true, 'en acabar demana la valoració');
+    await p.click('button:has-text("Molt bé")');
+    await p.click('button[aria-pressed]:text-is("Sí")');
+    await p.fill('#eb-fb-note', 'Una mica el coll');
+    await p.check('#eb-fb-keep');
+    await p.click('button:text-is("Desar")');
     await waitText(p, 'Començar pràctica');
-    await p.waitForTimeout(500);
+    await p.waitForTimeout(700);
     const practice = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-practice') || '[]'));
     ok(practice.length === 1, 'envia la pràctica al servidor');
+    const pr = practice[0] || {};
+    ok(pr.checkin && pr.checkin.energy === 'low' && pr.checkin.minutes === 10 && pr.checkin.discomfort.includes('Genolls'), 'desa com es trobava abans');
+    ok(pr.feeling === 4 && pr.discomfort === 'Una mica el coll', 'desa la valoració i la molèstia');
+    ok(Array.isArray(pr.pose_ids) && pr.pose_ids.length > 0, 'desa les postures fetes');
+    const knee = await p.evaluate((ids) => (window.EBPoses.effective()).filter(a => ids.includes(a.id) && (a.contraindications || []).includes('lesio-genoll')).map(a => a.id), pr.pose_ids || []);
+    ok(knee.length === 0, 'amb molèstia de genolls no hi ha postures contraindicades: ' + knee.join(','));
+    const home = await text(p);
+    ok(home.includes('Repetir l\'última'), 'ofereix repetir l\'última pràctica');
+    const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('elbosc-sessions') || '[]'));
+    ok(saved.length === 1 && saved[0].poseIds.length === pr.pose_ids.length, 'desa la sessió per repetir-la');
     const body = await text(p);
     ok(/1\s*Dies consecutius/.test(body) && /1 \/ \d\s*Aquesta setmana/.test(body), 'ratxa 1 i 1 aquesta setmana');
     ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));

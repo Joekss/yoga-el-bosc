@@ -87,6 +87,7 @@
       if (table === 'practice_sessions') {
         const rows = JSON.parse(localStorage.getItem('fake-sb-practice') || '[]');
         if (st.op === 'upsert') { localStorage.setItem('fake-sb-practice', JSON.stringify(rows.concat(st.payload))); return { data: null, error: null }; }
+        if (st.op === 'update') { rows.forEach(r => { if (st.filters.every(([k, v]) => r[k] === v)) Object.assign(r, st.payload); }); localStorage.setItem('fake-sb-practice', JSON.stringify(rows)); return { data: null, error: null }; }
         return { data: rows, error: null };
       }
       return { data: null, error: null };

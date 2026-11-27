@@ -138,19 +138,37 @@
     if (!sb()) return;
     const log = readLog(uid);
     const pending = log.filter(x => !x.synced);
-    if (!pending.length) return;
-    const rows = pending.map(x => ({ id: x.id, user_id: uid, completed_at: x.completed_at, duration_sec: x.duration_sec, poses: x.poses }));
-    const { error } = await sb().from('practice_sessions').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
-    if (error) return;
-    const ids = new Set(pending.map(x => x.id));
-    writeLog(uid, readLog(uid).map(x => ids.has(x.id) ? { ...x, synced: true } : x));
+    if (pending.length) {
+      const rows = pending.map(x => ({
+        id: x.id, user_id: uid, completed_at: x.completed_at, duration_sec: x.duration_sec, poses: x.poses,
+        checkin: x.checkin || null, pose_ids: x.pose_ids || null,
+        feeling: x.feeling || null, discomfort: x.discomfort || null,
+      }));
+      const { error } = await sb().from('practice_sessions').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+      if (error) return;
+      const ids = new Set(pending.map(x => x.id));
+      writeLog(uid, readLog(uid).map(x => ids.has(x.id) ? { ...x, synced: true, ratingSynced: true } : x));
+    }
+    // Valoracions afegides després que la pràctica ja s'hagués enviat
+    for (const x of readLog(uid).filter(x => x.synced && x.feeling && !x.ratingSynced)) {
+      const { error } = await sb().from('practice_sessions').update({ feeling: x.feeling, discomfort: x.discomfort || null }).eq('id', x.id);
+      if (error) return;
+      writeLog(uid, readLog(uid).map(y => y.id === x.id ? { ...y, ratingSynced: true } : y));
+    }
   }
 
-  async function logPractice(uid, { durationSec, poses }) {
-    const entry = { id: uuid(), completed_at: new Date().toISOString(), duration_sec: Math.max(0, Math.round(durationSec || 0)), poses: poses || 0, synced: false };
+  async function logPractice(uid, { durationSec, poses, poseIds, checkin }) {
+    const entry = { id: uuid(), completed_at: new Date().toISOString(), duration_sec: Math.max(0, Math.round(durationSec || 0)), poses: poses || 0,
+      pose_ids: Array.isArray(poseIds) ? poseIds.slice(0, 200) : null, checkin: checkin || null, synced: false };
     writeLog(uid, [...readLog(uid), entry]);
     try { await pushPending(uid); } catch (e) {}
     return entry;
+  }
+
+  // Valoració en acabar ("com t'has sentit", molèsties)
+  async function ratePractice(uid, entryId, { feeling, discomfort }) {
+    writeLog(uid, readLog(uid).map(x => x.id === entryId ? { ...x, feeling, discomfort: discomfort || null, ratingSynced: false } : x));
+    try { await pushPending(uid); } catch (e) {}
   }
 
   // Porta l'historial del servidor (per si ha practicat des d'un altre mòbil)
@@ -159,12 +177,12 @@
     try { await pushPending(uid); } catch (e) {}
     const since = new Date(Date.now() - 400 * 864e5).toISOString();
     const { data, error } = await sb().from('practice_sessions')
-      .select('id, completed_at, duration_sec, poses').eq('user_id', uid).gte('completed_at', since)
+      .select('id, completed_at, duration_sec, poses, pose_ids, feeling, discomfort, checkin').eq('user_id', uid).gte('completed_at', since)
       .order('completed_at', { ascending: true });
     if (error || !data) return readLog(uid);
     const local = readLog(uid);
     const serverIds = new Set(data.map(x => x.id));
-    const merged = [...data.map(x => ({ ...x, synced: true })), ...local.filter(x => !serverIds.has(x.id) && !x.synced)];
+    const merged = [...data.map(x => ({ ...x, synced: true, ratingSynced: true })), ...local.filter(x => !serverIds.has(x.id) && !x.synced)];
     merged.sort((a, b) => a.completed_at < b.completed_at ? -1 : 1);
     writeLog(uid, merged);
     return merged;
@@ -340,7 +358,7 @@
   // ── Diari i calendari personals ─────────────────────────────────────────
   // Es desen al mòbil a l'instant (com sempre) i se'n guarda còpia a
   // public.personal_items, que només pot llegir la mateixa alumna.
-  const PERSONAL = { journal: 'elbosc-journal', calendar: 'elbosc-calendar-notes' };
+  const PERSONAL = { journal: 'elbosc-journal', calendar: 'elbosc-calendar-notes', favorites: 'elbosc-favorites', sessions: 'elbosc-sessions' };
   const snapKey = (kind) => 'elbosc-sync-snap-' + kind;      // últim estat conegut (id → json)
   const queueKey = (kind) => 'elbosc-sync-queue-' + kind;    // canvis pendents d'enviar
   const rj = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
@@ -417,6 +435,23 @@
 
   window.EBPersonal = { changed: personalChanged, sync: personalSync, flush: personalFlush, clear: personalClear };
 
+  // Postures preferides i sessions desades (es sincronitzen com el diari)
+  const listOf = (kind) => rj(PERSONAL[kind], []);
+  const saveList = (kind, arr) => { wj(PERSONAL[kind], arr); personalChanged(kind, arr); try { window.dispatchEvent(new Event('elbosc-personal-sync')); } catch (e) {} };
+  window.EBFavorites = {
+    list: () => listOf('favorites').map(x => x.id),
+    has: (poseId) => listOf('favorites').some(x => x.id === poseId),
+    toggle: (poseId) => {
+      const cur = listOf('favorites');
+      saveList('favorites', cur.some(x => x.id === poseId) ? cur.filter(x => x.id !== poseId) : [...cur, { id: poseId, at: Date.now() }]);
+    },
+  };
+  window.EBSessions = {
+    list: () => listOf('sessions').sort((a, b) => b.at - a.at),
+    save: (name, poseIds) => saveList('sessions', [...listOf('sessions'), { id: 's' + Date.now().toString(36), name: String(name || '').slice(0, 60), poseIds, at: Date.now() }]),
+    remove: (id) => saveList('sessions', listOf('sessions').filter(x => x.id !== id)),
+  };
+
   window.EBChat = {
     messages: chatMessages, students: chatStudents, send: chatSend, markRead: chatMarkRead,
     react: chatReact, upload: chatUpload, subscribe: chatSubscribe,
@@ -428,7 +463,7 @@
     getSession, sendLoginEmail, verifyCode, loadAccount, saveProfile, signOut, onAuthChange,
     listMembers, addMember, setMemberStatus, removeMember,
     readCache,
-    logPractice, refreshPractice, readPracticeLog: readLog, practiceStats,
+    logPractice, ratePractice, refreshPractice, readPracticeLog: readLog, practiceStats,
     deleteAccount, exportData,
   };
 })();

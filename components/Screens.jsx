@@ -12,7 +12,7 @@ const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, onRepeat, lastPoseIds, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -21,6 +21,9 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
     return { ca: 'Bona nit', es: 'Buenas noches', en: 'Good evening' }[lang];
   })();
 
+  const [personalV, setPersonalV] = uS(0);
+  uE(() => { const r = () => setPersonalV(v => v + 1); window.addEventListener('elbosc-personal-sync', r); return () => window.removeEventListener('elbosc-personal-sync', r); }, []);
+  const savedSessions = uM(() => (window.EBSessions ? window.EBSessions.list() : []), [personalV]);
   const [confirmDelete, setConfirmDelete] = uS(false);
   const [deleting, setDeleting] = uS(false);
   const [deleteErr, setDeleteErr] = uS('');
@@ -145,6 +148,28 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
           </div>
         </div>
       </div>
+
+      {/* Repetir i sessions desades */}
+      {(lastPoseIds || savedSessions.length > 0) && (
+        <div style={{ padding: '16px 24px 0', display:'flex', gap: 8, overflowX:'auto' }} className="yb-scroll">
+          {lastPoseIds && (
+            <button onClick={() => onRepeat && onRepeat(lastPoseIds)} className="yb-chip clay"
+              style={{ whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, padding:'10px 14px', cursor:'pointer' }}>
+              <Icon name="refresh" size={13} color="currentColor"/> {{ca:'Repetir l\'última',es:'Repetir la última',en:'Repeat last'}[lang]}
+            </button>
+          )}
+          {savedSessions.map(ss => (
+            <span key={ss.id} className="yb-chip" style={{ whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, padding:'6px 6px 6px 12px' }}>
+              <button onClick={() => onRepeat && onRepeat(ss.poseIds)} style={{ background:'none', border:'none', color:'inherit', font:'inherit', cursor:'pointer', padding:'4px 0', display:'inline-flex', alignItems:'center', gap:6 }}>
+                <Icon name="heart" size={12} color="var(--accent)"/> {ss.name}
+              </button>
+              <button aria-label={{ca:'Treure',es:'Quitar',en:'Remove'}[lang] + ' ' + ss.name} onClick={() => window.EBSessions.remove(ss.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:4, color:'var(--ink-soft)' }}>
+                <Icon name="close" size={11} color="currentColor"/>
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Sequence preview */}
       <div style={{ padding: '32px 24px 16px' }}>
@@ -413,10 +438,11 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
 // ── Library ─────────────────────────────────────────────────
 const Library = ({ t, lang, asanas, onOpenPose, illustrationStyle }) => {
   const [filter, setFilter] = uS('all');
-  const families = ['all','peu','equilibri','flexio','extensio','torsio','restauratiu','meditacio','mobilitat'];
-  const familyLabels = { all: { ca:'Totes', es:'Todas', en:'All' }, peu:'Peu', equilibri:'Equilibri', flexio:'Flexió', extensio:'Extensió', torsio:'Torsió', restauratiu:'Restaurativa', meditacio:'Meditació', mobilitat:'Mobilitat' };
+  const families = ['all','fav','peu','equilibri','flexio','extensio','torsio','restauratiu','meditacio','mobilitat'];
+  const familyLabels = { all: { ca:'Totes', es:'Todas', en:'All' }, fav: { ca:'♥ Preferides', es:'♥ Favoritas', en:'♥ Favourites' }, peu:'Peu', equilibri:'Equilibri', flexio:'Flexió', extensio:'Extensió', torsio:'Torsió', restauratiu:'Restaurativa', meditacio:'Meditació', mobilitat:'Mobilitat' };
 
-  const filtered = filter === 'all' ? asanas : asanas.filter(a => a.family === filter);
+  const favIds = filter === 'fav' && window.EBFavorites ? window.EBFavorites.list() : [];
+  const filtered = filter === 'all' ? asanas : filter === 'fav' ? asanas.filter(a => favIds.includes(a.id)) : asanas.filter(a => a.family === filter);
 
   return (
     <div className="yb-scroll" style={{ height: '100%', overflowY: 'auto', background: 'var(--paper)' }}>
@@ -462,6 +488,7 @@ const Library = ({ t, lang, asanas, onOpenPose, illustrationStyle }) => {
 
 // ── Pose Detail ─────────────────────────────────────────────
 const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle }) => {
+  const [fav, setFav] = uS(() => !!(window.EBFavorites && window.EBFavorites.has(asana.id)));
   if (!asana) return null;
   const muscleSilhouette = (
     <svg viewBox="0 0 120 200" width="100" height="160">
@@ -504,8 +531,10 @@ const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle }) => {
             <Icon name="back" size={18}/>
           </button>
           <div style={{ display:'flex', gap: 8 }}>
-            <button aria-label={({ca:'Preferida',es:'Favorita',en:'Favourite'})[lang]} style={{ background:'var(--cream)', border:'none', borderRadius:'50%', width:40, height:40, cursor:'pointer' }}>
-              <Icon name="heart" size={18} color="var(--ink-soft)"/>
+            <button aria-label={({ca:'Preferida',es:'Favorita',en:'Favourite'})[lang]} aria-pressed={fav}
+              onClick={() => { if (window.EBFavorites) { window.EBFavorites.toggle(asana.id); setFav(window.EBFavorites.has(asana.id)); } }}
+              style={{ background: fav ? 'color-mix(in srgb, var(--accent) 18%, var(--cream))' : 'var(--cream)', border:'none', borderRadius:'50%', width:40, height:40, cursor:'pointer' }}>
+              <Icon name="heart" size={18} color={fav ? 'var(--accent)' : 'var(--ink-soft)'}/>
             </button>
           </div>
         </div>
