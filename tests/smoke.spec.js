@@ -474,6 +474,43 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     await q.context().close();
   }
 
+  console.log('17. Foto de la professora en una postura');
+  {
+    const p = await page(browser, { role: 'teacher' });
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'celia@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Postures');
+    await p.getByRole('button', { name: 'Postures', exact: true }).click();
+    await p.click('text=Postura del nen');
+    await waitText(p, 'Afegir foto');
+    const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+    await p.setInputFiles('input[type=file][accept="image/*"]', { name: 'nen.gif', mimeType: 'image/gif', buffer: gif });
+    await waitText(p, 'Canviar');
+    await p.waitForTimeout(500);
+    const cat = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-catalog') || '[]'));
+    const m = cat.find(r => r.kind === 'pose_media' && r.id === 'balasana');
+    ok(!!(m && m.payload.photo), 'la foto queda desada a la postura');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+
+    const q = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna', catalog: cat });
+    await q.goto(BASE);
+    await q.fill('#eb-email', 'anna@example.com');
+    await q.click('button[type=submit]');
+    await q.fill('#eb-code', '123456');
+    await q.click('button[type=submit]');
+    await waitText(q, 'Començar pràctica');
+    await q.getByRole('button', { name: 'Postures', exact: true }).click();
+    await q.click('text=Postura del nen');
+    await q.waitForSelector('img[alt="La Cèlia fent la postura"]', { timeout: 10000 });
+    ok(true, 'l\'alumna veu la foto de la Cèlia');
+    ok(!(await text(q)).includes('Afegir foto'), 'l\'alumna no pot pujar fotos');
+    await q.context().close();
+  }
+
   await browser.close();
   console.log(failures ? `\n${failures} prova(es) fallida(es)` : '\nTot correcte');
   process.exit(failures ? 1 : 0);

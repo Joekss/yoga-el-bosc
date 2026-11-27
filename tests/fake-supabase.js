@@ -116,6 +116,7 @@
     removeChannel: () => {},
     storage: { from: () => ({
       upload: async (path, blob) => { window.__sbCalls.push({ upload: path, type: blob.type }); return { data: { path }, error: null }; },
+      createSignedUrl: async (path) => ({ data: { signedUrl: 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7#' + path }, error: null }),
       createSignedUrls: async (paths) => ({ data: paths.map(p => ({ path: p, signedUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' })), error: null }),
     }) },
     auth: {

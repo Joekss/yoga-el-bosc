@@ -584,7 +584,75 @@ const Library = ({ t, lang, asanas, onOpenPose, illustrationStyle }) => {
 };
 
 // ── Pose Detail ─────────────────────────────────────────────
-const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle }) => {
+// Foto o vídeo de la professora fent la postura (si n'hi ha); la professora el puja aquí
+const PoseMedia = ({ lang, poseId, canEdit }) => {
+  const [media, setMedia] = uS(() => (window.EBPoseMedia ? window.EBPoseMedia.get(poseId) : null));
+  const [urls, setUrls] = uS({});
+  const [busy, setBusy] = uS(false);
+  const [err, setErr] = uS('');
+  const photoRef = React.useRef(null), videoRef = React.useRef(null);
+  const L = {
+    addPhoto: {ca:'Afegir foto', es:'Añadir foto', en:'Add photo'}[lang],
+    addVideo: {ca:'Afegir vídeo', es:'Añadir vídeo', en:'Add video'}[lang],
+    change: {ca:'Canviar', es:'Cambiar', en:'Change'}[lang],
+    remove: {ca:'Treure', es:'Quitar', en:'Remove'}[lang],
+    uploading: {ca:'Pujant…', es:'Subiendo…', en:'Uploading…'}[lang],
+    big: {ca:'El fitxer és massa gran (màxim 50 MB).', es:'El archivo es demasiado grande (máximo 50 MB).', en:'File too large (max 50 MB).'}[lang],
+    fail: {ca:'No s\'ha pogut pujar. Comprova la connexió.', es:'No se ha podido subir. Comprueba la conexión.', en:'Upload failed. Check your connection.'}[lang],
+    alt: {ca:'La Cèlia fent la postura', es:'Cèlia haciendo la postura', en:'Cèlia doing the pose'}[lang],
+  };
+  uE(() => {
+    let alive = true;
+    if (!media || !window.EBPoseMedia) { setUrls({}); return; }
+    Promise.all([window.EBPoseMedia.url(media.photo), window.EBPoseMedia.url(media.video)])
+      .then(([photo, video]) => { if (alive) setUrls({ photo, video }); });
+    return () => { alive = false; };
+  }, [media && media.photo, media && media.video]);
+
+  const pick = (kind) => async (e) => {
+    const file = e.target.files && e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    if (file.size > 50 * 1048576) { setErr(L.big); return; }
+    setBusy(true); setErr('');
+    try {
+      const path = await window.EBPoseMedia.upload(poseId, file);
+      const next = { ...(media || {}), [kind]: path };
+      window.EBPoseMedia.set(poseId, next); setMedia(next);
+    } catch (x) { setErr(L.fail); }
+    setBusy(false);
+  };
+  const clear = (kind) => { const next = { ...(media || {}) }; delete next[kind]; window.EBPoseMedia.set(poseId, next); setMedia(next.photo || next.video ? next : null); };
+
+  if (!media && !canEdit) return null;
+  const btn = { padding:'6px 12px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', background:'transparent', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:12, cursor:'pointer' };
+  return (
+    <div style={{ padding:'20px 24px 0', display:'flex', flexDirection:'column', gap:12, alignItems:'center' }}>
+      {media && media.video && urls.video && (
+        <video src={urls.video} controls playsInline preload="metadata" style={{ width:'100%', maxWidth:420, borderRadius:20, background:'#000' }}/>
+      )}
+      {media && media.photo && urls.photo && !media.video && (
+        <img src={urls.photo} alt={L.alt} style={{ width:'100%', maxWidth:420, borderRadius:20, objectFit:'cover' }}/>
+      )}
+      {media && media.photo && urls.photo && media.video && (
+        <img src={urls.photo} alt={L.alt} style={{ width:'100%', maxWidth:420, borderRadius:20, objectFit:'cover' }}/>
+      )}
+      {canEdit && (
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center' }}>
+          <input ref={photoRef} type="file" accept="image/*" hidden onChange={pick('photo')}/>
+          <input ref={videoRef} type="file" accept="video/*" hidden onChange={pick('video')}/>
+          <button disabled={busy} style={btn} onClick={() => photoRef.current.click()}><Icon name="image" size={12} color="currentColor"/> {media && media.photo ? L.change : L.addPhoto}</button>
+          <button disabled={busy} style={btn} onClick={() => videoRef.current.click()}><Icon name="play" size={12} color="currentColor"/> {media && media.video ? L.change : L.addVideo}</button>
+          {media && media.photo && <button style={{ ...btn, color:'var(--ink-soft)', borderColor:'color-mix(in srgb, var(--ink) 15%, transparent)' }} onClick={() => clear('photo')}>{L.remove} foto</button>}
+          {media && media.video && <button style={{ ...btn, color:'var(--ink-soft)', borderColor:'color-mix(in srgb, var(--ink) 15%, transparent)' }} onClick={() => clear('video')}>{L.remove} vídeo</button>}
+        </div>
+      )}
+      {busy && <div role="status" style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)' }}>{L.uploading}</div>}
+      {err && <div role="alert" style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--accent)' }}>{err}</div>}
+    </div>
+  );
+};
+
+const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle, role }) => {
   const [fav, setFav] = uS(() => !!(window.EBFavorites && window.EBFavorites.has(asana.id)));
   if (!asana) return null;
   const muscleSilhouette = (
@@ -644,6 +712,8 @@ const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle }) => {
             {asana.name[lang] || asana.name.ca}
           </h1>
         </div>
+
+        <PoseMedia lang={lang} poseId={asana.id} canEdit={role === 'teacher'}/>
 
         <div style={{ display:'flex', justifyContent:'center', padding: '24px 16px' }}>
           <div style={{ width: 240, height: 240, background:'var(--cream)', borderRadius: 24, display:'flex', alignItems:'center', justifyContent:'center', border:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)' }}>

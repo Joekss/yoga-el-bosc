@@ -567,6 +567,7 @@ window.ASANAS = ASANAS;
 const EB_CUSTOM_KEY = 'elbosc-custom-poses';
 const EB_REMOVED_KEY = 'elbosc-removed-poses';
 const EB_ROUTINES_KEY = 'elbosc-routines';
+const EB_MEDIA_KEY = 'elbosc-pose-media';   // { poseId: { photo, video } } (rutes a Storage)
 const ebRead = (k) => { try { return JSON.parse(localStorage.getItem(k)) || []; } catch (e) { return []; } };
 const ebWrite = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
@@ -648,12 +649,47 @@ window.EBCatalog = {
       }
       if (this.canWrite) await this.flush();
       if (ebRead(EB_PENDING_KEY).length) return false; // no trepitgem canvis locals pendents
-      const before = JSON.stringify([ebRead(EB_CUSTOM_KEY), ebRead(EB_REMOVED_KEY), ebRead(EB_ROUTINES_KEY)]);
+      const readMedia = () => { try { return JSON.parse(localStorage.getItem(EB_MEDIA_KEY)) || {}; } catch (e) { return {}; } };
+      const before = JSON.stringify([ebRead(EB_CUSTOM_KEY), ebRead(EB_REMOVED_KEY), ebRead(EB_ROUTINES_KEY), readMedia()]);
       const custom = data.filter(r => r.kind === 'pose').map(r => r.payload);
       const removed = data.filter(r => r.kind === 'removed_pose').map(r => r.id);
       const routines = data.filter(r => r.kind === 'routine').map(r => r.payload);
+      const media = {}; data.filter(r => r.kind === 'pose_media').forEach(r => { media[r.id] = r.payload; });
       ebWrite(EB_CUSTOM_KEY, custom); ebWrite(EB_REMOVED_KEY, removed); ebWrite(EB_ROUTINES_KEY, routines);
-      return before !== JSON.stringify([custom, removed, routines]);
+      try { localStorage.setItem(EB_MEDIA_KEY, JSON.stringify(media)); } catch (e) {}
+      return before !== JSON.stringify([custom, removed, routines, media]);
     } catch (e) { return false; }
+  },
+};
+
+// ── Fotos i vídeos de la professora a cada postura ─────────────────────────
+// Els fitxers són al bucket privat "poses"; aquí només es guarda la ruta.
+window.EBPoseMedia = {
+  get: (poseId) => { try { return (JSON.parse(localStorage.getItem(EB_MEDIA_KEY)) || {})[poseId] || null; } catch (e) { return null; } },
+  set: function (poseId, media) {
+    let all = {}; try { all = JSON.parse(localStorage.getItem(EB_MEDIA_KEY)) || {}; } catch (e) {}
+    if (media && (media.photo || media.video)) { all[poseId] = media; ebQueue({ op: 'upsert', kind: 'pose_media', id: poseId, payload: media }); }
+    else { delete all[poseId]; ebQueue({ op: 'delete', kind: 'pose_media', id: poseId }); }
+    try { localStorage.setItem(EB_MEDIA_KEY, JSON.stringify(all)); } catch (e) {}
+  },
+  // Puja un fitxer (només professora) i en retorna la ruta
+  upload: async function (poseId, file) {
+    if (!window.sb) throw new Error('no-backend');
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().slice(0, 5);
+    const path = poseId + '/' + Date.now().toString(36) + '.' + ext;
+    const { error } = await window.sb.storage.from('poses').upload(path, file, { contentType: file.type || undefined });
+    if (error) throw error;
+    return path;
+  },
+  // URL temporal per veure el fitxer (es guarda una estona a memòria)
+  _urls: {},
+  url: async function (path) {
+    if (!path || !window.sb) return null;
+    const c = this._urls[path];
+    if (c && c.exp > Date.now()) return c.url;
+    const { data, error } = await window.sb.storage.from('poses').createSignedUrl(path, 60 * 60 * 24);
+    if (error || !data) return null;
+    this._urls[path] = { url: data.signedUrl, exp: Date.now() + 23 * 3600e3 };
+    return data.signedUrl;
   },
 };
