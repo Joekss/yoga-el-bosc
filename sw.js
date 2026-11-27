@@ -1,4 +1,4 @@
-const CACHE = 'elbosc-v31';
+const CACHE = 'elbosc-v32';
 
 const SHELL = [
   './',
@@ -163,4 +163,28 @@ self.addEventListener('fetch', e => {
       return cached || net;
     }))
   );
+});
+
+// ── Notificacions push ───────────────────────────────────────────────────────
+self.addEventListener('push', e => {
+  let data = {};
+  try { data = e.data ? e.data.json() : {}; } catch (err) { data = { body: e.data && e.data.text() }; }
+  e.waitUntil(self.registration.showNotification(data.title || 'El Bosc', {
+    body: data.body || '',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    tag: data.tag || 'elbosc',
+    data: { url: data.url || './' },
+  }));
+});
+
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const target = new URL((e.notification.data && e.notification.data.url) || './', self.registration.scope).href;
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(list => {
+    for (const c of list) {
+      if (c.url.startsWith(self.registration.scope)) { c.focus(); c.postMessage({ type: 'open', url: target }); return; }
+    }
+    return clients.openWindow(target);
+  }));
 });

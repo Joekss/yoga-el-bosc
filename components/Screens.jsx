@@ -11,6 +11,77 @@ const ebDayKey = (y, m, d) => `${y}-${ebPad(m+1)}-${ebPad(d)}`;
 const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number); const [h,mi] = String(n.time||'00:00').split(':').map(Number); return new Date(Y, (M||1)-1, D||1, h||0, mi||0, 0, 0); };
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
+// ── Avisos: missatges nous i recordatori diari (notificacions push) ──
+const NotificationSettings = ({ lang, role }) => {
+  const [support] = uS(() => (window.EBPush ? window.EBPush.support() : 'unsupported'));
+  const [on, setOn] = uS(false);
+  const [messages, setMessages] = uS(true);
+  const [reminder, setReminder] = uS(role !== 'teacher');
+  const [time, setTime] = uS('09:00');
+  const [busy, setBusy] = uS(false);
+  const [msg, setMsg] = uS(null);
+  const L = {
+    title: {ca:'Avisos', es:'Avisos', en:'Notifications'}[lang],
+    messages: {ca:'Missatges nous del xat', es:'Mensajes nuevos del chat', en:'New chat messages'}[lang],
+    reminder: {ca:'Recordatori diari per practicar', es:'Recordatorio diario para practicar', en:'Daily practice reminder'}[lang],
+    at: {ca:'a les', es:'a las', en:'at'}[lang],
+    enable: {ca:'Activar els avisos', es:'Activar los avisos', en:'Turn on notifications'}[lang],
+    save: {ca:'Desar', es:'Guardar', en:'Save'}[lang],
+    off: {ca:'Desactivar en aquest mòbil', es:'Desactivar en este móvil', en:'Turn off on this phone'}[lang],
+    saved: {ca:'Avisos desats.', es:'Avisos guardados.', en:'Notifications saved.'}[lang],
+    disabled: {ca:'Avisos desactivats.', es:'Avisos desactivados.', en:'Notifications turned off.'}[lang],
+    ios: {ca:'A l\'iPhone, primer afegeix l\'app a la pantalla d\'inici (Compartir → Afegir a la pantalla d\'inici) i obre-la des d\'allà.', es:'En el iPhone, primero añade la app a la pantalla de inicio (Compartir → Añadir a pantalla de inicio) y ábrela desde allí.', en:'On iPhone, first add the app to your Home Screen (Share → Add to Home Screen) and open it from there.'}[lang],
+    unsupported: {ca:'Aquest navegador no permet avisos.', es:'Este navegador no permite avisos.', en:'This browser doesn\'t support notifications.'}[lang],
+    denied: {ca:'Els avisos estan bloquejats. Activa\'ls als ajustos del mòbil per a aquesta app.', es:'Los avisos están bloqueados. Actívalos en los ajustes del móvil para esta app.', en:'Notifications are blocked. Allow them in your phone settings for this app.'}[lang],
+    error: {ca:'No s\'han pogut activar. Torna-ho a provar.', es:'No se han podido activar. Vuelve a probar.', en:'Couldn\'t turn them on. Try again.'}[lang],
+    note: {ca:'Per privacitat, l\'avís no mostra el text del missatge. Si ja has practicat aquell dia, no et recordarem res.', es:'Por privacidad, el aviso no muestra el texto del mensaje. Si ya has practicado ese día, no te recordaremos nada.', en:'For privacy, the notification doesn\'t show the message text. If you\'ve already practised that day, we won\'t remind you.'}[lang],
+  };
+  uE(() => {
+    if (support !== 'ok' || !window.EBPush) return;
+    window.EBPush.current().then(c => { if (c) { setOn(true); setMessages(c.notify_messages); setReminder(!!c.reminder_time); if (c.reminder_time) setTime(c.reminder_time); } });
+  }, []);
+  const save = async () => {
+    setBusy(true); setMsg(null);
+    try { await window.EBPush.enable({ messages, reminderTime: reminder ? time : null, lang }); setOn(true); setMsg({ ok: true, text: L.saved }); }
+    catch (e) { setMsg({ ok: false, text: e.code === 'denied' ? L.denied : L.error }); }
+    setBusy(false);
+  };
+  const off = async () => { setBusy(true); await window.EBPush.disable(); setOn(false); setMsg({ ok: true, text: L.disabled }); setBusy(false); };
+  const lbl = { fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', display:'block' };
+  const row = { display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'8px 0', fontFamily:'var(--sans)', fontSize:14, color:'var(--ink)' };
+  return (
+    <div>
+      <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
+      <label style={lbl}>{L.title}</label>
+      {support !== 'ok' ? (
+        <p style={{ fontFamily:'var(--sans)', fontSize:13, color:'var(--ink-soft)', lineHeight:1.5, margin:'10px 0 0' }}>{L[support === 'ios-install' ? 'ios' : support]}</p>
+      ) : (
+        <div style={{ marginTop:6 }}>
+          <label htmlFor="eb-push-msg" style={row}>{L.messages}
+            <input id="eb-push-msg" type="checkbox" checked={messages} onChange={e => setMessages(e.target.checked)} style={{ width:20, height:20, accentColor:'var(--accent)' }}/>
+          </label>
+          <label htmlFor="eb-push-rem" style={row}>{L.reminder}
+            <input id="eb-push-rem" type="checkbox" checked={reminder} onChange={e => setReminder(e.target.checked)} style={{ width:20, height:20, accentColor:'var(--accent)' }}/>
+          </label>
+          {reminder && (
+            <div style={{ ...row, justifyContent:'flex-start' }}>
+              <span style={{ color:'var(--ink-soft)' }}>{L.at}</span>
+              <input id="eb-push-time" aria-label={L.reminder} type="time" value={time} step="900" onChange={e => setTime(e.target.value || '09:00')}
+                style={{ border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:10, padding:'6px 10px', background:'var(--cream)', color:'var(--ink)', fontFamily:'var(--sans)', fontSize:15 }}/>
+            </div>
+          )}
+          <button disabled={busy} onClick={save} style={{ width:'100%', marginTop:8, padding:'11px', borderRadius:12, border:'none', background:'var(--accent)', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer' }}>
+            {on ? L.save : L.enable}
+          </button>
+          {on && <button disabled={busy} onClick={off} style={{ width:'100%', marginTop:8, padding:'10px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--ink) 15%, transparent)', color:'var(--ink-soft)', fontFamily:'var(--sans)', fontSize:13, cursor:'pointer' }}>{L.off}</button>}
+          <p style={{ fontFamily:'var(--sans)', fontSize:11.5, color:'var(--ink-soft)', lineHeight:1.5, margin:'8px 0 0' }}>{L.note}</p>
+        </div>
+      )}
+      {msg && <div role="status" style={{ fontFamily:'var(--sans)', fontSize:12, color: msg.ok ? 'var(--leaf-deep)' : 'var(--accent)', marginTop:6 }}>{msg.text}</div>}
+    </div>
+  );
+};
+
 // ── Calendari de constància: últimes 12 setmanes i petits hitos ──
 const ConstancyCalendar = ({ lang, log }) => {
   const WEEKS = 12;
@@ -406,6 +477,8 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
             </button>
           )}
 
+          <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
+          <NotificationSettings lang={lang} role={role}/>
           <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
           <label style={themeLabelStyle}>{{ca:'Privacitat',es:'Privacidad',en:'Privacy'}[lang]}</label>
           <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:10 }}>

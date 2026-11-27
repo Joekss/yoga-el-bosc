@@ -511,6 +511,24 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     await q.context().close();
   }
 
+  console.log('18. Avisos: secció a Configuració i obrir el xat des d\'una notificació');
+  {
+    const p = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna' });
+    await p.goto(BASE + '?tab=messages');
+    await p.fill('#eb-email', 'anna@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Esperant un missatge de la Cèlia');
+    ok(true, 'amb ?tab=messages obre directament el xat');
+    await p.getByRole('button', { name: 'Inici', exact: true }).click();
+    await p.click('button[aria-label="El teu perfil"]');
+    await waitText(p, 'pantalla d\'inici');
+    ok(true, 'a l\'iPhone sense instal·lar explica que cal afegir l\'app a la pantalla d\'inici');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+  }
+
   await browser.close();
   console.log(failures ? `\n${failures} prova(es) fallida(es)` : '\nTot correcte');
   process.exit(failures ? 1 : 0);

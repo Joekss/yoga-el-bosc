@@ -140,6 +140,14 @@ function App() {
     return () => { alive = false; off(); };
   }, []);
 
+  // Obrir el xat en tocar una notificació (?tab=messages o missatge del service worker)
+  uEA(() => {
+    try { if (new URLSearchParams(location.search).get('tab') === 'messages') setTab('messages'); } catch (e) {}
+    const onMsg = (e) => { if (e.data && e.data.type === 'open' && String(e.data.url).includes('tab=messages')) setTab('messages'); };
+    if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', onMsg);
+    return () => { if (navigator.serviceWorker) navigator.serviceWorker.removeEventListener('message', onMsg); };
+  }, []);
+
   // En recuperar la connexió, envia el que s'hagi fet sense xarxa
   uEA(() => {
     if (!account) return;

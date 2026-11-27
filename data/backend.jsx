@@ -98,6 +98,7 @@
 
   async function signOut() {
     try { await personalClear(); } catch (e) {}
+    try { await window.EBPush.disable(); } catch (e) {}
     clearCache();
     try { if (sb()) await sb().auth.signOut(); } catch (e) {}
   }
@@ -496,6 +497,64 @@
 
   window.EBTeacher = { tracking: trackingData, assign: assignRoutine, unassign: removeAssignment };
   window.EBAssignments = { mine: myAssignment, done: markAssignmentDone };
+
+  // ── Notificacions push ──────────────────────────────────────────────────
+  const b64ToBytes = (b64) => {
+    const pad = '='.repeat((4 - b64.length % 4) % 4);
+    const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(raw, c => c.charCodeAt(0));
+  };
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+
+  const EBPush = {
+    // 'ok' | 'unsupported' | 'ios-install' (a iPhone cal instal·lar l'app primer) | 'denied'
+    support() {
+      if (isIOS() && !isStandalone()) return 'ios-install';
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'unsupported';
+      if (Notification.permission === 'denied') return 'denied';
+      return 'ok';
+    },
+    async current() {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = reg && await reg.pushManager.getSubscription();
+        if (!sub || !sb()) return null;
+        const { data } = await sb().from('push_subscriptions').select('notify_messages, reminder_time').eq('endpoint', sub.endpoint).maybeSingle();
+        return data || null;
+      } catch (e) { return null; }
+    },
+    // Activa (o actualitza) els avisos d'aquest dispositiu
+    async enable({ messages, reminderTime, lang }) {
+      if (!sb()) throw fail('no-backend');
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') throw fail('denied');
+      const { data: key, error: kErr } = await sb().rpc('push_public_key');
+      if (kErr || !key) throw fail('server', kErr);
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(key) });
+      const j = sub.toJSON();
+      const { data: sess } = await sb().auth.getSession();
+      const { error } = await sb().from('push_subscriptions').upsert({
+        endpoint: j.endpoint, user_id: sess.session.user.id, p256dh: j.keys.p256dh, auth: j.keys.auth,
+        notify_messages: !!messages, reminder_time: reminderTime || null,
+        tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Madrid', lang: ['ca', 'es', 'en'].includes(lang) ? lang : 'ca',
+      });
+      if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+    },
+    async disable() {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = reg && await reg.pushManager.getSubscription();
+        if (sub) {
+          if (sb()) await sb().from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+          await sub.unsubscribe();
+        }
+      } catch (e) {}
+    },
+  };
+  window.EBPush = EBPush;
 
   window.EBChat = {
     messages: chatMessages, students: chatStudents, send: chatSend, markRead: chatMarkRead,
