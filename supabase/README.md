@@ -1,6 +1,6 @@
 # Configurar Supabase para El Bosc
 
-La app ya no decide quién entra ni quién es profesora: lo decide Supabase. Hay que hacer estos pasos **una vez** en el panel de Supabase (proyecto `nvyjdjznmavukxhesiqd`) antes de publicar la nueva versión.
+La app ya no decide quién entra ni quién es profesora: lo decide Supabase. Hay que hacer estos pasos **una vez** en el panel de Supabase (proyecto `cuigobpxeyzigialyiwc`, región Frankfurt) antes de publicar la nueva versión.
 
 ## 1. Crear las tablas y las reglas
 
@@ -64,4 +64,4 @@ Las pruebas (`tests/smoke.spec.js`) usan un Supabase simulado (`tests/fake-supab
 
 ## Antes de publicar: rellenar la política de privacidad
 
-`privacitat.html` tiene campos marcados en amarillo que hay que completar: nombre de la responsable, correo de contacto y región del proyecto de Supabase (se ve en **Project Settings → General**).
+`privacitat.html` tiene campos marcados en amarillo que hay que completar: nombre de la responsable y correo de contacto (la región ya está: Frankfurt).
