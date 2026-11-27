@@ -1,0 +1,318 @@
+<title>El Bosc · Quatre direccions</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,400;1,500&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Pàgina de comparació: quatre mòbils amb la pantalla d'inici d'El Bosc, cadascun amb una direcció.
+   L'interior dels mòbils fa servir sempre la paleta real de l'app; la pàgina s'adapta al tema. */
+:root {
+  --bg: #EFE8DA; --fg: #2C2A24; --soft: #5E594D; --line: rgba(44,42,36,.12); --panel: #F7F2E7; --accent: #A8653D;
+  --serif: "Cormorant Garamond", Georgia, serif; --sans: "Inter", -apple-system, system-ui, sans-serif;
+  /* app (fix) */
+  --a-paper: #F5EFE3; --a-cream: #FAF6EC; --a-ink: #2C2A24; --a-soft: #6E6757; --a-clay: #B8744A; --a-moss: #5A6A3D; --a-moss-d: #3D4A28; --a-sage: #9AAA82; --a-sand: #D9CDB3;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #1E1D19; --fg: #EDE6D6; --soft: #B3AB99; --line: rgba(237,230,214,.14); --panel: #282620; --accent: #D9976C; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #1E1D19; --fg: #EDE6D6; --soft: #B3AB99; --line: rgba(237,230,214,.14); --panel: #282620; --accent: #D9976C; color-scheme: dark }
+
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); line-height: 1.5; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 40px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { max-width: 680px; display: grid; gap: 12px; margin-bottom: 36px; }
+.eyebrow { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+h1 { font-family: var(--serif); font-style: italic; font-weight: 500; font-size: clamp(34px, 5vw, 48px); line-height: 1.05; margin: 0; text-wrap: balance; }
+.lede { color: var(--soft); font-size: 15.5px; margin: 0; }
+.now { margin: 6px 0 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); font-size: 14px; color: var(--soft); }
+.now b { color: var(--fg); font-weight: 600; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 28px 22px; }
+.opt { display: grid; gap: 14px; align-content: start; min-width: 0; }
+.opt-head { display: flex; align-items: baseline; gap: 10px; }
+.letter { font-family: var(--serif); font-style: italic; font-size: 30px; color: var(--accent); line-height: 1; }
+.opt h2 { font-family: var(--serif); font-weight: 500; font-size: 24px; margin: 0; line-height: 1.1; }
+.opt p { margin: 0; font-size: 14px; color: var(--soft); }
+.opt ul { margin: 0; padding-left: 18px; font-size: 13.5px; color: var(--soft); display: grid; gap: 3px; }
+.meta { display: flex; gap: 8px; flex-wrap: wrap; }
+.pill { font-size: 11.5px; padding: 3px 10px; border-radius: 99px; border: 1px solid var(--line); color: var(--soft); }
+.replay { justify-self: start; font: 500 13px var(--sans); color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 99px; padding: 7px 14px; cursor: pointer; }
+.replay:focus-visible, .phone button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Mòbil ── */
+.phone { position: relative; width: 100%; max-width: 290px; aspect-ratio: 290/600; justify-self: center; border-radius: 38px; padding: 9px; background: #1b1a17; box-shadow: 0 20px 50px -20px rgba(0,0,0,.45); }
+.screen { position: relative; height: 100%; border-radius: 30px; overflow: hidden; background: var(--a-paper); color: var(--a-ink); font-family: var(--sans); }
+.island { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); width: 76px; height: 20px; border-radius: 12px; background: #1b1a17; z-index: 30; }
+.content { position: absolute; inset: 0 0 56px; overflow: hidden; padding: 40px 16px 0; display: flex; flex-direction: column; gap: 12px; }
+.date { font-size: 8.5px; letter-spacing: .2em; color: var(--a-clay); }
+.hi { font-family: var(--serif); font-size: 27px; line-height: 1; margin: 2px 0 0; font-weight: 500; }
+.hi em { color: var(--a-clay); }
+.hero { position: relative; overflow: hidden; border-radius: 18px; padding: 16px; color: #F6F1E4; background: linear-gradient(135deg, var(--a-moss-d), var(--a-moss) 55%, #86703F); }
+.hero small { font-size: 7.5px; letter-spacing: .2em; opacity: .85; }
+.hero h3 { font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 21px; line-height: 1.05; margin: 6px 0 8px; }
+.hero .facts { font-size: 9.5px; display: flex; gap: 10px; opacity: .92; }
+.start { position: relative; margin-top: 12px; border: none; border-radius: 99px; background: var(--a-cream); color: var(--a-ink); font: 600 11px var(--sans); padding: 9px 16px; cursor: pointer; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tile { position: relative; overflow: hidden; background: var(--a-cream); border-radius: 14px; padding: 10px; display: flex; gap: 8px; align-items: center; border: 1px solid rgba(44,42,36,.06); cursor: pointer; }
+.tile i { width: 26px; height: 26px; border-radius: 50%; background: rgba(184,116,74,.15); flex-shrink: 0; display: grid; place-items: center; color: var(--a-clay); font-style: normal; font-size: 12px; }
+.tile b { font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 15px; display: block; line-height: 1; }
+.tile span { font-size: 8.5px; color: var(--a-soft); }
+.tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; display: flex; justify-content: space-around; align-items: center; background: rgba(245,239,227,.94); border-top: 1px solid rgba(44,42,36,.08); z-index: 10; padding-bottom: 6px; }
+.tab { position: relative; display: grid; justify-items: center; gap: 2px; font-size: 7.5px; color: var(--a-soft); background: none; border: none; cursor: pointer; padding: 4px 6px; font-family: var(--sans); }
+.tab svg { width: 17px; height: 17px; }
+.tab.on { color: var(--a-clay); font-weight: 600; }
+
+/* ── A · Bosc viu ── */
+.A .screen::before { content: ""; position: absolute; inset: -20%; background: radial-gradient(40% 30% at 20% 15%, rgba(154,170,130,.35), transparent 70%), radial-gradient(35% 30% at 85% 60%, rgba(184,116,74,.18), transparent 70%); animation: drift 16s ease-in-out infinite alternate; }
+@keyframes drift { to { transform: translate(6%, 4%) rotate(4deg); } }
+.A .leaf { position: absolute; top: -20px; width: 14px; height: 14px; color: var(--a-sage); opacity: .7; z-index: 1; animation: fall linear infinite; }
+@keyframes fall { 0% { transform: translate(0,0) rotate(0); } 50% { transform: translate(18px, 320px) rotate(160deg); } 100% { transform: translate(-6px, 640px) rotate(320deg); } }
+.A .hero::after { content: ""; position: absolute; inset: -40%; background: radial-gradient(30% 30% at 50% 50%, rgba(255,240,200,.28), transparent 70%); animation: sun 9s ease-in-out infinite alternate; }
+@keyframes sun { from { transform: translate(-25%, -20%); } to { transform: translate(25%, 15%); } }
+.A .start::before { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 0 0 0 rgba(250,246,236,.55); animation: breathe 4s ease-in-out infinite; }
+@keyframes breathe { 0%,100% { box-shadow: 0 0 0 0 rgba(250,246,236,.5); } 50% { box-shadow: 0 0 0 10px rgba(250,246,236,0); } }
+.A .content { z-index: 2; }
+
+/* ── B · Progrés ── */
+.week { display: flex; justify-content: space-between; background: var(--a-cream); border-radius: 14px; padding: 8px 10px; align-items: center; border: 1px solid rgba(44,42,36,.06); }
+.day { display: grid; justify-items: center; gap: 3px; font-size: 7.5px; color: var(--a-soft); }
+.day s { width: 16px; height: 16px; border-radius: 50%; border: 1.5px solid var(--a-sand); text-decoration: none; display: grid; place-items: center; }
+.day.done s { background: var(--a-moss); border-color: var(--a-moss); }
+.day.done s::after { content: ""; width: 5px; height: 3px; border: 1.5px solid #fff; border-top: none; border-right: none; transform: rotate(-45deg) translate(0,-1px); }
+.day.today s { border-color: var(--a-clay); border-width: 2px; }
+.streak { font-size: 9px; color: var(--a-clay); font-weight: 600; text-align: right; line-height: 1.2; }
+.B .hero { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.ring { width: 54px; height: 54px; align-self: center; }
+.ring circle { fill: none; stroke-width: 5; }
+.ring .bar { stroke: #F6F1E4; stroke-linecap: round; stroke-dasharray: 138; stroke-dashoffset: 138; transform: rotate(-90deg); transform-origin: 50% 50%; }
+.B.play .ring .bar { animation: fill 1.4s .3s cubic-bezier(.2,.8,.2,1) forwards; }
+@keyframes fill { to { stroke-dashoffset: 46; } }
+.ring text { fill: #F6F1E4; font: 600 11px var(--sans); text-anchor: middle; }
+.sec { font-size: 8px; letter-spacing: .18em; color: var(--a-clay); margin-top: 2px; }
+.poses { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -16px; padding: 0 16px; }
+.pose { flex: 0 0 76px; background: var(--a-cream); border-radius: 14px; padding: 8px 6px; text-align: center; border: 1px solid rgba(44,42,36,.06); }
+.pose svg { width: 40px; height: 40px; color: var(--a-moss); }
+.pose b { display: block; font-family: var(--serif); font-style: italic; font-weight: 500; font-size: 12.5px; }
+.pose span { font-size: 7.5px; color: var(--a-soft); }
+
+/* ── C · Paisatge ── */
+.C .content { padding-top: 0; }
+.scene { position: relative; height: 160px; margin: 0 -16px; flex-shrink: 0; transition: background .8s; }
+.scene svg { position: absolute; inset: auto 0 0 0; width: 100%; height: 100%; }
+.scene .hill { transition: fill .8s; }
+.scene .orb { transition: fill .8s, transform 1.2s cubic-bezier(.2,.8,.2,1); }
+.C.play .orb { animation: rise 1.6s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes rise { from { transform: translateY(60px); } }
+.scene .txt { position: absolute; left: 16px; top: 40px; z-index: 2; }
+.C .hero { margin-top: -26px; }
+.tod { display: flex; gap: 4px; position: absolute; right: 12px; top: 36px; z-index: 3; }
+.tod button { font: 600 7.5px var(--sans); letter-spacing: .08em; border: none; border-radius: 99px; padding: 4px 7px; background: rgba(250,246,236,.65); color: var(--a-ink); cursor: pointer; }
+.tod button[aria-pressed="true"] { background: var(--a-ink); color: var(--a-cream); }
+.C[data-tod="nit"] .txt .date, .C[data-tod="nit"] .txt .hi { color: #F1E8D6; }
+.C[data-tod="nit"] .txt .hi em { color: #E8B48E; }
+
+/* ── D · Moviment ── */
+.D.play .content > * { animation: up .55s cubic-bezier(.2,.8,.2,1) both; }
+.D.play .content > *:nth-child(2) { animation-delay: .08s; } .D.play .content > *:nth-child(3) { animation-delay: .16s; }
+.D.play .content > *:nth-child(4) { animation-delay: .24s; } .D.play .content > *:nth-child(5) { animation-delay: .32s; }
+@keyframes up { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+.ripple { position: absolute; border-radius: 50%; background: rgba(184,116,74,.25); transform: scale(0); animation: rip .6s ease-out forwards; pointer-events: none; }
+@keyframes rip { to { transform: scale(4); opacity: 0; } }
+.D .tabbar .ind { position: absolute; top: 6px; width: 40px; height: 24px; border-radius: 12px; background: rgba(184,116,74,.16); transition: left .4s cubic-bezier(.34,1.4,.5,1); }
+.burst { position: absolute; z-index: 40; border-radius: 50%; background: var(--a-moss-d); transform: scale(0); transition: transform .6s cubic-bezier(.7,0,.2,1); pointer-events: none; }
+.burst.go { transform: scale(1); }
+.count { position: absolute; inset: 0; z-index: 41; display: grid; place-items: center; align-content: center; gap: 10px; color: #F6F1E4; opacity: 0; transition: opacity .3s; pointer-events: none; }
+.count.show { opacity: 1; }
+.count .n { font-family: var(--serif); font-style: italic; font-size: 64px; line-height: 1; }
+.count .c { width: 90px; height: 90px; border-radius: 50%; border: 1.5px solid rgba(246,241,228,.6); animation: breathe2 3s ease-in-out infinite; position: absolute; }
+@keyframes breathe2 { 50% { transform: scale(1.35); opacity: .4; } }
+.count small { font-size: 9px; letter-spacing: .2em; margin-top: 40px; }
+
+footer.end { margin-top: 44px; max-width: 680px; font-size: 14px; color: var(--soft); border-top: 1px solid var(--line); padding-top: 18px; }
+@media (prefers-reduced-motion: reduce) { .phone *, .phone *::before, .phone *::after { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <span class="eyebrow">El Bosc · pantalla d'inici</span>
+    <h1>Quatre maneres d'omplir l'inici sense perdre l'estil</h1>
+    <p class="lede">Cada mòbil és la pantalla d'inici real amb una sola idea aplicada. Mateixos colors, mateixa lletra. Toca-les: els botons, les pestanyes i els controls funcionen. Es poden combinar.</p>
+    <div class="now"><b>Ara mateix l'app té:</b> entrada suau de cada pantalla, fulls que pugen des de baix, botons que s'encongeixen en tocar-los, pestanya activa amb una píndola animada i icones un 15% més grans. Són detalls de moviment; no afegeixen contingut, per això la pantalla es veu buida.</div>
+  </header>
+
+  <section class="grid">
+    <!-- A -->
+    <article class="opt">
+      <div class="opt-head"><span class="letter">A</span><h2>Bosc viu</h2></div>
+      <p>Ambient. El fons respira: llum que es mou a poc a poc, alguna fulla que cau i el botó de començar que "respira" al ritme d'una inspiració.</p>
+      <div class="meta"><span class="pill">Esforç baix</span><span class="pill">Només estètica</span></div>
+      <div class="phone A" id="pA"><div class="screen"><div class="island"></div>
+        <div class="content">
+          <div><div class="date">DIVENDRES, 27 DE NOVEMBRE</div><p class="hi">Bona tarda, <em>Anna</em></p></div>
+          <div class="hero"><small>LA TEVA PRÀCTICA D'AVUI</small><h3>Pràctica per al teu cos d'avui</h3><div class="facts"><span>25 min</span><span>21 postures</span><span>Principiant</span></div><button class="start">▶ Començar pràctica</button></div>
+          <div class="tiles"><div class="tile"><i>◎</i><div><b>Respira</b><span>3–10 min</span></div></div><div class="tile"><i>☾</i><div><b>Medita</b><span>5–30 min</span></div></div></div>
+        </div>
+        <nav class="tabbar"></nav>
+      </div></div>
+    </article>
+
+    <!-- B -->
+    <article class="opt">
+      <div class="opt-head"><span class="letter">B</span><h2>El teu progrés</h2></div>
+      <p>Contingut útil a la vista: la setmana amb els dies practicats, un cercle amb els minuts fets i les postures d'avui en una fila que es pot lliscar.</p>
+      <div class="meta"><span class="pill">Esforç mitjà</span><span class="pill">Fa servir dades reals</span></div>
+      <div class="phone B" id="pB"><div class="screen"><div class="island"></div>
+        <div class="content">
+          <div><div class="date">DIVENDRES, 27 DE NOVEMBRE</div><p class="hi">Bona tarda, <em>Anna</em></p></div>
+          <div class="week" id="week"></div>
+          <div class="hero"><div><small>AVUI · 25 MIN</small><h3>Pràctica per al teu cos d'avui</h3><button class="start">▶ Començar</button></div>
+            <svg class="ring" viewBox="0 0 54 54" aria-label="62 de 100 minuts aquesta setmana"><circle cx="27" cy="27" r="22" stroke="rgba(246,241,228,.22)"/><circle class="bar" cx="27" cy="27" r="22"/><text x="27" y="31">62′</text></svg></div>
+          <div class="sec">LES POSTURES D'AVUI</div>
+          <div class="poses" id="poses"></div>
+        </div>
+        <nav class="tabbar"></nav>
+      </div></div>
+    </article>
+
+    <!-- C -->
+    <article class="opt">
+      <div class="opt-head"><span class="letter">C</span><h2>Paisatge del dia</h2></div>
+      <p>Una il·lustració a dalt que canvia amb l'hora: sol que surt al matí, llum càlida a la tarda, lluna de nit. La targeta de la pràctica hi queda a sobre.</p>
+      <div class="meta"><span class="pill">Esforç mitjà</span><span class="pill">Personalitat</span></div>
+      <div class="phone C" id="pC" data-tod="tarda"><div class="screen"><div class="island"></div>
+        <div class="content">
+          <div class="scene" id="scene">
+            <div class="tod" role="group" aria-label="Hora del dia"><button data-t="mati">MATÍ</button><button data-t="tarda" aria-pressed="true">TARDA</button><button data-t="nit">NIT</button></div>
+            <svg viewBox="0 0 290 160" preserveAspectRatio="none" aria-hidden="true">
+              <circle class="orb" cx="200" cy="70" r="20"/>
+              <path class="hill h1" d="M0 110 Q60 70 130 100 T290 90 V160 H0Z"/>
+              <path class="hill h2" d="M0 130 Q80 100 160 125 T290 115 V160 H0Z"/>
+              <path class="hill h3" d="M0 150 Q90 130 180 148 T290 140 V160 H0Z" fill="#F5EFE3"/>
+            </svg>
+            <div class="txt"><div class="date">DIVENDRES, 27 DE NOVEMBRE</div><p class="hi">Bona tarda, <em>Anna</em></p></div>
+          </div>
+          <div class="hero"><small>LA TEVA PRÀCTICA D'AVUI</small><h3>Pràctica per al teu cos d'avui</h3><div class="facts"><span>25 min</span><span>21 postures</span></div><button class="start">▶ Començar pràctica</button></div>
+          <div class="tiles"><div class="tile"><i>◎</i><div><b>Respira</b><span>3–10 min</span></div></div><div class="tile"><i>☾</i><div><b>Medita</b><span>5–30 min</span></div></div></div>
+        </div>
+        <nav class="tabbar"></nav>
+      </div></div>
+    </article>
+
+    <!-- D -->
+    <article class="opt">
+      <div class="opt-head"><span class="letter">D</span><h2>Tot es mou</h2></div>
+      <p>Moviment amb sentit: els blocs entren un darrere l'altre, cada toc deixa una onada i "Començar" s'obre a pantalla completa amb un compte enrere que respira.</p>
+      <div class="meta"><span class="pill">Esforç baix-mitjà</span><span class="pill">Sensació d'app nativa</span></div>
+      <div class="phone D" id="pD"><div class="screen"><div class="island"></div>
+        <div class="content">
+          <div><div class="date">DIVENDRES, 27 DE NOVEMBRE</div><p class="hi">Bona tarda, <em>Anna</em></p></div>
+          <div class="hero"><small>LA TEVA PRÀCTICA D'AVUI</small><h3>Pràctica per al teu cos d'avui</h3><div class="facts"><span><span id="cnt">25</span> min</span><span>21 postures</span></div><button class="start" id="goD">▶ Començar pràctica</button></div>
+          <div class="tiles"><div class="tile"><i>◎</i><div><b>Respira</b><span>3–10 min</span></div></div><div class="tile"><i>☾</i><div><b>Medita</b><span>5–30 min</span></div></div></div>
+          <div class="tile" style="justify-content:space-between"><div><b>Repetir l'última</b><span>Ahir · 18 min</span></div><i>↻</i></div>
+        </div>
+        <div class="burst" id="burst"></div>
+        <div class="count" id="count"><div class="c"></div><div class="n" id="num">3</div><small>INSPIRA</small></div>
+        <nav class="tabbar"><span class="ind"></span></nav>
+      </div></div>
+    </article>
+  </section>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:26px">
+    <button class="replay" id="replay">↺ Tornar a reproduir les animacions</button>
+  </div>
+
+  <footer class="end">La meva recomanació: <b style="color:var(--fg)">B + D</b>. B omple el buit amb coses que l'alumna vol veure (la seva constància, què farà avui) i D fa que tot se senti viu sense recarregar. A i C són més decoratives: queden bé, però no aporten informació. Digues-me quines t'agraden (o barreges) i les poso a l'app.</footer>
+</div>
+
+<script>
+const TABS = [
+  ['Inici','<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>'],
+  ['Postures','<rect x="4" y="4" width="6" height="16" rx="1"/><rect x="14" y="4" width="6" height="16" rx="1"/>'],
+  ['Calendari','<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>'],
+  ['Diari','<path d="M6 3h12v18l-6-4-6 4z"/>'],
+  ['Xat','<path d="M4 4h16v12H8l-4 4z"/>']
+];
+document.querySelectorAll('.tabbar').forEach(nav => {
+  TABS.forEach(([n, d], i) => {
+    const b = document.createElement('button'); b.className = 'tab' + (i === 0 ? ' on' : ''); b.type = 'button';
+    b.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round">${d}</svg>${n}`;
+    nav.appendChild(b);
+  });
+});
+
+// A · fulles
+const pA = document.querySelector('#pA .screen');
+[[12, 11, 0], [58, 14, -5], [82, 9, -9], [35, 13, -3]].forEach(([x, dur, delay]) => {
+  const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  s.setAttribute('viewBox', '0 0 24 24'); s.classList.add('leaf');
+  s.innerHTML = '<path d="M12 2C6 6 4 12 6 20c8-1 13-7 12-16-2 0-4 0-6-2z" fill="currentColor"/>';
+  s.style.left = x + '%'; s.style.animationDuration = dur + 's'; s.style.animationDelay = delay + 's';
+  pA.appendChild(s);
+});
+
+// B · setmana i postures
+const days = ['Dl','Dt','Dc','Dj','Dv','Ds','Dg'], done = [1,1,0,1,0,0,0];
+document.getElementById('week').innerHTML = days.map((d, i) => `<div class="day${done[i] ? ' done' : ''}${i === 4 ? ' today' : ''}"><s></s>${d}</div>`).join('') + '<div class="streak">3 dies<br>aquesta setmana</div>';
+const fig = [
+  '<circle cx="20" cy="7" r="3"/><path d="M20 10v14M20 14l-6 -6M20 14l6-6M20 24l-4 12M20 24l4 12"/>',
+  '<circle cx="20" cy="7" r="3"/><path d="M20 10v16M20 13l-5-8M20 13l5-8M20 26v10M20 26l6 4-6 2"/>',
+  '<circle cx="11" cy="27" r="3"/><path d="M14 29h10l8 6M24 29l-2-9M8 35h26"/>',
+  '<circle cx="9" cy="20" r="3"/><path d="M12 22l10 6 10-14M22 28l-4 8M32 14l2 22"/>',
+  '<circle cx="20" cy="9" r="3"/><path d="M20 12v12M20 16l-9 3M20 16l9 3M20 24l-9 12M20 24l9 12"/>'
+];
+const names = [['Tadasana','Muntanya'],['Vrksasana','Arbre'],['Balasana','Nen'],['Adho Mukha','Gos'],['Virabhadra','Guerrer']];
+document.getElementById('poses').innerHTML = names.map(([s, n], i) => `<div class="pose"><svg viewBox="0 0 40 40" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${fig[i]}</svg><b>${n}</b><span>${s}</span></div>`).join('');
+
+// C · hora del dia
+const TOD = {
+  mati:  { sky: 'linear-gradient(#F3DCC4, #F5EFE3)', orb: '#F0B884', h1: '#BFC9A6', h2: '#9AAA82', hi: 'Bon matí', y: 18 },
+  tarda: { sky: 'linear-gradient(#EFC9A6, #F5EFE3)', orb: '#D98B5A', h1: '#C9B48E', h2: '#9AAA82', hi: 'Bona tarda', y: 0 },
+  nit:   { sky: 'linear-gradient(#2F3442, #5A5E62 80%, #F5EFE3)', orb: '#EFE6D2', h1: '#4A5145', h2: '#3D4A28', hi: 'Bona nit', y: -10 }
+};
+const pC = document.getElementById('pC');
+function setTod(t) {
+  const c = TOD[t]; pC.dataset.tod = t;
+  document.getElementById('scene').style.background = c.sky;
+  const orb = pC.querySelector('.orb'); orb.style.fill = c.orb; orb.style.transform = `translateY(${c.y}px)`;
+  pC.querySelector('.h1').style.fill = c.h1; pC.querySelector('.h2').style.fill = c.h2;
+  pC.querySelector('.txt .hi').innerHTML = `${c.hi}, <em>Anna</em>`;
+  pC.querySelectorAll('.tod button').forEach(b => b.setAttribute('aria-pressed', b.dataset.t === t));
+}
+pC.querySelectorAll('.tod button').forEach(b => b.addEventListener('click', () => setTod(b.dataset.t)));
+setTod('tarda');
+
+// D · onades, pestanyes, compte enrere
+const pD = document.getElementById('pD'), scr = pD.querySelector('.screen');
+pD.querySelectorAll('.tile, .tab').forEach(el => el.addEventListener('pointerdown', e => {
+  const r = el.getBoundingClientRect(), size = Math.max(r.width, r.height) / 2;
+  const s = document.createElement('span'); s.className = 'ripple';
+  Object.assign(s.style, { width: size + 'px', height: size + 'px', left: (e.clientX - r.left - size / 2) + 'px', top: (e.clientY - r.top - size / 2) + 'px' });
+  if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+  el.style.overflow = 'hidden'; el.appendChild(s); setTimeout(() => s.remove(), 650);
+}));
+const ind = pD.querySelector('.ind');
+function moveInd(tab) { ind.style.left = (tab.offsetLeft + tab.offsetWidth / 2 - 20) + 'px'; }
+pD.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => { pD.querySelectorAll('.tab').forEach(x => x.classList.toggle('on', x === t)); moveInd(t); }));
+requestAnimationFrame(() => moveInd(pD.querySelector('.tab')));
+let busy = false;
+document.getElementById('goD').addEventListener('click', e => {
+  if (busy) return; busy = true;
+  const sr = scr.getBoundingClientRect(), br = e.currentTarget.getBoundingClientRect();
+  const cx = br.left + br.width / 2 - sr.left, cy = br.top + br.height / 2 - sr.top;
+  const R = Math.hypot(Math.max(cx, sr.width - cx), Math.max(cy, sr.height - cy));
+  const burst = document.getElementById('burst');
+  Object.assign(burst.style, { width: R * 2 + 'px', height: R * 2 + 'px', left: cx - R + 'px', top: cy - R + 'px' });
+  burst.classList.add('go');
+  const count = document.getElementById('count'), num = document.getElementById('num');
+  let n = 3; num.textContent = n;
+  setTimeout(() => count.classList.add('show'), 450);
+  const iv = setInterval(() => {
+    n--; if (n > 0) { num.textContent = n; return; }
+    clearInterval(iv); count.classList.remove('show'); burst.classList.remove('go'); setTimeout(() => busy = false, 600);
+  }, 1000);
+});
+function countUp() { const el = document.getElementById('cnt'); let v = 0; const iv = setInterval(() => { v += 1; el.textContent = v; if (v >= 25) clearInterval(iv); }, 28); }
+
+function play() {
+  document.querySelectorAll('.phone').forEach(p => { p.classList.remove('play'); void p.offsetWidth; p.classList.add('play'); });
+  countUp();
+}
+document.getElementById('replay').addEventListener('click', play);
+play();
+</script>
