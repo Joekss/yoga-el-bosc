@@ -207,6 +207,141 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 
+  // ── Xat ──────────────────────────────────────────────────────────────────
+  // Converteix una fila de la taula messages al format de la interfície
+  const toMsg = (r) => ({
+    id: r.id,
+    studentId: r.student_id,
+    from: r.from_role,
+    kind: r.kind,
+    body: r.body,
+    time: new Date(r.scheduled_for && new Date(r.scheduled_for) > new Date(r.created_at) ? r.scheduled_for : r.created_at).getTime(),
+    status: r.scheduled_for && new Date(r.scheduled_for) > new Date() ? 'scheduled' : (r.read_at ? 'read' : 'delivered'),
+    readAt: r.read_at,
+    reactions: Array.isArray(r.reactions) ? r.reactions : [],
+    scheduled: r.scheduled_for ? new Date(r.scheduled_for).getTime() : null,
+    broadcast: r.broadcast || null,
+  });
+
+  const MEDIA = { audio: 1, image: 1, pdf: 1 };
+  const urlCache = {};
+  // Afegeix una URL temporal (signada) als missatges amb fitxer
+  async function withUrls(msgs) {
+    const need = [...new Set(msgs.filter(m => MEDIA[m.kind] && m.body && m.body.path && !urlCache[m.body.path]).map(m => m.body.path))];
+    if (need.length && sb()) {
+      try {
+        const { data } = await sb().storage.from('chat').createSignedUrls(need, 60 * 60 * 6);
+        (data || []).forEach(d => { if (d.signedUrl) urlCache[d.path] = d.signedUrl; });
+      } catch (e) {}
+    }
+    return msgs.map(m => (MEDIA[m.kind] && m.body && m.body.path && urlCache[m.body.path]) ? { ...m, body: { ...m.body, url: urlCache[m.body.path] } } : m);
+  }
+
+  async function chatMessages(studentId) {
+    let q = sb().from('messages').select('*').order('created_at', { ascending: true }).limit(2000);
+    if (studentId) q = q.eq('student_id', studentId);
+    const { data, error } = await q;
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+    return withUrls((data || []).map(toMsg));
+  }
+
+  // Alumnes per a la safata de la professora: llista + perfil + última pràctica
+  async function chatStudents() {
+    const [mem, prof, prac] = await Promise.all([
+      sb().from('members').select('email, name, level, status').neq('status', 'revoked'),
+      sb().from('profiles').select('id, email, name, data').eq('role', 'student'),
+      sb().from('practice_sessions').select('user_id, completed_at').order('completed_at', { ascending: false }).limit(2000),
+    ]);
+    if (mem.error || prof.error) throw fail(isNetworkError(mem.error || prof.error) ? 'offline' : 'server', mem.error || prof.error);
+    const byEmail = {}; (prof.data || []).forEach(p => { byEmail[p.email] = p; });
+    const last = {}; (prac.data || []).forEach(r => { if (!last[r.user_id]) last[r.user_id] = r.completed_at; });
+    return (mem.data || []).map(m => {
+      const p = byEmail[m.email];
+      const qp = (p && p.data && p.data.profile) || {};
+      const name = (p && p.name) || m.name || m.email;
+      const lp = p && last[p.id];
+      return {
+        id: p ? p.id : null,            // null = encara no ha entrat mai
+        email: m.email,
+        name,
+        initials: name.charAt(0).toUpperCase(),
+        level: qp.level || m.level || 'principiant',
+        frequency: qp.frequency || 0,
+        focus: qp.focusZones || [],
+        injuries: [...(qp.currentInjuries || []), ...(qp.conditions || [])],
+        goals: qp.goals || [],
+        lastPracticeDays: lp ? Math.floor((Date.now() - new Date(lp).getTime()) / 864e5) : null,
+        online: false,
+        joined: !!p,
+      };
+    });
+  }
+
+  async function chatSend(studentId, role, payload) {
+    const row = {
+      student_id: studentId,
+      from_role: role,
+      kind: payload.kind,
+      body: payload.body,
+      broadcast: payload.broadcast || null,
+      scheduled_for: payload.scheduled ? new Date(payload.scheduled).toISOString() : null,
+    };
+    const { data, error } = await sb().from('messages').insert(row).select('*').single();
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+    return (await withUrls([toMsg(data)]))[0];
+  }
+
+  // Marca com a llegits els missatges que ha enviat l'altra part
+  async function chatMarkRead(studentId, role) {
+    const other = role === 'teacher' ? 'student' : 'teacher';
+    await sb().from('messages').update({ read_at: new Date().toISOString() })
+      .eq('student_id', studentId).eq('from_role', other).is('read_at', null);
+  }
+
+  async function chatReact(msgId, reactions) {
+    const { error } = await sb().from('messages').update({ reactions }).eq('id', msgId);
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+  }
+
+  // Puja un fitxer (àudio, imatge, PDF) a la carpeta de l'alumna
+  async function chatUpload(studentId, blob, ext) {
+    const path = studentId + '/' + uuid() + '.' + ext;
+    const { error } = await sb().storage.from('chat').upload(path, blob, { contentType: blob.type || undefined, upsert: false });
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'upload', error);
+    return path;
+  }
+
+  // Escolta missatges nous i canvis (llegit, reaccions) en temps real
+  function chatSubscribe(onRow) {
+    if (!sb() || !sb().channel) return () => {};
+    const ch = sb().channel('messages-' + uuid())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'messages' }, (ev) => {
+        if (ev.new && ev.new.id) withUrls([toMsg(ev.new)]).then(([m]) => onRow(ev.eventType, m)).catch(() => {});
+      })
+      .subscribe();
+    return () => { try { sb().removeChannel(ch); } catch (e) {} };
+  }
+
+  async function notesList(studentId) {
+    const { data, error } = await sb().from('student_notes').select('*').eq('student_id', studentId).order('created_at', { ascending: true });
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+    return (data || []).map(n => ({ id: n.id, body: n.body, time: new Date(n.created_at).getTime() }));
+  }
+  async function notesAdd(studentId, body) {
+    const { error } = await sb().from('student_notes').insert({ student_id: studentId, body });
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+  }
+  async function notesRemove(id) {
+    const { error } = await sb().from('student_notes').delete().eq('id', id);
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+  }
+
+  window.EBChat = {
+    messages: chatMessages, students: chatStudents, send: chatSend, markRead: chatMarkRead,
+    react: chatReact, upload: chatUpload, subscribe: chatSubscribe,
+    notes: notesList, addNote: notesAdd, removeNote: notesRemove,
+  };
+
   window.EBBackend = {
     available: () => !!sb(),
     getSession, sendLoginEmail, verifyCode, loadAccount, saveProfile, signOut, onAuthChange,

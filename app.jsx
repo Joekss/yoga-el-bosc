@@ -252,7 +252,7 @@ function App() {
             onOpenPose={(p) => setPoseDetail(p)} illustrationStyle={tweaks.illustrationStyle}/>}
           {tab === 'calendar' && <Calendar t={t} lang={lang} profile={profile}/>}
           {tab === 'journal' && <Journal t={t} lang={lang}/>}
-          {tab === 'messages' && <Chat t={t} lang={lang} role={role} asanas={asanas}/>}
+          {tab === 'messages' && <Chat t={t} lang={lang} role={role} asanas={asanas} account={isProd ? account : null}/>}
           <TabBar active={tab} setActive={setTab} t={t} role={role}/>
           {poseDetail && <PoseDetail t={t} lang={lang} asana={poseDetail} onClose={() => setPoseDetail(null)} illustrationStyle={tweaks.illustrationStyle}/>}
           {showStudents && role === 'teacher' && <StudentsPanel lang={lang} onClose={() => setShowStudents(false)}/>}

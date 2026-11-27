@@ -14,7 +14,8 @@
       eq(k, v) { st.filters.push([k, v]); return api; },
       update(p) { st.op = 'update'; st.payload = p; return api; },
       upsert(p) { st.op = 'upsert'; st.payload = p; return api; },
-      gte() { return api; },
+      gte() { return api; }, neq() { return api; }, is() { return api; }, limit() { return api; },
+      single() { return run(true); },
       insert(p) { st.op = 'insert'; st.payload = p; return api; },
       delete() { st.op = 'delete'; return api; },
       maybeSingle() { return run(true); },
@@ -23,6 +24,35 @@
     const run = async (single) => {
       window.__sbCalls.push({ table, op: st.op, payload: st.payload, filters: st.filters });
       const c = cfg(); const s = getS();
+      if (table === 'profiles' && st.op === 'select' && st.filters.some(f => f[0] === 'role')) {
+        return { data: c.profiles || [], error: null };
+      }
+      if (table === 'messages') {
+        let rows = JSON.parse(localStorage.getItem('fake-sb-messages') || '[]');
+        if (st.op === 'insert') {
+          const isTeacher = c.role === 'teacher';
+          const hasTeacherMsg = rows.some(r => r.student_id === st.payload.student_id && r.from_role === 'teacher');
+          if (!isTeacher && (!hasTeacherMsg || st.payload.student_id !== s.user.id)) return { data: null, error: { message: 'new row violates row-level security policy' } };
+          const row = { id: 'msg-' + Math.random().toString(36).slice(2), sender_id: s.user.id, read_at: null, reactions: [], created_at: new Date().toISOString(), ...st.payload };
+          rows.push(row); localStorage.setItem('fake-sb-messages', JSON.stringify(rows));
+          emitRow('INSERT', row);
+          return { data: row, error: null };
+        }
+        if (st.op === 'update') {
+          const f = st.filters;
+          rows.forEach(r => { if (f.every(([k, v]) => r[k] === v)) { Object.assign(r, st.payload); emitRow('UPDATE', r); } });
+          localStorage.setItem('fake-sb-messages', JSON.stringify(rows));
+          return { data: null, error: null };
+        }
+        if (c.role !== 'teacher') rows = rows.filter(r => s && r.student_id === s.user.id);
+        st.filters.forEach(([k, v]) => { rows = rows.filter(r => r[k] === v); });
+        return { data: rows, error: null };
+      }
+      if (table === 'student_notes') {
+        let rows = JSON.parse(localStorage.getItem('fake-sb-notes') || '[]');
+        if (st.op === 'insert') { rows.push({ id: 'n-' + Date.now(), created_at: new Date().toISOString(), ...st.payload }); localStorage.setItem('fake-sb-notes', JSON.stringify(rows)); return { data: null, error: null }; }
+        return { data: rows.filter(r => st.filters.every(([k, v]) => r[k] === v)), error: null };
+      }
       if (table === 'profiles') {
         if (st.op === 'select') return { data: s ? { id: s.user.id, email: s.user.email, name: c.name || '', role: c.role || 'student', data: c.quizDone ? { quizDone: true, profile: { name: c.name || 'Anna' } } : {} } : null, error: null };
         return { data: null, error: null };
@@ -54,7 +84,15 @@
     };
     return api;
   };
+  const channels = [];
+  const emitRow = (eventType, row) => channels.forEach(cb => setTimeout(() => cb({ eventType, new: row }), 10));
   window.supabase = { createClient: () => ({
+    channel: () => { const ch = { on: (_t, _f, cb) => { channels.push(cb); return ch; }, subscribe: () => ch }; return ch; },
+    removeChannel: () => {},
+    storage: { from: () => ({
+      upload: async (path, blob) => { window.__sbCalls.push({ upload: path, type: blob.type }); return { data: { path }, error: null }; },
+      createSignedUrls: async (paths) => ({ data: paths.map(p => ({ path: p, signedUrl: 'data:image/gif;base64,R0lGODlhAQABAAAAACw=' })), error: null }),
+    }) },
     auth: {
       getSession: async () => ({ data: { session: getS() } }),
       signInWithOtp: async ({ email }) => { window.__sbCalls.push({ otp: email }); return { error: null }; },

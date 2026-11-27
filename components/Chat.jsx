@@ -230,6 +230,7 @@ const fmtDay = (ts, t) => {
   return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
 };
 const lastSeenLabel = (days, t) => {
+  if (days == null) return '—';
   if (days === 0) return t.today;
   if (days === 1) return `${t.yesterday}`;
   return `${days}d`;
@@ -346,6 +347,17 @@ const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
         </div>
       );
     }
+    if (msg.kind === 'image' && msg.body?.url) return (
+      <div>
+        <a href={msg.body.url} target="_blank" rel="noopener">
+          <img src={msg.body.url} alt={msg.body.name || ''} loading="lazy"
+            style={{ display:'block', maxWidth: 220, maxHeight: 260, borderRadius: 14, objectFit:'cover' }}/>
+        </a>
+        {msg.body?.caption && (
+          <div style={{ marginTop: 6, fontFamily:'var(--serif)', fontSize: 14 }}>{msg.body.caption}</div>
+        )}
+      </div>
+    );
     if (msg.kind === 'image') return (
       <div>
         <div style={{ width: 200, height: 130, borderRadius: 14, background: 'linear-gradient(135deg, var(--sand), var(--paper-2))', display:'flex', alignItems:'center', justifyContent:'center', position:'relative', overflow:'hidden' }}>
@@ -360,14 +372,14 @@ const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
       </div>
     );
     if (msg.kind === 'pdf') return (
-      <div style={{ display:'flex', alignItems:'center', gap: 10, minWidth: 200, padding: '4px 0' }}>
+      <a href={msg.body?.url || undefined} target="_blank" rel="noopener" style={{ display:'flex', alignItems:'center', gap: 10, minWidth: 200, padding: '4px 0', color:'inherit', textDecoration:'none' }}>
         <div style={{ width: 40, height: 48, borderRadius: 6, background: mine ? 'var(--cream)':'var(--accent)', color: mine ? 'var(--accent)':'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center', fontFamily:'var(--sans)', fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>PDF</div>
         <div style={{ flex:1 }}>
           <div style={{ fontFamily:'var(--sans)', fontSize: 13, fontWeight: 500 }}>{msg.body?.name || 'pranayama-guide.pdf'}</div>
           <div style={{ fontFamily:'var(--sans)', fontSize: 11, opacity: 0.7 }}>{msg.body?.size || '320 KB'}</div>
         </div>
         <Icon name="download" size={16} color={mine ? 'var(--cream)':'var(--ink-soft)'}/>
-      </div>
+      </a>
     );
     if (msg.kind === 'pose') {
       const a = (asanas || []).find(x => x.id === msg.body?.id) || (asanas || [])[0];
@@ -421,7 +433,8 @@ const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
   // Indicador d'estat (asimètric: només la professora veu lectures de l'alumna)
   const statusIcon = (() => {
     if (!mine) return null;
-    if (msg.scheduled) return <Icon name="clock" size={11} color="currentColor"/>;
+    if (msg.status === 'failed') return <span title="!" style={{ fontFamily:'var(--sans)', fontSize:11, fontWeight:700, color:'#E3735F' }}>!</span>;
+    if (msg.status === 'sending' || msg.status === 'scheduled') return <Icon name="clock" size={11} color="currentColor"/>;
     if (msg.status === 'read') return <Icon name="check2" size={12} color="#9AD9C5"/>;
     if (msg.status === 'delivered') return <Icon name="check2" size={12} color="currentColor"/>;
     return <Icon name="check" size={12} color="currentColor"/>;
@@ -529,6 +542,19 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
   const recTRef = uRC(0);
   const mediaRecRef = uRC(null);
   const inputRef = uRC(null);
+  const imageInputRef = uRC(null);
+  const pdfInputRef = uRC(null);
+  const fmtSize = (n) => n > 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+  const onPickFile = (kind) => (e) => {
+    const file = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!file) return;
+    if (file.size > 15 * 1048576) { setFileErr({ ca:'El fitxer és massa gran (màxim 15 MB).', es:'El archivo es demasiado grande (máximo 15 MB).', en:'File too large (max 15 MB).' }[lang]); return; }
+    setFileErr('');
+    const ext = (file.name.split('.').pop() || (kind === 'pdf' ? 'pdf' : 'jpg')).toLowerCase().slice(0, 5);
+    sendMsg(kind, { name: file.name, size: fmtSize(file.size), caption: '', url: URL.createObjectURL(file), blob: file, ext });
+  };
+  const [fileErr, setFileErr] = uSC('');
 
   uEC(() => {
     if (!recording) {
@@ -590,11 +616,12 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
     if (!ctx) return;
     if (ctx.recorder && ctx.recorder.state !== 'inactive') {
       ctx.recorder.onstop = () => {
-        const blobType = ctx.mimeType || ctx.recorder.mimeType || 'audio/mp4';
+        const blobType = (ctx.mimeType || ctx.recorder.mimeType || 'audio/mp4').split(';')[0];
         const blob = new Blob(ctx.chunks, { type: blobType });
         const url = URL.createObjectURL(blob);
         ctx.stream.getTracks().forEach(t => t.stop());
-        sendMsg('audio', { duration: Math.max(duration, 1), waveform: wf, url });
+        const ext = { 'audio/mp4':'m4a', 'audio/webm':'webm', 'audio/ogg':'ogg', 'audio/mpeg':'mp3', 'audio/aac':'aac' }[blobType] || 'm4a';
+        sendMsg('audio', { duration: Math.max(duration, 1), waveform: wf.map(v => Math.round(v * 100) / 100), url, blob, ext });
       };
       ctx.recorder.stop();
     } else {
@@ -612,6 +639,9 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
 
   return (
     <>
+      <input ref={imageInputRef} type="file" accept="image/*" hidden onChange={onPickFile('image')}/>
+      <input ref={pdfInputRef} type="file" accept="application/pdf" hidden onChange={onPickFile('pdf')}/>
+      {fileErr && <div role="alert" style={{ padding:'6px 16px', fontFamily:'var(--sans)', fontSize:12, color:'var(--accent)' }}>{fileErr}</div>}
       {/* Barra superior d'opcions del professor (programar / privat / difusió badge) */}
       {!isStudent && (privateMode || scheduled) && (
         <div style={{ padding:'6px 16px', background:'color-mix(in srgb, var(--accent) 12%, var(--paper))',
@@ -699,8 +729,8 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap: 10, paddingBottom: 16 }}>
           {ATTACH_OPTS.map(o => (
             <button key={o.id} onClick={() => {
-              if (o.id === 'image') { sendMsg('image', { caption:'' }); setSheet(null); }
-              else if (o.id === 'pdf') { sendMsg('pdf', { name:'guia-pranayama.pdf', size:'320 KB' }); setSheet(null); }
+              if (o.id === 'image') { setSheet(null); imageInputRef.current && imageInputRef.current.click(); }
+              else if (o.id === 'pdf') { setSheet(null); pdfInputRef.current && pdfInputRef.current.click(); }
               else if (o.id === 'pose') setSheet('pose');
               else if (o.id === 'session') setSheet('session');
               else if (o.id === 'quote') setSheet('quote');
@@ -1261,145 +1291,207 @@ const BroadcastComposerView = ({ t, lang, asanas, students, onClose, onSend }) =
 };
 
 // ── Component principal ─────────────────────────────────────────────────────
-const Chat = ({ t: globalT, lang, role = 'student', asanas }) => {
+// ── Dades del xat: reals (Supabase) o de demostració (pàgina de disseny) ──
+const CHAT_ACCENTS = ['#B8744A','#5A8C42','#3F7AAA','#D97A2A','#7A4A8A','#3D3D8A','#9AAA82','#6E6757'];
+const chatAccent = (key) => { let h = 0; for (const c of String(key)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return CHAT_ACCENTS[h % CHAT_ACCENTS.length]; };
+
+const CHAT_ERR = {
+  ca: { load: 'No s\'han pogut carregar els missatges.', send: 'No s\'ha pogut enviar. Comprova la connexió.', retry: 'Tornar-ho a provar', empty: 'Encara no hi ha cap alumna que hagi entrat a l\'app.', loading: 'Carregant…' },
+  es: { load: 'No se han podido cargar los mensajes.', send: 'No se ha podido enviar. Comprueba la conexión.', retry: 'Volver a probar', empty: 'Aún no hay ninguna alumna que haya entrado en la app.', loading: 'Cargando…' },
+  en: { load: 'Messages couldn\'t be loaded.', send: 'Couldn\'t send. Check your connection.', retry: 'Try again', empty: 'No students have signed in yet.', loading: 'Loading…' },
+};
+
+// Separa el fitxer (blob) del cos del missatge abans de desar-lo
+const stripLocal = (body) => { if (!body || typeof body !== 'object') return body; const { blob, url, ext, ...rest } = body; return rest; };
+
+const Chat = ({ t: globalT, lang, role = 'student', asanas, account }) => {
   const t = uMC(() => CHAT_T[lang] || CHAT_T.ca, [lang]);
-  const [conversations, setConversations] = uSC(() => seedConversations(lang));
+  const E = CHAT_ERR[lang] || CHAT_ERR.ca;
+  const live = !!(account && account.userId && window.EBChat && window.EBBackend && window.EBBackend.available());
+  const myId = account && account.userId;
+
+  const [conversations, setConversations] = uSC(() => live ? {} : seedConversations(lang));
+  const [students, setStudents] = uSC(() => live ? [] : MOCK_STUDENTS);
+  const [loading, setLoading] = uSC(live);
+  const [loadErr, setLoadErr] = uSC('');
+  const [sendErr, setSendErr] = uSC('');
   const [activeStudentId, setActiveStudentId] = uSC(null);
   const [contextOpen, setContextOpen] = uSC(false);
   const [broadcastOpen, setBroadcastOpen] = uSC(false);
-  const [privateNotes, setPrivateNotes] = uSC({}); // { [studentId]: [{ body, time }] }
+  const [privateNotes, setPrivateNotes] = uSC({}); // { [studentId]: [{ id?, body, time }] }
 
-  // Re-sembra els missatges quan canvia la llengua per actualitzar textos mock
-  uEC(() => { setConversations(seedConversations(lang)); }, [lang]);
+  // Conversa de l'alumna: la clau és el seu propi id
+  const myConvKey = live ? myId : 'nuria';
 
-  // En obrir una conversa, marca els missatges entrants com llegits
+  // Afegeix o actualitza un missatge dins la seva conversa
+  const upsertMsg = (m) => setConversations(prev => {
+    const key = m.studentId;
+    const arr = prev[key] || [];
+    const i = arr.findIndex(x => x.id === m.id || (x.tempId && x.tempId === m.tempId));
+    const next = i >= 0 ? arr.map((x, j) => j === i ? { ...x, ...m, tempId: undefined } : x) : [...arr, m];
+    next.sort((a, b) => a.time - b.time);
+    return { ...prev, [key]: next };
+  });
+
+  const load = async () => {
+    if (!live) return;
+    setLoading(true); setLoadErr('');
+    try {
+      const [msgs, studs] = await Promise.all([
+        window.EBChat.messages(role === 'teacher' ? null : myId),
+        role === 'teacher' ? window.EBChat.students() : Promise.resolve([]),
+      ]);
+      const conv = {};
+      msgs.forEach(m => { (conv[m.studentId] = conv[m.studentId] || []).push(m); });
+      setConversations(conv);
+      if (role === 'teacher') setStudents(studs.filter(x => x.joined).map(x => ({ ...x, accent: chatAccent(x.email) })));
+    } catch (e) { setLoadErr(E.load); }
+    setLoading(false);
+  };
+
   uEC(() => {
-    if (!activeStudentId) return;
-    setConversations(prev => {
-      const arr = (prev[activeStudentId] || []).map(m => {
-        if (role === 'teacher' && m.from === 'student' && m.status !== 'read') return { ...m, status:'read' };
-        if (role === 'student' && m.from === 'teacher' && m.status !== 'read') return { ...m, status:'read' };
-        return m;
-      });
-      return { ...prev, [activeStudentId]: arr };
+    if (!live) { setConversations(seedConversations(lang)); return; }
+    load();
+    const off = window.EBChat.subscribe((event, m) => {
+      if (role === 'student' && m.studentId !== myId) return;
+      if (event === 'DELETE') return;
+      upsertMsg(m);
     });
-  }, [activeStudentId, role]);
+    return off;
+  }, [live, myId, role, live ? '' : lang]);
 
-  const sendOne = (studentId, payload) => {
-    const newMsg = {
-      id: newId(),
-      from: role,
-      kind: payload.kind,
-      body: payload.body,
-      time: payload.scheduled || Date.now(),
-      status: payload.scheduled ? 'scheduled' : 'sent',
-      reactions: [],
-      private: !!payload.private,
-      scheduled: payload.scheduled || null,
-      broadcast: payload.broadcast || null,   // ← badge "Difusió · N"
-    };
+  // En obrir una conversa (o rebre'n missatges), marca els entrants com llegits
+  const openKey = role === 'student' ? myConvKey : activeStudentId;
+  const unreadIncoming = (conversations[openKey] || []).some(m => m.from !== role && m.status !== 'read' && m.status !== 'scheduled');
+  uEC(() => {
+    if (!openKey || !unreadIncoming) return;
     setConversations(prev => ({
       ...prev,
-      [studentId]: [...(prev[studentId] || []), newMsg],
+      [openKey]: (prev[openKey] || []).map(m => (m.from !== role && m.status !== 'scheduled') ? { ...m, status: 'read' } : m),
     }));
-    // Simula lliurament i resposta
-    if (!payload.private && !payload.scheduled) {
-      setTimeout(() => {
-        setConversations(prev => ({
-          ...prev,
-          [studentId]: (prev[studentId] || []).map(m => m.id === newMsg.id ? { ...m, status:'delivered' } : m),
-        }));
-      }, 700);
-      // Si l'alumna envia, simula que la professora llegeix ràpid
-      if (role === 'student') {
-        setTimeout(() => {
-          setConversations(prev => ({
-            ...prev,
-            [studentId]: (prev[studentId] || []).map(m => m.id === newMsg.id ? { ...m, status:'read' } : m),
-          }));
-        }, 2500);
+    if (live) window.EBChat.markRead(openKey, role).catch(() => {});
+  }, [openKey, unreadIncoming, role]);
+
+  // Notes privades de l'alumna oberta (només professora)
+  uEC(() => {
+    if (!live || role !== 'teacher' || !activeStudentId) return;
+    window.EBChat.notes(activeStudentId).then(n => setPrivateNotes(p => ({ ...p, [activeStudentId]: n }))).catch(() => {});
+  }, [live, role, activeStudentId]);
+
+  const addPrivateNote = async (studentId, body) => {
+    setPrivateNotes(prev => ({ ...prev, [studentId]: [...(prev[studentId] || []), { body, time: Date.now() }] }));
+    if (!live) return;
+    try { await window.EBChat.addNote(studentId, body); setPrivateNotes(p => p); window.EBChat.notes(studentId).then(n => setPrivateNotes(p => ({ ...p, [studentId]: n }))); }
+    catch (e) { setSendErr(E.send); }
+  };
+  const removePrivateNote = async (studentId, idx) => {
+    const note = (privateNotes[studentId] || [])[idx];
+    setPrivateNotes(prev => ({ ...prev, [studentId]: (prev[studentId] || []).filter((_, i) => i !== idx) }));
+    if (live && note && note.id) window.EBChat.removeNote(note.id).catch(() => setSendErr(E.send));
+  };
+
+  const sendOne = async (studentId, payload) => {
+    // Nota privada de la professora: va a les notes, no a la conversa
+    if (payload.private && role === 'teacher') {
+      const text = typeof payload.body === 'string' ? payload.body : (payload.body && (payload.body.caption || payload.body.name)) || '';
+      if (text) addPrivateNote(studentId, text);
+      return;
+    }
+    const tempId = newId();
+    const optimistic = {
+      id: tempId, tempId, studentId, from: role, kind: payload.kind, body: payload.body,
+      time: payload.scheduled || Date.now(), status: payload.scheduled ? 'scheduled' : 'sending',
+      reactions: [], scheduled: payload.scheduled || null, broadcast: payload.broadcast || null,
+    };
+    upsertMsg(optimistic);
+    setSendErr('');
+    if (!live) {
+      setTimeout(() => upsertMsg({ ...optimistic, status: payload.scheduled ? 'scheduled' : 'delivered' }), 500);
+      return;
+    }
+    try {
+      let body = payload.body;
+      if (body && typeof body === 'object' && body.blob) {
+        const path = await window.EBChat.upload(studentId, body.blob, body.ext || 'bin');
+        body = { ...stripLocal(body), path };
       }
+      const saved = await window.EBChat.send(studentId, role, { ...payload, body });
+      upsertMsg({ ...saved, tempId });
+    } catch (e) {
+      upsertMsg({ ...optimistic, status: 'failed' });
+      setSendErr(E.send);
     }
   };
 
   const sendBroadcast = (ids, payload) => {
-    const broadcastTag = `${ids.length}`;
-    ids.forEach(id => {
-      // broadcast ja s'inclou dins payload → sendOne el passa a newMsg directament
-      sendOne(id, { ...payload, broadcast: broadcastTag });
-    });
+    ids.forEach(id => sendOne(id, { ...payload, broadcast: `${ids.length}` }));
     setBroadcastOpen(false);
   };
 
   const reactToMsg = (studentId, msg, emoji) => {
-    setConversations(prev => ({
-      ...prev,
-      [studentId]: (prev[studentId] || []).map(m => {
-        if (m.id !== msg.id) return m;
-        const exists = (m.reactions || []).find(r => r.emoji === emoji && r.by === role);
-        const reactions = exists
-          ? m.reactions.filter(r => !(r.emoji === emoji && r.by === role))
-          : [...(m.reactions || []), { emoji, by: role }];
-        return { ...m, reactions };
-      }),
-    }));
-  };
-
-  const addPrivateNote = (studentId, body) => {
-    setPrivateNotes(prev => ({
-      ...prev,
-      [studentId]: [...(prev[studentId] || []), { body, time: Date.now() }],
-    }));
-  };
-  const removePrivateNote = (studentId, idx) => {
-    setPrivateNotes(prev => ({
-      ...prev,
-      [studentId]: (prev[studentId] || []).filter((_, i) => i !== idx),
-    }));
+    const exists = (msg.reactions || []).find(r => r.emoji === emoji && r.by === role);
+    const reactions = exists
+      ? msg.reactions.filter(r => !(r.emoji === emoji && r.by === role))
+      : [...(msg.reactions || []), { emoji, by: role }];
+    upsertMsg({ ...msg, studentId, reactions });
+    if (live && !msg.tempId) window.EBChat.react(msg.id, reactions).catch(() => setSendErr(E.send));
   };
 
   // TAB_H: alçada aproximada del TabBar (icona + etiqueta + safe-area)
   const TAB_H = 88;
+  const banner = (loadErr || sendErr) && (
+    <div role="alert" style={{ padding:'8px 16px', background:'color-mix(in srgb, var(--accent) 12%, var(--paper))', fontFamily:'var(--sans)', fontSize:12, color:'var(--accent)', display:'flex', gap:12, alignItems:'center', justifyContent:'space-between' }}>
+      <span>{loadErr || sendErr}</span>
+      {loadErr && <button onClick={load} style={{ background:'none', border:'none', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:12, cursor:'pointer', textDecoration:'underline' }}>{E.retry}</button>}
+      {!loadErr && <button aria-label="×" onClick={() => setSendErr('')} style={{ background:'none', border:'none', color:'var(--accent)', cursor:'pointer' }}><Icon name="close" size={12} color="var(--accent)"/></button>}
+    </div>
+  );
 
   // ── Vista alumna ───────────────────────────────────────────────────────
   if (role === 'student') {
     const teacher = { id:'teacher', name:'Cèlia', initials:'C', accent:'var(--accent)', online:true, level:'—', frequency:5, focus:[], injuries:[], goals:[], lastPracticeDays: 0 };
-    const studentMsgs = conversations.nuria || [];
+    const studentMsgs = conversations[myConvKey] || [];
     return (
-      // Limita l'alçada per deixar espai al TabBar
       <div style={{ height: `calc(100% - ${TAB_H}px)`, display:'flex', flexDirection:'column' }}>
+        {banner}
         <ConversationView t={t} lang={lang} asanas={asanas} role="student"
           student={teacher}
           messages={studentMsgs}
-          onSend={(payload)=>sendOne('nuria', payload)}
-          onReact={(msg, emoji)=>reactToMsg('nuria', msg, emoji)}/>
+          onSend={(payload)=>sendOne(myConvKey, payload)}
+          onReact={(msg, emoji)=>reactToMsg(myConvKey, msg, emoji)}/>
       </div>
     );
   }
 
   // ── Vista professora ─────────────────────────────────────────────────────
-  const activeStudent = MOCK_STUDENTS.find(s => s.id === activeStudentId);
+  const activeStudent = students.find(s => s.id === activeStudentId);
 
   return (
     <>
-      {/* Safata: respecta el TabBar */}
       {!activeStudentId && (
         <div style={{ height: `calc(100% - ${TAB_H}px)`, display:'flex', flexDirection:'column' }}>
-          <StudentInbox t={t} lang={lang} students={MOCK_STUDENTS} conversations={conversations}
-            onOpen={(id)=>setActiveStudentId(id)}
-            onBroadcast={()=>setBroadcastOpen(true)}/>
+          {banner}
+          {live && !loading && !loadErr && students.length === 0 ? (
+            <div style={{ flex:1, display:'flex', alignItems:'center', justifyContent:'center', padding:32, textAlign:'center', fontFamily:'var(--sans)', fontSize:14, color:'var(--ink-soft)', lineHeight:1.5 }}>{E.empty}</div>
+          ) : (
+            <StudentInbox t={t} lang={lang} students={students} conversations={conversations}
+              onOpen={(id)=>setActiveStudentId(id)}
+              onBroadcast={()=>setBroadcastOpen(true)}/>
+          )}
         </div>
       )}
-      {/* Conversa individual: cobreix tot (com PoseDetail) */}
       {activeStudentId && activeStudent && (
-        <div style={{ position:'absolute', inset:0, zIndex:30, background:'var(--paper)' }}>
-          <ConversationView t={t} lang={lang} asanas={asanas} role="teacher"
-            student={activeStudent}
-            messages={conversations[activeStudentId] || []}
-            onSend={(payload)=>sendOne(activeStudentId, payload)}
-            onReact={(msg, emoji)=>reactToMsg(activeStudentId, msg, emoji)}
-            onBack={()=>setActiveStudentId(null)}
-            onOpenContext={()=>setContextOpen(true)}/>
+        <div style={{ position:'absolute', inset:0, zIndex:30, background:'var(--paper)', display:'flex', flexDirection:'column' }}>
+          {banner}
+          <div style={{ flex:1, minHeight:0 }}>
+            <ConversationView t={t} lang={lang} asanas={asanas} role="teacher"
+              student={activeStudent}
+              messages={conversations[activeStudentId] || []}
+              onSend={(payload)=>sendOne(activeStudentId, payload)}
+              onReact={(msg, emoji)=>reactToMsg(activeStudentId, msg, emoji)}
+              onBack={()=>setActiveStudentId(null)}
+              onOpenContext={()=>setContextOpen(true)}/>
+          </div>
         </div>
       )}
       {activeStudentId && activeStudent && (
@@ -1410,7 +1502,7 @@ const Chat = ({ t: globalT, lang, role = 'student', asanas }) => {
           onRemoveNote={(i)=>removePrivateNote(activeStudentId, i)}/>
       )}
       {broadcastOpen && (
-        <BroadcastComposerView t={t} lang={lang} asanas={asanas} students={MOCK_STUDENTS}
+        <BroadcastComposerView t={t} lang={lang} asanas={asanas} students={students}
           onClose={()=>setBroadcastOpen(false)}
           onSend={sendBroadcast}/>
       )}
