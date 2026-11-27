@@ -86,3 +86,11 @@ body {
   display: flex; gap: 12px; align-items: center; padding: 10px 12px 10px 16px; border-radius: 999px;
   background: var(--ink); color: var(--cream); font-family: var(--sans); font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.25); max-width: calc(100% - 32px); }
 .eb-update button { border: 0; border-radius: 999px; padding: 7px 14px; background: var(--accent); color: var(--cream); font: inherit; font-weight: 600; cursor: pointer; }
+
+/* Informe imprimible: només s'imprimeix el contingut .eb-print */
+@media print {
+  body * { visibility: hidden !important; }
+  .eb-print, .eb-print * { visibility: visible !important; }
+  .eb-print { position: absolute !important; inset: 0 !important; overflow: visible !important; }
+  .eb-noprint { display: none !important; }
+}

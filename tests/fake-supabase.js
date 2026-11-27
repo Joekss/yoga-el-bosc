@@ -14,7 +14,7 @@
       eq(k, v) { st.filters.push([k, v]); return api; },
       update(p) { st.op = 'update'; st.payload = p; return api; },
       upsert(p) { st.op = 'upsert'; st.payload = p; return api; },
-      gte() { return api; }, neq() { return api; }, is() { return api; }, limit() { return api; },
+      gte() { return api; }, neq() { return api; }, is(k) { st.isNull = k; return api; }, limit() { return api; },
       single() { return run(true); },
       insert(p) { st.op = 'insert'; st.payload = p; return api; },
       delete() { st.op = 'delete'; return api; },
@@ -65,6 +65,21 @@
         if (st.op === 'update') { m.forEach(x => { if (x.email === st.filters[0][1]) Object.assign(x, st.payload); }); }
         if (st.op === 'delete') { c.members = m.filter(x => x.email !== st.filters[0][1]); localStorage.setItem('fake-sb', JSON.stringify(c)); return { data: null, error: null }; }
         c.members = m; localStorage.setItem('fake-sb', JSON.stringify(c));
+        return { data: null, error: null };
+      }
+      if (table === 'assignments') {
+        let rows = JSON.parse(localStorage.getItem('fake-sb-assignments') || '[]');
+        const match = (r) => st.filters.every(([k, v]) => r[k] === v);
+        if (st.op === 'insert') { if (c.role !== 'teacher') return { data: null, error: { message: 'rls' } }; rows.push({ id: 'a-' + Math.random().toString(36).slice(2), created_at: new Date().toISOString(), done_at: null, ...st.payload }); }
+        else if (st.op === 'update') { rows.forEach(r => { if (match(r)) Object.assign(r, st.payload); }); }
+        else if (st.op === 'delete') { rows = rows.filter(r => !match(r)); }
+        else {
+          let out = rows.filter(match);
+          if (c.role !== 'teacher') out = out.filter(r => r.student_id === s.user.id);
+          if (st.isNull) out = out.filter(r => r[st.isNull] == null);
+          return { data: out, error: null };
+        }
+        localStorage.setItem('fake-sb-assignments', JSON.stringify(rows));
         return { data: null, error: null };
       }
       if (table === 'personal_items') {

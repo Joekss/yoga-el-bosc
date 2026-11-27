@@ -80,7 +80,7 @@ const ConstancyCalendar = ({ lang, log }) => {
 };
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, onRepeat, lastPoseIds, onOpenBreath, practiceLog, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, onRepeat, lastPoseIds, onOpenBreath, practiceLog, assignment, onStartAssignment, onOpenTracking, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -216,6 +216,9 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
           </div>
         </div>
       </div>
+
+      {/* Rutina que ha assignat la professora */}
+      <AssignedRoutineCard lang={lang} assignment={assignment} onStart={onStartAssignment}/>
 
       {/* Respira i Medita */}
       <div style={{ padding:'16px 24px 0', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
@@ -377,6 +380,10 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
             <div style={{ marginTop:16 }}>
               <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'6px 0 14px' }}/>
               <label style={themeLabelStyle}>{PT.teacherZone}</label>
+              <button onClick={() => { setShowProfile(false); onOpenTracking && onOpenTracking(); }}
+                style={{ width:'100%', marginTop:10, padding:'12px', borderRadius:12, background:'var(--ink)', border:'none', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
+                {{ca:'Seguiment de les alumnes',es:'Seguimiento de las alumnas',en:'Student progress'}[lang]}
+              </button>
               <button onClick={() => { setShowProfile(false); onOpenStudents && onOpenStudents(); }}
                 style={{ width:'100%', marginTop:10, padding:'12px', borderRadius:12, background:'var(--accent)', border:'none', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
                 {{ca:'Alumnes i accés',es:'Alumnas y acceso',en:'Students and access'}[lang]}

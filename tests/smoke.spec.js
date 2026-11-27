@@ -12,7 +12,7 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
 async function page(browser, scenario) {
   const ctx = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
   await ctx.route('**/vendor/supabase.js', r => r.fulfill({ contentType: 'application/javascript', body: FAKE }));
-  await ctx.addInitScript(s => { if (!sessionStorage.getItem('init')) { localStorage.clear(); if (s) localStorage.setItem('fake-sb', JSON.stringify(s)); if (s && s.catalog) localStorage.setItem('fake-sb-catalog', JSON.stringify(s.catalog)); if (s && s.messages) localStorage.setItem('fake-sb-messages', JSON.stringify(s.messages)); if (s && s.personal) localStorage.setItem('fake-sb-personal', JSON.stringify(s.personal)); sessionStorage.setItem('init', '1'); } }, scenario);
+  await ctx.addInitScript(s => { if (!sessionStorage.getItem('init')) { localStorage.clear(); if (s) localStorage.setItem('fake-sb', JSON.stringify(s)); if (s && s.catalog) localStorage.setItem('fake-sb-catalog', JSON.stringify(s.catalog)); if (s && s.messages) localStorage.setItem('fake-sb-messages', JSON.stringify(s.messages)); if (s && s.personal) localStorage.setItem('fake-sb-personal', JSON.stringify(s.personal)); if (s && s.practice) localStorage.setItem('fake-sb-practice', JSON.stringify(s.practice)); if (s && s.assignments) localStorage.setItem('fake-sb-assignments', JSON.stringify(s.assignments)); sessionStorage.setItem('init', '1'); } }, scenario);
   const p = await ctx.newPage();
   p.errors = [];
   p.on('pageerror', e => p.errors.push(e.message));
@@ -413,6 +413,65 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     ok((await text(p)).includes('1 dies practicats') && (await text(p)).includes('✓ Primera pràctica'), 'el calendari de constància mostra el dia d\'avui');
     ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
     await p.context().close();
+  }
+
+  console.log('16. Professora: seguiment, assignar rutina i informe; l\'alumna la fa');
+  {
+    const annaId = 'u-anna@example.com';
+    const routine = { id: 'r-esquena', name: 'Esquena suau', poseIds: ['balasana', 'marjariasana', 'savasana'] };
+    const p = await page(browser, {
+      role: 'teacher',
+      members: [{ email: 'anna@example.com', name: 'Anna', level: 'principiant', status: 'active', invited_at: '2026-10-01T10:00:00Z' }],
+      profiles: [{ id: annaId, email: 'anna@example.com', name: 'Anna', data: { profile: { level: 'principiant', goals: ['Relaxació'], currentInjuries: ['Esquena baixa'] } } }],
+      practice: [{ id: 'p1', user_id: annaId, completed_at: new Date(Date.now() - 2 * 864e5).toISOString(), duration_sec: 1200, poses: 12, feeling: 2, discomfort: 'Em fa mal el genoll en el guerrer', checkin: { energy: 'low', minutes: 20, discomfort: ['Genolls'] } }],
+      catalog: [{ kind: 'routine', id: routine.id, payload: routine }],
+    });
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'celia@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Inici');
+    await p.getByRole('button', { name: 'Inici', exact: true }).click();
+    await p.click('button[aria-label="El teu perfil"]');
+    await p.click('text=Seguiment de les alumnes');
+    await waitText(p, 'Molèsties recents');
+    ok(true, 'avisa que l\'Anna té molèsties recents');
+    await p.click('button:has-text("Anna")');
+    await waitText(p, 'Em fa mal el genoll');
+    ok(true, 'la fitxa mostra la valoració i la molèstia');
+    await p.selectOption('#tp-routine', routine.id);
+    await p.fill('#tp-note', 'Fes-la abans de dormir');
+    await p.click('button:text-is("Assignar")');
+    await waitText(p, 'Pendent');
+    const asg = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-assignments') || '[]'));
+    ok(asg.length === 1 && asg[0].student_id === annaId && asg[0].routine.poseIds.length === 3, 'assigna la rutina a l\'Anna');
+    await p.click('button:has-text("Informe")');
+    await waitText(p, 'Imprimir o desar PDF');
+    ok((await text(p)).toUpperCase().includes('INFORME DE SEGUIMENT'), 'obre l\'informe imprimible');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+
+    const q = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna', assignments: asg });
+    await q.goto(BASE);
+    await q.fill('#eb-email', 'anna@example.com');
+    await q.click('button[type=submit]');
+    await q.fill('#eb-code', '123456');
+    await q.click('button[type=submit]');
+    await waitText(q, 'Esquena suau');
+    ok((await text(q)).toUpperCase().includes('LA CÈLIA T\'HA PREPARAT'), 'l\'alumna veu la rutina assignada');
+    await q.click('button:text-is("Començar")');
+    for (let i = 0; i < 10; i++) {
+      if (await q.evaluate(() => document.body.innerText.includes('Com t\'has sentit?'))) break;
+      await q.click('button[aria-label="Postura següent"]', { timeout: 2000 }).catch(() => {});
+      await q.waitForTimeout(50);
+    }
+    await waitText(q, 'Com t\'has sentit?');
+    await q.waitForTimeout(400);
+    const after = await q.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-assignments') || '[]'));
+    ok(after[0] && after[0].done_at, 'en acabar-la queda marcada com a feta');
+    ok(q.errors.length === 0, 'sense errors JS: ' + q.errors.join(' | '));
+    await q.context().close();
   }
 
   await browser.close();

@@ -452,6 +452,51 @@
     remove: (id) => saveList('sessions', listOf('sessions').filter(x => x.id !== id)),
   };
 
+  // ── Seguiment i rutines assignades ──────────────────────────────────────
+  // Professora: alumnes amb les seves pràctiques dels últims 90 dies
+  async function trackingData() {
+    const since = new Date(Date.now() - 90 * 864e5).toISOString();
+    const [studs, prac, asg] = await Promise.all([
+      chatStudents(),
+      sb().from('practice_sessions').select('id, user_id, completed_at, duration_sec, poses, feeling, discomfort, checkin').gte('completed_at', since).order('completed_at', { ascending: false }).limit(5000),
+      sb().from('assignments').select('*').order('created_at', { ascending: false }).limit(500),
+    ]);
+    if (prac.error) throw fail(isNetworkError(prac.error) ? 'offline' : 'server', prac.error);
+    const byUser = {};
+    (prac.data || []).forEach(r => { (byUser[r.user_id] = byUser[r.user_id] || []).push(r); });
+    const asgBy = {};
+    ((asg && asg.data) || []).forEach(a => { (asgBy[a.student_id] = asgBy[a.student_id] || []).push(a); });
+    return studs.filter(x => x.joined).map(x => ({ ...x, practices: byUser[x.id] || [], assignments: asgBy[x.id] || [] }));
+  }
+
+  async function assignRoutine(studentId, routine, note) {
+    const { error } = await sb().from('assignments').insert({
+      student_id: studentId, routine_id: routine.id,
+      routine: { id: routine.id, name: routine.name, poseIds: routine.poseIds },
+      note: note ? String(note).slice(0, 500) : null,
+    });
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+  }
+  async function removeAssignment(id) {
+    const { error } = await sb().from('assignments').delete().eq('id', id);
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+  }
+
+  // Alumna: la rutina pendent més recent
+  async function myAssignment(uid) {
+    if (!sb()) return null;
+    const { data, error } = await sb().from('assignments').select('*').eq('student_id', uid).is('done_at', null).order('created_at', { ascending: false }).limit(1);
+    if (error || !data || !data.length) return null;
+    return data[0];
+  }
+  async function markAssignmentDone(id) {
+    if (!sb()) return;
+    await sb().from('assignments').update({ done_at: new Date().toISOString() }).eq('id', id);
+  }
+
+  window.EBTeacher = { tracking: trackingData, assign: assignRoutine, unassign: removeAssignment };
+  window.EBAssignments = { mine: myAssignment, done: markAssignmentDone };
+
   window.EBChat = {
     messages: chatMessages, students: chatStudents, send: chatSend, markRead: chatMarkRead,
     react: chatReact, upload: chatUpload, subscribe: chatSubscribe,
