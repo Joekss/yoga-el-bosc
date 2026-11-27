@@ -1,135 +1,27 @@
 /* ─────────────────────────────────────────────────────────────
-   El Bosc · Restyling 2026 — "Bosc a trenc d'alba"
-   Boira verda de fons, verd de pi per a les accions i una llum
-   d'ambre per al que importa (ratxa, avui, èxits).
-   Tipografia: Fraunces (títols, suau i actual) + Inter (text i UI).
-   Aquest fitxer es carrega després de tokens.css i shell.css.
+   El Bosc · capa moderna
+   Manté l'estètica original (paper, terracota, Cormorant) i hi afegeix
+   transicions, resposta en tocar, icones més grans i components nous.
+   Es carrega després de tokens.css i shell.css.
    ──────────────────────────────────────────────────────────── */
 
 :root {
-  --bosc-ink: #18231C;
-  --bosc-ink-soft: #4F5E54;
-  --bosc-paper: #EDF1EA;      /* boira */
-  --bosc-paper-2: #DFE7DC;
-  --bosc-cream: #FAFCF8;      /* superfícies */
-  --bosc-sand: #C9D5C5;
-  --bosc-clay: #2E6B4F;       /* pi: acció principal */
-  --bosc-clay-deep: #1E4C37;
-  --bosc-moss: #6F9A5E;
-  --bosc-moss-deep: #355E34;
-  --bosc-sage: #9DB592;
-  --bosc-stone: #84928A;
-
-  --ink: var(--bosc-ink);
-  --ink-soft: var(--bosc-ink-soft);
-  --paper: var(--bosc-paper);
-  --paper-2: var(--bosc-paper-2);
-  --cream: var(--bosc-cream);
-  --sand: var(--bosc-sand);
-  --accent: var(--bosc-clay);
-  --accent-deep: var(--bosc-clay-deep);
-  --leaf: var(--bosc-moss);
-  --leaf-deep: var(--bosc-moss-deep);
-  --sage: var(--bosc-sage);
-  --stone: var(--bosc-stone);
-  --glow: #E3A33B;            /* llum d'ambre */
-  --line: color-mix(in srgb, var(--ink) 9%, transparent);
-
-  --serif: "Fraunces", Georgia, serif;
-  --serif-display: "Fraunces", Georgia, serif;
-  --sans: "Inter", -apple-system, system-ui, sans-serif;
-
-  --r-sm: 10px;
-  --r-md: 16px;
-  --r-lg: 22px;
-  --r-xl: 30px;
-  --shadow-1: 0 1px 1px rgba(24,35,28,0.04), 0 6px 18px rgba(24,35,28,0.06);
-  --shadow-2: 0 2px 6px rgba(24,35,28,0.06), 0 18px 40px rgba(24,35,28,0.12);
-  --shadow-warm: 0 10px 24px color-mix(in srgb, var(--accent) 28%, transparent);
+  --line: color-mix(in srgb, var(--ink) 8%, transparent);
+  --glow: var(--accent);
   --ease-out: cubic-bezier(.2, .8, .2, 1);
   --ease-spring: cubic-bezier(.34, 1.4, .5, 1);
 }
 
-[data-palette="sage"] {
-  --paper: #F1F0E6; --paper-2: #E5E4D3; --cream: #FBFAF3; --sand: #D2D0B8;
-  --accent: #5E7A3E; --accent-deep: #435A2B; --leaf: #8AA06A; --leaf-deep: #4E6233;
-  --glow: #D9A03A;
+/* ── L'app ocupa sempre tota la pantalla, sigui quin sigui el mòbil ── */
+.yb-shell-wrap {
+  position: fixed;
+  top: 0; bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 100%; max-width: 430px;
+  height: auto; min-height: 0;
+  padding-bottom: 0;            /* la barra inferior ja deixa l'espai de l'iPhone */
 }
-[data-palette="ocean"] {
-  --paper: #ECF1F2; --paper-2: #DCE6E8; --cream: #F8FBFB; --sand: #C2D2D5;
-  --accent: #2F6D80; --accent-deep: #1F4F5E; --leaf: #6E9AA0; --leaf-deep: #3B6770;
-  --glow: #E2A64A;
-}
-[data-mode="dark"] {
-  --ink: #E7EEE6; --ink-soft: #A9B8AC;
-  --paper: #0F1712; --paper-2: #18231B; --cream: #17211A; --sand: #2C3A30;
-  --accent: #6FBF94; --accent-deep: #4E9E74; --leaf: #8DBB7B; --leaf-deep: #6A9A5A;
-  --glow: #F0B656;
-  --shadow-1: 0 1px 1px rgba(0,0,0,0.3), 0 6px 18px rgba(0,0,0,0.3);
-  --shadow-2: 0 2px 6px rgba(0,0,0,0.35), 0 18px 40px rgba(0,0,0,0.45);
-}
-
-body { background: #0F1712; }
-.yb-app { font-family: var(--sans); }
-.yb-app h1, .yb-app h2, .yb-app h3 {
-  font-family: var(--serif-display);
-  font-weight: 400;
-  font-style: normal;
-  letter-spacing: -0.02em;
-  font-variation-settings: "SOFT" 100, "WONK" 0;
-}
-
-/* Etiquetes petites: en minúscula i llegibles (abans en MAJÚSCULES espaiades) */
-.yb-app [style*="text-transform: uppercase"] {
-  text-transform: none !important;
-  letter-spacing: 0 !important;
-  font-weight: 600 !important;
-  font-size: 13px !important;
-}
-
-/* Etiquetes amb lletres molt espaiades: espaiat normal */
-.yb-app [style*="letter-spacing: 0.1em"], .yb-app [style*="letter-spacing: 0.15em"],
-.yb-app [style*="letter-spacing: 0.18em"], .yb-app [style*="letter-spacing: 0.2em"],
-.yb-app [style*="letter-spacing: 0.25em"], .yb-app [style*="letter-spacing: 0.3em"] {
-  letter-spacing: 0.01em !important;
-}
-
-/* Les cursives decoratives de Cormorant passen a Fraunces recta */
-.yb-app [style*="font-style: italic"] { font-style: normal !important; }
-
-/* ── Botons ─────────────────────────────────────────────────── */
-.yb-btn {
-  min-height: 52px;
-  padding: 14px 22px;
-  border-radius: var(--r-md);
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: 0;
-  transition: transform .18s var(--ease-spring), box-shadow .2s, background-color .2s, opacity .2s;
-}
-.yb-btn-primary { background: var(--ink); color: var(--cream); }
-.yb-btn-clay { background: var(--accent); color: #fff; box-shadow: var(--shadow-warm); }
-.yb-btn-clay:hover { background: var(--accent-deep); }
-.yb-btn-ghost { background: var(--cream); border: 1px solid var(--line); }
-
-/* ── Targetes i xips ────────────────────────────────────────── */
-.yb-card {
-  background: var(--cream);
-  border-radius: var(--r-lg);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-1);
-}
-.yb-chip {
-  white-space: nowrap; flex-shrink: 0;
-  min-height: 40px;
-  padding: 9px 16px;
-  font-size: 14px;
-  font-weight: 500;
-  background: var(--cream);
-  border: 1px solid var(--line);
-  color: var(--ink);
-}
-.yb-chip.active, .yb-chip.clay.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+#root { min-height: 0; }
 
 /* ── Interacció: tot el que es toca respon ──────────────────── */
 .yb-app button, .yb-app label[for], .yb-app a, .yb-app [role="button"] {
@@ -141,97 +33,92 @@ body { background: #0F1712; }
 .yb-app label[for]:active { transform: scale(0.96); }
 .yb-app button:disabled { cursor: default; }
 
-/* Entrada suau de cada pantalla */
+.yb-btn { min-height: 50px; font-size: 16px; }
+.yb-chip { white-space: nowrap; flex-shrink: 0; min-height: 38px; }
+.yb-card { transition: transform .2s var(--ease-spring), box-shadow .2s; }
+
+/* Entrada suau de cada pantalla ('backwards': en acabar no deixa transform) */
 @keyframes ebScreenIn {
-  from { opacity: 0; transform: translateY(10px) scale(0.995); }
+  from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: none; }
 }
-/* 'backwards': en acabar no deixa cap transform (els fulls fixos queden per sobre de la barra) */
-.eb-screen { height: 100%; animation: ebScreenIn .32s var(--ease-out) backwards; }
+.eb-screen { height: 100%; animation: ebScreenIn .3s var(--ease-out) backwards; }
 
 /* Fulls que pugen des de baix */
 @keyframes ebSheetUp { from { transform: translateY(100%); } to { transform: none; } }
 @keyframes ebFade { from { opacity: 0; } to { opacity: 1; } }
 .eb-backdrop { animation: ebFade .25s ease both; }
-.eb-sheet { animation: ebSheetUp .42s var(--ease-out) both; }
+.eb-sheet { animation: ebSheetUp .4s var(--ease-out) both; }
 
-/* ── Barra de navegació flotant ─────────────────────────────── */
+/* ── Barra de pestanyes, enganxada a baix ───────────────────── */
 .eb-tabbar {
-  position: absolute; left: 12px; right: 12px;
-  bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  height: 68px; z-index: 20;
-  display: flex; align-items: center; justify-content: space-around;
-  padding: 0 6px;
-  border-radius: 26px;
-  background: color-mix(in srgb, var(--cream) 86%, transparent);
-  backdrop-filter: blur(22px) saturate(1.4);
-  -webkit-backdrop-filter: blur(22px) saturate(1.4);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-2);
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 20;
+  display: flex; justify-content: space-around; align-items: stretch;
+  padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px));
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--line);
 }
 .eb-tab {
-  position: relative; flex: 1; height: 56px;
+  position: relative; flex: 1; min-height: 58px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
   background: none; border: none; cursor: pointer;
-  color: var(--ink-soft); font-family: var(--sans); font-size: 11.5px; font-weight: 500;
+  color: var(--ink-soft); font-family: var(--sans); font-size: 11px; letter-spacing: 0.03em;
 }
 .eb-tab-pill {
-  position: absolute; top: 4px; width: 56px; height: 32px; border-radius: 16px;
+  position: absolute; top: 5px; width: 54px; height: 30px; border-radius: 15px;
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   transform: scale(0.4); opacity: 0;
   transition: transform .35s var(--ease-spring), opacity .2s;
 }
-.eb-tab[aria-current="page"] { color: var(--accent); font-weight: 700; }
+.eb-tab[aria-current="page"] { color: var(--accent); font-weight: 600; }
 .eb-tab[aria-current="page"] .eb-tab-pill { transform: none; opacity: 1; }
-.eb-tab svg { position: relative; margin-top: 4px; transition: transform .3s var(--ease-spring); }
-.eb-tab[aria-current="page"] svg { transform: translateY(-1px) scale(1.06); }
+.eb-tab svg { position: relative; transition: transform .3s var(--ease-spring); }
+.eb-tab[aria-current="page"] svg { transform: scale(1.08); }
 .eb-tab-dot {
   position: absolute; top: 6px; right: calc(50% - 20px); width: 9px; height: 9px; border-radius: 50%;
-  background: var(--glow); box-shadow: 0 0 0 2px var(--cream);
+  background: var(--accent); box-shadow: 0 0 0 2px var(--paper);
 }
 
-/* Les pantalles deixen lloc a la barra flotant */
-.yb-app .yb-scroll { scroll-padding-bottom: 100px; }
-
-/* ── Llistes de configuració agrupades ──────────────────────── */
+/* ── Llistes de configuració agrupades (amb l'estil original) ── */
 .eb-group-title {
-  font-family: var(--sans); font-size: 13px; font-weight: 600; color: var(--ink-soft);
-  margin: 22px 4px 8px;
+  font-family: var(--sans); font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--accent); margin: 22px 4px 10px;
 }
 .eb-group {
-  background: var(--cream); border: 1px solid var(--line); border-radius: 20px; overflow: hidden;
+  background: var(--cream); border: 1px solid var(--line); border-radius: var(--r-lg); overflow: hidden;
 }
 .eb-row {
   width: 100%; display: flex; align-items: center; gap: 14px;
   min-height: 58px; padding: 10px 16px;
   background: none; border: none; text-align: left; cursor: pointer;
-  font-family: var(--sans); font-size: 16px; color: var(--ink);
+  font-family: var(--sans); font-size: 15px; color: var(--ink);
 }
-.eb-row + .eb-row, .eb-group > * + * { border-top: 1px solid var(--line); }
+.eb-group > * + * { border-top: 1px solid var(--line); }
 .eb-row:active { background: color-mix(in srgb, var(--ink) 5%, transparent); transform: none !important; }
 .eb-row-icon {
-  width: 36px; height: 36px; border-radius: 11px; flex-shrink: 0;
+  width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: color-mix(in srgb, var(--accent) 13%, transparent); color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent);
 }
-.eb-row-icon.amber { background: color-mix(in srgb, var(--glow) 20%, transparent); color: color-mix(in srgb, var(--glow) 70%, var(--ink)); }
+.eb-row-icon.amber { background: color-mix(in srgb, var(--leaf) 16%, transparent); color: var(--leaf-deep); }
 .eb-row-icon.ink { background: var(--ink); color: var(--cream); }
-.eb-row-icon.danger { background: color-mix(in srgb, #C0503A 14%, transparent); color: #B0432F; }
+.eb-row-icon.danger { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent-deep); }
 .eb-row-body { flex: 1; min-width: 0; }
-.eb-row-sub { display: block; font-size: 13px; color: var(--ink-soft); margin-top: 2px; line-height: 1.35; }
+.eb-row-sub { display: block; font-size: 12.5px; color: var(--ink-soft); margin-top: 2px; line-height: 1.35; }
 .eb-row-end { color: var(--ink-soft); flex-shrink: 0; display: flex; align-items: center; gap: 6px; font-size: 14px; }
-.eb-row.danger { color: #B0432F; }
+.eb-row.danger { color: var(--accent-deep); }
 
 /* Interruptor */
-.eb-switch { position: relative; width: 52px; height: 32px; flex-shrink: 0; }
+.eb-switch { position: relative; width: 50px; height: 30px; flex-shrink: 0; }
 .eb-switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; z-index: 1; }
 .eb-switch span {
-  position: absolute; inset: 0; border-radius: 16px;
+  position: absolute; inset: 0; border-radius: 15px;
   background: color-mix(in srgb, var(--ink) 18%, transparent); transition: background .25s;
 }
 .eb-switch span::after {
-  content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%;
-  background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--cream); box-shadow: 0 2px 6px rgba(0,0,0,0.2);
   transition: transform .32s var(--ease-spring);
 }
 .eb-switch input:checked + span { background: var(--accent); }
@@ -239,10 +126,10 @@ body { background: #0F1712; }
 .eb-switch input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Segments (tema, mida del text) */
-.eb-seg { display: flex; gap: 6px; padding: 5px; border-radius: 16px; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.eb-seg { display: flex; gap: 6px; padding: 5px; border-radius: var(--r-pill); background: color-mix(in srgb, var(--ink) 6%, transparent); }
 .eb-seg button {
-  flex: 1; min-height: 44px; border: none; border-radius: 12px; background: transparent; cursor: pointer;
-  font-family: var(--sans); font-size: 15px; font-weight: 600; color: var(--ink-soft);
+  flex: 1; min-height: 42px; border: none; border-radius: var(--r-pill); background: transparent; cursor: pointer;
+  font-family: var(--sans); font-size: 14px; color: var(--ink-soft);
   display: flex; align-items: center; justify-content: center; gap: 8px;
 }
 .eb-seg button[aria-pressed="true"] { background: var(--cream); color: var(--ink); box-shadow: var(--shadow-1); }

@@ -245,9 +245,9 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
   };
   const themeLabelStyle = { fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', display:'block' };
   const THEMES = [
-    { id:'bosc',  label:{ca:'Bosc',es:'Bosc',en:'Forest'}[lang], color:'#2E6B4F' },
-    { id:'sage',  label:{ca:'Sàlvia',es:'Salvia',en:'Sage'}[lang], color:'#5E7A3E' },
-    { id:'ocean', label:{ca:'Oceà',es:'Océano',en:'Ocean'}[lang], color:'#2F6D80' },
+    { id:'bosc',  label:{ca:'Bosc',es:'Bosc',en:'Forest'}[lang], color:'#B8744A' },
+    { id:'sage',  label:{ca:'Sàlvia',es:'Salvia',en:'Sage'}[lang], color:'#6B8259' },
+    { id:'ocean', label:{ca:'Oceà',es:'Océano',en:'Ocean'}[lang], color:'#4A7B8C' },
   ];
 
 
@@ -274,7 +274,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
       <div style={{ padding: '0 24px' }}>
         <div onClick={onStartPractice} style={{
           position: 'relative', borderRadius: 24, overflow: 'hidden',
-          background: 'radial-gradient(circle at 88% 12%, color-mix(in srgb, var(--glow) 60%, transparent) 0, transparent 34%), linear-gradient(155deg, var(--accent-deep) 0%, var(--accent) 52%, var(--leaf) 120%)',
+          background: 'linear-gradient(140deg, var(--leaf-deep) 0%, var(--leaf) 60%, var(--accent) 130%)',
           padding: '24px', color: 'var(--cream)', cursor: 'pointer',
           boxShadow: 'var(--shadow-2)', minHeight: 200,
         }}>
@@ -289,7 +289,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
           </svg>
           <div style={{ position:'relative', zIndex: 1 }}>
             <div style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.25em', opacity: 0.85, marginBottom: 8 }}>
-              {t.todayPractice}
+              {t.todayPractice.toUpperCase()}
             </div>
             <h2 style={{ fontSize: 28, fontStyle:'italic', marginBottom: 12, lineHeight: 1.15, maxWidth: 250 }}>
               {{ ca:'Pràctica per al teu cos d\'avui', es:'Práctica para tu cuerpo de hoy', en:'Practice for your body today' }[lang]}
@@ -381,7 +381,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
       {/* Stats row */}
       <div style={{ padding: '24px', display:'grid', gridTemplateColumns:'1fr 1fr', gap: 12 }}>
         <div className="yb-card" style={{ padding: 16 }}>
-          <Icon name="flame" size={18} color="var(--glow)"/>
+          <Icon name="flame" size={18} color="var(--accent)"/>
           <div style={{ fontFamily:'var(--serif)', fontSize: 28, fontStyle:'italic', marginTop: 4 }}>{(stats && stats.streak) || 0}</div>
           <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--ink-soft)' }}>{t.progress_.streak}</div>
         </div>
@@ -1124,7 +1124,7 @@ const Messages = ({ t, lang }) => {
     <div className="yb-scroll" style={{ height:'100%', overflowY:'auto', background:'var(--paper)' }}>
       <div style={{ padding: '60px 24px 16px' }}>
         <div style={{ fontFamily:'var(--sans)', fontSize: 11, letterSpacing:'0.25em', color:'var(--accent)', marginBottom: 4 }}>
-          {t.messages_.from}
+          {t.messages_.from.toUpperCase()}
         </div>
         <h1 style={{ fontSize: 36, fontStyle:'italic', color:'var(--ink)' }}>{t.messages_.title}</h1>
       </div>

@@ -109,7 +109,7 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
   return (
     <div style={{
       height: '100%', display: 'flex', flexDirection: 'column', position: 'relative',
-      background: 'var(--ink)', color: 'var(--cream)', '--accent': '#5FB487',
+      background: 'var(--ink)', color: 'var(--cream)',
     }}>
       {/* Header */}
       <div style={{ padding: 'calc(env(safe-area-inset-top, 0px) + 20px) 20px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
