@@ -41,46 +41,50 @@
 <script src="vendor/react-dom.production.min.js"></script>
 <script src="vendor/babel.min.js"></script>
 
+<script>window.IS_PROD = true;</script>
+
+<!-- Avís d'errors (Sentry). Només a la web publicada, sense dades personals. -->
+<script src="vendor/sentry.min.js"></script>
 <script>
-// Processa l'accés via enllaç d'invitació (?inv=base64(email:codi))
-// S'executa AQUÍ (index.html) perquè les URLs amb ?inv= sempre es serveixen
-// des de la xarxa, no des de la caché del Service Worker.
 (function () {
+  var host = location.hostname;
+  if (!window.Sentry || host === 'localhost' || host === '127.0.0.1' || host === '') return;
   try {
-    var inv = new URLSearchParams(window.location.search).get('inv');
-    if (inv) {
-      var dec = atob(inv);
-      var email, code, name;
-      if (dec.indexOf('|') !== -1) {
-        // Format nou: email|code|nom
-        var parts = dec.split('|');
-        email = parts[0].toLowerCase().trim();
-        code  = (parts[1] || '').trim();
-        name  = (parts[2] || '').trim();
-      } else {
-        // Format antic: email:code
-        var sep = dec.indexOf(':');
-        email = dec.slice(0, sep).toLowerCase().trim();
-        code  = dec.slice(sep + 1).trim();
-        name  = '';
-      }
-      if (email && code) {
-        localStorage.setItem('elbosc-credential', JSON.stringify({ email: email, code: code, name: name }));
-        localStorage.setItem('elbosc-session',    JSON.stringify({ email: email, role: 'student', name: name }));
-        window.__elBoscInvite = { email: email, code: code, name: name };
-        // NO netegem l'URL: el link guardat als marcadors funciona sempre
-      }
-    }
+    // Treu correus i paràmetres de l'adreça (p. ex. ?inv=) de qualsevol text
+    var clean = function (str) {
+      return typeof str !== 'string' ? str : str
+        .replace(/[^\s@]+@[^\s@]+\.[^\s@]+/g, '[correu]')
+        .replace(/([?&#])[^\s]*/g, '$1[…]');
+    };
+    Sentry.init({
+      dsn: 'https://df615ca45e71ad17a44d5a6d14b25039@o4511413553922048.ingest.de.sentry.io/4512503694098512',
+      environment: host.indexOf('github.io') !== -1 ? 'production' : host,
+      sendDefaultPii: false,
+      tracesSampleRate: 0,
+      integrations: function (defaults) {
+        // Sense registre de consola ni de clics: hi podria haver textos del xat o del diari
+        return defaults.filter(function (i) { return i.name !== 'Breadcrumbs'; });
+      },
+      beforeSend: function (event) {
+        delete event.user;
+        if (event.request) { event.request.url = clean(event.request.url); delete event.request.cookies; delete event.request.headers; delete event.request.query_string; }
+        if (event.message) event.message = clean(event.message);
+        (event.exception && event.exception.values || []).forEach(function (v) { v.value = clean(v.value); });
+        return event;
+      },
+    });
+    window.EBReportError = function (error, info) {
+      Sentry.captureException(error, { extra: { componentStack: info && info.componentStack ? String(info.componentStack).slice(0, 2000) : undefined } });
+    };
   } catch (e) {}
 })();
-window.IS_PROD = true;
 </script>
 
 <!-- Supabase (backend) — client global a window.sb -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="vendor/supabase.js"></script>
 <script>
-  window.SUPABASE_URL = 'https://nvyjdjznmavukxhesiqd.supabase.co';
-  window.SUPABASE_KEY = 'sb_publishable_XUvv0NDwAzaGhaO1MSRQSg_gaejJaBr';
+  window.SUPABASE_URL = 'https://cuigobpxeyzigialyiwc.supabase.co';
+  window.SUPABASE_KEY = 'sb_publishable_PiJ87tmftkLms22fLOgGUQ_q_laJgDU';
   try {
     if (window.supabase && window.supabase.createClient) {
       window.sb = window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_KEY, {
@@ -90,6 +94,7 @@ window.IS_PROD = true;
   } catch (e) { console.warn('Supabase init failed', e); }
 </script>
 <script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="data/backend.jsx"></script>
 <script type="text/babel" src="data/asanas.jsx"></script>
 <script type="text/babel" src="data/i18n.jsx"></script>
 <script type="text/babel" src="data/sequencer.jsx"></script>
@@ -99,13 +104,31 @@ window.IS_PROD = true;
 <script type="text/babel" src="components/Practice.jsx"></script>
 <script type="text/babel" src="components/Screens.jsx"></script>
 <script type="text/babel" src="components/Auth.jsx"></script>
+<script type="text/babel" src="components/Consent.jsx"></script>
 <script type="text/babel" src="components/Chat.jsx"></script>
 <script type="text/babel" src="app.jsx"></script>
 
 <script>
+// Service worker + avís quan hi ha una versió nova
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  var hadController = !!navigator.serviceWorker.controller;
+  navigator.serviceWorker.addEventListener('controllerchange', function () {
+    if (!hadController) { hadController = true; return; }   // primera instal·lació: res a avisar
+    if (document.querySelector('.eb-update')) return;
+    var lang = 'ca'; try { lang = localStorage.getItem('elbosc-lang') || 'ca'; } catch (e) {}
+    var T = { ca: ['Hi ha una versió nova', 'Actualitzar'], es: ['Hay una versión nueva', 'Actualizar'], en: ['A new version is ready', 'Update'] }[lang] || ['Hi ha una versió nova', 'Actualitzar'];
+    var bar = document.createElement('div');
+    bar.className = 'eb-update'; bar.setAttribute('role', 'status');
+    var span = document.createElement('span'); span.textContent = T[0];
+    var btn = document.createElement('button'); btn.textContent = T[1];
+    btn.onclick = function () { location.reload(); };
+    bar.appendChild(span); bar.appendChild(btn); document.body.appendChild(bar);
+  });
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      // Comprova si hi ha versió nova en tornar a obrir l'app
+      document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') reg.update().catch(function () {}); });
+    }).catch(function () {});
   });
 }
 </script>

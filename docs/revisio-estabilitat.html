@@ -1,0 +1,218 @@
+<title>El Bosc: qué falta</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: una columna de lectura; grupos por prioridad con checklist marcable */
+:root {
+  --bg: #F5EFE3; --surface: #FAF6EC; --line: #DDD2BC; --ink: #2C2A24; --soft: #6E6757;
+  --accent: #8C5232; --moss: #4E5D33;
+  --p0: #A3392B; --p1: #B8742A; --p2: #3F6E8C; --p3: #5A6A3D;
+  --serif: "Cormorant Garamond", Georgia, serif;
+  --sans: "Inter", -apple-system, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1C1A16; --surface: #24211C; --line: #3A352C; --ink: #EDE6D6; --soft: #A69E8C;
+  --accent: #D9976A; --moss: #A9B98A; --p0: #E3735F; --p1: #E0A15A; --p2: #7FB0CF; --p3: #A9B98A; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #1C1A16; --surface: #24211C; --line: #3A352C; --ink: #EDE6D6; --soft: #A69E8C;
+  --accent: #D9976A; --moss: #A9B98A; --p0: #E3735F; --p1: #E0A15A; --p2: #7FB0CF; --p3: #A9B98A; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.55; }
+.wrap { max-width: 760px; margin: 0 auto; padding-block: 40px 80px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-family: var(--serif); font-style: italic; font-weight: 500; font-size: clamp(34px, 7vw, 48px); line-height: 1.05; margin: 0 0 12px; text-wrap: balance; }
+.lede { color: var(--soft); max-width: 62ch; margin: 0 0 24px; }
+.summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+.progress { font-size: 13px; color: var(--soft); margin: 0 0 32px; font-variant-numeric: tabular-nums; }
+section { margin-top: 36px; }
+.sec-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 4px; }
+h2 { font-family: var(--serif); font-weight: 500; font-size: 28px; margin: 0; }
+.tag { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+.sec-note { color: var(--soft); font-size: 13px; margin: 6px 0 4px; }
+ol { list-style: none; padding: 0; margin: 0; }
+li { display: grid; grid-template-columns: 22px 1fr; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+li > div { min-width: 0; }
+input[type=checkbox] { width: 18px; height: 18px; margin-top: 3px; accent-color: var(--moss); cursor: pointer; }
+input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.t { font-weight: 600; }
+li.done .t { text-decoration: line-through; color: var(--soft); }
+.d { color: var(--soft); margin-top: 3px; }
+.fix { margin-top: 4px; }
+.fix b { font-weight: 600; color: var(--moss); }
+code { font-size: 12.5px; background: color-mix(in srgb, var(--accent) 10%, transparent); padding: 1px 5px; border-radius: 4px; overflow-wrap: anywhere; }
+.hecho { display:inline-block; font-size:11px; font-weight:600; color:var(--moss); border:1px solid currentColor; border-radius:4px; padding:0 5px; margin-left:6px; vertical-align:1px; }
+.ok { display: inline-block; font-size: 11px; font-weight: 600; color: var(--p0); border: 1px solid currentColor; border-radius: 4px; padding: 0 5px; margin-left: 6px; vertical-align: 1px; }
+.order { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; margin-top: 40px; }
+.order h2 { font-size: 24px; margin-bottom: 8px; }
+.order ol { list-style: decimal; padding-left: 20px; }
+.order li { display: list-item; border: 0; padding: 4px 0; }
+footer { margin-top: 32px; color: var(--soft); font-size: 12.5px; }
+@media (prefers-reduced-motion: no-preference) { li { transition: opacity .2s; } }
+</style>
+
+<div class="wrap">
+  <h1>El Bosc: qué falta para cerrarla</h1>
+  <p class="lede">Revisión del código (27 nov 2026), actualizada tras los arreglos de hoy: las marcas verdes indican lo ya resuelto. La interfaz está muy avanzada, pero casi todo vive solo en el navegador de cada dispositivo y el acceso todavía se puede saltar. Lo marcado como <span class="ok" style="margin:0">PROBADO</span> lo he comprobado ejecutando la app.</p>
+  <div class="summary">
+    <span class="chip"><span class="dot" style="background:var(--p0)"></span>6 bloqueantes</span>
+    <span class="chip"><span class="dot" style="background:var(--p1)"></span>9 de funcionalidad</span>
+    <span class="chip"><span class="dot" style="background:var(--p2)"></span>9 de estabilidad</span>
+    <span class="chip"><span class="dot" style="background:var(--p3)"></span>7 de acabado</span>
+  </div>
+  <p class="progress" id="progress">0 de 31 resueltos</p>
+
+  <section>
+    <div class="sec-head"><span class="tag" style="color:var(--p0)">P0</span><h2>Seguridad y datos personales</h2></div>
+    <p class="sec-note">Sin esto no debería entrar ninguna alumna real.</p>
+    <ol>
+      <li><input type="checkbox" id="c1" data-done><div><div class="t">El enlace de invitación deja entrar sin verificar<span class="ok">PROBADO</span><span class="hecho">Hecho</span></div>
+        <div class="d">Un <code>?inv=</code> con un correo y un código inventados crea la sesión directamente y salta el enlace mágico. <code>index.html:52</code>, <code>app.jsx:7</code>.</div>
+        <div class="fix"><b>Solución:</b> que la invitación solo rellene el correo y lance el enlace mágico de Supabase.</div></div></li>
+      <li><input type="checkbox" id="c2" data-done><div><div class="t">Cualquiera puede hacerse pasar por la profesora<span class="ok">PROBADO</span><span class="hecho">Hecho</span></div>
+        <div class="d">El rol se lee de <code>localStorage</code> (<code>elbosc-session</code>). Escribiendo <code>role:'teacher'</code> se entra como Cèlia.</div>
+        <div class="fix"><b>Solución:</b> tabla <code>profiles</code> en Supabase con el rol, protegida con RLS; el cliente nunca decide su rol.</div></div></li>
+      <li><input type="checkbox" id="c3" data-done><div><div class="t">PIN de administración 1234, visible y comprobado en el cliente<span class="hecho">Hecho</span></div>
+        <div class="d">Valor por defecto <code>1234</code>, se muestra en claro en el panel (<code>Auth.jsx:562</code>) y se valida en el navegador.</div>
+        <div class="fix"><b>Solución:</b> quitar el PIN y los 7 toques al logo; la profesora entra con su cuenta de Supabase.</div></div></li>
+      <li><input type="checkbox" id="c4" data-done><div><div class="t">Código de acceso calculable por cualquiera<span class="hecho">Hecho</span></div>
+        <div class="d">El código sale de un hash con una clave escrita en el propio código (<code>Auth.jsx:178</code>). Quien lea el JS puede generar el código de cualquier correo.</div>
+        <div class="fix"><b>Solución:</b> eliminar <code>computeCode</code> y todo el flujo de códigos.</div></div></li>
+      <li><input type="checkbox" id="c5" data-done><div><div class="t">Revocar a una alumna solo funciona en el móvil de Cèlia<span class="hecho">Hecho</span></div>
+        <div class="d">La lista de alumnas está en <code>localStorage</code> del dispositivo de la profesora; la alumna revocada sigue entrando desde el suyo.</div>
+        <div class="fix"><b>Solución:</b> lista de alumnas y estado (invitada, activa, revocada) en base de datos.</div></div></li>
+      <li><input type="checkbox" id="c6" data-done><div><div class="t">Datos de salud sin base legal (RGPD)<span class="hecho">Hecho · faltan tus datos en la política</span></div>
+        <div class="d">El cuestionario pide lesiones y condiciones médicas, que son datos de categoría especial.</div>
+        <div class="fix"><b>Solución:</b> consentimiento explícito, política de privacidad, aviso de salud, y opción de exportar y borrar la cuenta.</div></div></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="tag" style="color:var(--p1)">P1</span><h2>Funciones que aún son maqueta</h2></div>
+    <p class="sec-note">Funcionan en pantalla, pero no guardan ni comparten nada de verdad.</p>
+    <ol>
+      <li><input type="checkbox" id="c7" data-done><div><div class="t">El chat no conecta a profesora y alumna<span class="hecho">Hecho</span></div>
+        <div class="d">Los mensajes están en memoria (<code>Chat.jsx:17</code>): no llegan al otro dispositivo y se pierden al recargar. Igual con audios, imágenes y PDF.</div>
+        <div class="fix"><b>Solución:</b> tabla <code>messages</code> con Supabase Realtime y Storage para los adjuntos.</div></div></li>
+      <li><input type="checkbox" id="c8" data-done><div><div class="t">El cuestionario no se guarda<span class="hecho">Hecho</span></div>
+        <div class="d">Solo persiste el nombre. Al recargar, el perfil vuelve al de ejemplo (Núria, lesión de espalda baja) y la secuencia se genera con esos datos para todas. <code>app.jsx:24</code>.</div>
+        <div class="fix"><b>Solución:</b> guardar el perfil en la cuenta de la alumna.</div></div></li>
+      <li><input type="checkbox" id="c9" data-done><div><div class="t">Las posturas y rutinas de la profesora no llegan a las alumnas<span class="hecho">Hecho</span></div>
+        <div class="d">Se guardan en el <code>localStorage</code> de quien las crea (<code>data/asanas.jsx:564–579</code>).</div>
+        <div class="fix"><b>Solución:</b> tablas <code>poses</code> y <code>routines</code> que lean todas las alumnas.</div></div></li>
+      <li><input type="checkbox" id="c10" data-done><div><div class="t">Las estadísticas son inventadas<span class="hecho">Hecho</span></div>
+        <div class="d">Racha 4, 12 sesiones y 268 minutos están escritos a mano (<code>Screens.jsx:189</code>, <code>Screens.jsx:818</code>). Terminar una práctica no registra nada.</div>
+        <div class="fix"><b>Solución:</b> guardar cada práctica completada y calcular racha, total y minutos.</div></div></li>
+      <li><input type="checkbox" id="c11"><div><div class="t">Diario y calendario atados a un solo dispositivo</div>
+        <div class="d">Si la alumna cambia de móvil o borra datos del navegador, lo pierde todo. No hay copia de seguridad.</div>
+        <div class="fix"><b>Solución:</b> sincronizarlos con su cuenta.</div></div></li>
+      <li><input type="checkbox" id="c12"><div><div class="t">Recordatorios solo con la app abierta</div>
+        <div class="d">Se comprueban cada 20 s con un temporizador; con la app cerrada no avisa nunca.</div>
+        <div class="fix"><b>Solución:</b> notificaciones push (en iPhone, iOS 16.4+ y app instalada en la pantalla de inicio).</div></div></li>
+      <li><input type="checkbox" id="c13" data-done><div><div class="t">El idioma elegido no se recuerda<span class="hecho">Hecho</span></div>
+        <div class="d">Se guarda en el estado de "Tweaks" del prototipo, que no persiste: al recargar vuelve a catalán.</div>
+        <div class="fix"><b>Solución:</b> guardarlo en <code>localStorage</code> o en el perfil.</div></div></li>
+      <li><input type="checkbox" id="c14" data-done><div><div class="t">Datos de demostración en producción<span class="hecho">Hecho</span></div>
+        <div class="d">Seis alumnas ficticias en el panel (<code>Auth.jsx:187</code>) y perfil de ejemplo por defecto.</div>
+        <div class="fix"><b>Solución:</b> empezar vacío y mostrar estados vacíos con instrucciones.</div></div></li>
+      <li><input type="checkbox" id="c15" data-done><div><div class="t">Sin Supabase no se puede entrar<span class="hecho">Hecho</span></div>
+        <div class="d">La librería se carga de un CDN sin versión fija (<code>@2</code>) y el service worker no la guarda. Si falla, el botón solo muestra "⚠ Supabase".</div>
+        <div class="fix"><b>Solución:</b> fijar versión, empaquetarla con la app y mostrar un error comprensible.</div></div></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="tag" style="color:var(--p2)">P2</span><h2>Estabilidad técnica</h2></div>
+    <ol>
+      <li><input type="checkbox" id="c16"><div><div class="t">Arranque lento: 8,4 s hasta ver algo<span class="ok">PROBADO</span></div>
+        <div class="d">El JSX se compila en el móvil con Babel (3 MB) cada vez que se abre. Medido en un iPhone simulado con la CPU 4 veces más lenta.</div>
+        <div class="fix"><b>Solución:</b> compilar antes de publicar con Vite o esbuild y quitar <code>babel.min.js</code>.</div></div></li>
+      <li><input type="checkbox" id="c17" data-done><div><div class="t">Un error deja la pantalla en blanco<span class="hecho">Hecho</span></div>
+        <div class="d">No hay ningún <code>ErrorBoundary</code>, y casi todos los <code>try/catch</code> están vacíos, así que los fallos pasan sin aviso.</div>
+        <div class="fix"><b>Solución:</b> ErrorBoundary con botón de recargar y registrar los errores.</div></div></li>
+      <li><input type="checkbox" id="c18" data-done><div><div class="t">Actualizaciones frágiles del service worker<span class="hecho">Parcial · se actualiza solo; falta aviso</span></div>
+        <div class="d">Lista manual de más de 100 archivos y versión manual (<code>elbosc-v24</code>). Si se olvida subir la versión, las alumnas se quedan con código antiguo; tampoco hay aviso de "nueva versión".</div>
+        <div class="fix"><b>Solución:</b> generarlo automáticamente (vite-plugin-pwa / Workbox) y añadir aviso de actualización.</div></div></li>
+      <li><input type="checkbox" id="c19" data-done><div><div class="t">Lógica de invitación duplicada y contradictoria<span class="hecho">Hecho</span></div>
+        <div class="d"><code>index.html</code> lee el formato nuevo (<code>email|código|nombre</code>) y <code>app.jsx</code> el antiguo, y vuelve a escribir la sesión sin nombre.</div>
+        <div class="fix"><b>Solución:</b> dejar un único sitio (se resuelve junto con el punto 1).</div></div></li>
+      <li><input type="checkbox" id="c20" data-done><div><div class="t">Restos del prototipo en producción<span class="hecho">Parcial</span></div>
+        <div class="d"><code>ios-frame.jsx</code>, <code>tweaks-panel.jsx</code> (envía <code>postMessage</code> a cualquier origen), <code>YOGA El Bosc.html</code>, <code>share.html</code>, <code>uploads/</code> (2 MB, en <code>.gitignore</code> pero subido) y <code>.claude/launch.json</code> con una ruta de tu Mac.</div>
+        <div class="fix"><b>Solución:</b> separar herramientas de diseño del build de producción.</div></div></li>
+      <li><input type="checkbox" id="c21" data-done><div><div class="t">Sin tests, lint ni integración continua<span class="hecho">Hecho · falta lint</span></div>
+        <div class="d">No hay forma automática de saber si un cambio rompe el acceso, el cuestionario o la práctica.</div>
+        <div class="fix"><b>Solución:</b> 3–4 tests de Playwright de los flujos clave, ESLint y una GitHub Action en cada PR.</div></div></li>
+      <li><input type="checkbox" id="c22"><div><div class="t">Sin monitorización de errores</div>
+        <div class="d">Si algo falla en el móvil de una alumna, nadie se entera.</div>
+        <div class="fix"><b>Solución:</b> Sentry (plan gratuito) con mapas de código fuente.</div></div></li>
+      <li><input type="checkbox" id="c23" data-done><div><div class="t">localStorage se puede llenar<span class="hecho">Ya estaba bien (256 px)</span></div>
+        <div class="d">El avatar se guarda como imagen en base64 junto al resto de datos; con ~5 MB de límite, las escrituras fallan en silencio.</div>
+        <div class="fix"><b>Solución:</b> reducir la imagen antes de guardarla o subirla a Supabase Storage.</div></div></li>
+      <li><input type="checkbox" id="c24"><div><div class="t">Código basado en variables globales</div>
+        <div class="d">Los archivos se comunican por <code>window.*</code> y dependen del orden de los <code>&lt;script&gt;</code>; un archivo en mal orden rompe la app.</div>
+        <div class="fix"><b>Solución:</b> pasar a módulos ES con <code>import</code> al migrar a Vite.</div></div></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="tag" style="color:var(--p3)">P3</span><h2>Acabado y lanzamiento</h2></div>
+    <ol>
+      <li><input type="checkbox" id="c25"><div><div class="t">Accesibilidad</div>
+        <div class="d">Solo 10 atributos <code>aria</code>/<code>role</code> en toda la app; muchos botones son solo icono sin nombre para lectores de pantalla.</div>
+        <div class="fix"><b>Solución:</b> etiquetas, foco visible y revisión de contraste en tema claro y oscuro.</div></div></li>
+      <li><input type="checkbox" id="c26" data-done><div><div class="t">La pantalla se apaga durante la práctica<span class="hecho">Hecho (pantalla encendida)</span></div>
+        <div class="d">El modo práctica no pide <code>Wake Lock</code> ni tiene avisos sonoros al cambiar de postura.</div>
+        <div class="fix"><b>Solución:</b> Screen Wake Lock y una campana suave entre posturas.</div></div></li>
+      <li><input type="checkbox" id="c27"><div><div class="t">Licencia contradictoria</div>
+        <div class="d">El README dice MIT (uso libre) y a la vez "todos los derechos reservados" de Cèlia.</div>
+        <div class="fix"><b>Solución:</b> si es propietaria, quitar MIT y añadir un <code>LICENSE</code> coherente.</div></div></li>
+      <li><input type="checkbox" id="c28" data-done><div><div class="t">README desactualizado<span class="hecho">Hecho</span></div>
+        <div class="d">Menciona TypeScript, <code>npm run dev</code>/<code>build</code> y un <code>.env</code> que no existen.</div>
+        <div class="fix"><b>Solución:</b> reescribirlo con los pasos reales de arranque y despliegue.</div></div></li>
+      <li><input type="checkbox" id="c29" data-done><div><div class="t">Textos legales dentro de la app<span class="hecho">Parcial · falta términos de uso</span></div>
+        <div class="d">Faltan aviso de salud ("consulta con tu médico"), términos de uso y privacidad accesibles desde la app.</div>
+        <div class="fix"><b>Solución:</b> pantalla "Legal" en Ajustes y aceptación en el primer acceso.</div></div></li>
+      <li><input type="checkbox" id="c30" data-done><div><div class="t">Manifest de la PWA<span class="hecho">Parcial · faltan capturas</span></div>
+        <div class="d">Iconos con <code>"any maskable"</code> mezclado, <code>theme_color</code> distinto del de <code>index.html</code> y sin capturas para la ventana de instalación.</div>
+        <div class="fix"><b>Solución:</b> separar icono maskable, unificar colores y añadir screenshots.</div></div></li>
+      <li><input type="checkbox" id="c31"><div><div class="t">Hosting y dominio definitivos</div>
+        <div class="d">Hace falta decidir dónde se publica, con HTTPS y dominio propio, y registrar esa URL como redirección en Supabase Auth.</div>
+        <div class="fix"><b>Solución:</b> Netlify o Vercel con despliegue automático desde <code>main</code>.</div></div></li>
+    </ol>
+  </section>
+
+  <div class="order">
+    <h2>Orden recomendado</h2>
+    <ol>
+      <li>Migrar a Vite (puntos 16, 18, 20, 24): todo lo demás es más fácil después.</li>
+      <li>Supabase de verdad: cuentas, roles con RLS y tablas de perfil, mensajes, posturas, rutinas y prácticas (1–5, 7–11).</li>
+      <li>Privacidad y textos legales (6, 27, 29).</li>
+      <li>ErrorBoundary, Sentry y tests de Playwright con CI (17, 21, 22).</li>
+      <li>Push, wake lock, accesibilidad y pulido (12, 25, 26, 30).</li>
+    </ol>
+  </div>
+
+  <footer>Rama <code>claude/affectionate-einstein-j1uyvg</code>, actualizado tras el commit de las pruebas automáticas. Las casillas se guardan solo en este navegador.</footer>
+</div>
+
+<script>
+(function () {
+  var boxes = document.querySelectorAll('input[type=checkbox]');
+  var key = 'elbosc-review-v1', state = {};
+  try { state = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) {}
+  function paint() {
+    var n = 0;
+    boxes.forEach(function (b) { b.closest('li').classList.toggle('done', b.checked); if (b.checked) n++; });
+    document.getElementById('progress').textContent = n + ' de ' + boxes.length + ' resueltos';
+  }
+  boxes.forEach(function (b) {
+    b.checked = (b.id in state) ? !!state[b.id] : b.hasAttribute('data-done');
+    b.addEventListener('change', function () {
+      state[b.id] = b.checked;
+      try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) {}
+      paint();
+    });
+  });
+  paint();
+})();
+</script>

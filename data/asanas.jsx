@@ -560,25 +560,100 @@ const ASANAS = [
 // Export per global window
 window.ASANAS = ASANAS;
 
-// ── Gestió de postures de la professora (afegir/treure, local) ──────────────
+// ── Catàleg de la professora: postures afegides/tretes i rutines ───────────
+// Es llegeix sempre de la còpia local (ràpid i sense connexió) i se
+// sincronitza amb la taula public.catalog de Supabase (migració 003).
+// Només la professora hi pot escriure; ho garanteix la RLS del servidor.
 const EB_CUSTOM_KEY = 'elbosc-custom-poses';
 const EB_REMOVED_KEY = 'elbosc-removed-poses';
+const EB_ROUTINES_KEY = 'elbosc-routines';
+const ebRead = (k) => { try { return JSON.parse(localStorage.getItem(k)) || []; } catch (e) { return []; } };
+const ebWrite = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+// Escriu al servidor sense bloquejar la interfície. Si falla (sense xarxa),
+// es torna a provar a la sincronització següent.
+const EB_PENDING_KEY = 'elbosc-catalog-pending';
+const ebQueue = (op) => { const q = ebRead(EB_PENDING_KEY); q.push(op); ebWrite(EB_PENDING_KEY, q); window.EBCatalog.flush(); };
+
 window.EBPoses = {
-  custom: () => { try { return JSON.parse(localStorage.getItem(EB_CUSTOM_KEY)) || []; } catch (e) { return []; } },
-  removed: () => { try { return JSON.parse(localStorage.getItem(EB_REMOVED_KEY)) || []; } catch (e) { return []; } },
+  custom: () => ebRead(EB_CUSTOM_KEY),
+  removed: () => ebRead(EB_REMOVED_KEY),
   effective: function () { const rm = this.removed(); return [...ASANAS.filter(a => rm.indexOf(a.id) === -1), ...this.custom()]; },
-  add: function (pose) { const c = this.custom(); c.push(pose); try { localStorage.setItem(EB_CUSTOM_KEY, JSON.stringify(c)); } catch (e) {} },
+  add: function (pose) {
+    ebWrite(EB_CUSTOM_KEY, [...this.custom().filter(p => p.id !== pose.id), pose]);
+    ebQueue({ op: 'upsert', kind: 'pose', id: pose.id, payload: pose });
+  },
   remove: function (id) {
     const c = this.custom();
-    if (c.some(p => p.id === id)) { try { localStorage.setItem(EB_CUSTOM_KEY, JSON.stringify(c.filter(p => p.id !== id))); } catch (e) {} }
-    else { const rm = this.removed(); if (rm.indexOf(id) === -1) rm.push(id); try { localStorage.setItem(EB_REMOVED_KEY, JSON.stringify(rm)); } catch (e) {} }
+    if (c.some(p => p.id === id)) {
+      ebWrite(EB_CUSTOM_KEY, c.filter(p => p.id !== id));
+      ebQueue({ op: 'delete', kind: 'pose', id });
+    } else {
+      const rm = this.removed();
+      if (rm.indexOf(id) === -1) ebWrite(EB_REMOVED_KEY, [...rm, id]);
+      ebQueue({ op: 'upsert', kind: 'removed_pose', id, payload: {} });
+    }
   },
 };
 
-// ── Rutines de la professora (crear / llistar / esborrar, local) ────────────
-const EB_ROUTINES_KEY = 'elbosc-routines';
 window.EBRoutines = {
-  load: () => { try { return JSON.parse(localStorage.getItem(EB_ROUTINES_KEY)) || []; } catch (e) { return []; } },
-  add: function (r) { const a = this.load(); a.push(r); try { localStorage.setItem(EB_ROUTINES_KEY, JSON.stringify(a)); } catch (e) {} },
-  remove: function (id) { try { localStorage.setItem(EB_ROUTINES_KEY, JSON.stringify(this.load().filter(r => r.id !== id))); } catch (e) {} },
+  load: () => ebRead(EB_ROUTINES_KEY),
+  add: function (r) {
+    ebWrite(EB_ROUTINES_KEY, [...this.load().filter(x => x.id !== r.id), r]);
+    ebQueue({ op: 'upsert', kind: 'routine', id: r.id, payload: r });
+  },
+  remove: function (id) {
+    ebWrite(EB_ROUTINES_KEY, this.load().filter(r => r.id !== id));
+    ebQueue({ op: 'delete', kind: 'routine', id });
+  },
+};
+
+window.EBCatalog = {
+  canWrite: false,
+  // Envia els canvis pendents (només la professora)
+  flush: async function () {
+    if (!this.canWrite || !window.sb || this._flushing) return;
+    this._flushing = true;
+    try {
+      let q = ebRead(EB_PENDING_KEY);
+      while (q.length) {
+        const op = q[0];
+        const res = op.op === 'delete'
+          ? await window.sb.from('catalog').delete().eq('kind', op.kind).eq('id', op.id)
+          : await window.sb.from('catalog').upsert({ kind: op.kind, id: op.id, payload: op.payload, updated_at: new Date().toISOString() });
+        if (res.error) break;
+        q = ebRead(EB_PENDING_KEY).slice(1);
+        ebWrite(EB_PENDING_KEY, q);
+      }
+    } catch (e) {}
+    this._flushing = false;
+  },
+  // Descarrega el catàleg del servidor i el desa a la còpia local.
+  // Retorna true si hi ha hagut canvis.
+  sync: async function (role) {
+    if (!window.sb) return false;
+    this.canWrite = role === 'teacher';
+    if (!this.canWrite) ebWrite(EB_PENDING_KEY, []);
+    try {
+      const { data, error } = await window.sb.from('catalog').select('kind, id, payload');
+      if (error || !data) return false;
+      // Primer cop de la professora: puja el que tenia només en aquest dispositiu
+      if (this.canWrite && data.length === 0 && !ebRead(EB_PENDING_KEY).length) {
+        const ops = [
+          ...ebRead(EB_CUSTOM_KEY).map(p => ({ op: 'upsert', kind: 'pose', id: p.id, payload: p })),
+          ...ebRead(EB_REMOVED_KEY).map(id => ({ op: 'upsert', kind: 'removed_pose', id, payload: {} })),
+          ...ebRead(EB_ROUTINES_KEY).map(r => ({ op: 'upsert', kind: 'routine', id: r.id, payload: r })),
+        ];
+        if (ops.length) { ebWrite(EB_PENDING_KEY, ops); await this.flush(); return false; }
+      }
+      if (this.canWrite) await this.flush();
+      if (ebRead(EB_PENDING_KEY).length) return false; // no trepitgem canvis locals pendents
+      const before = JSON.stringify([ebRead(EB_CUSTOM_KEY), ebRead(EB_REMOVED_KEY), ebRead(EB_ROUTINES_KEY)]);
+      const custom = data.filter(r => r.kind === 'pose').map(r => r.payload);
+      const removed = data.filter(r => r.kind === 'removed_pose').map(r => r.id);
+      const routines = data.filter(r => r.kind === 'routine').map(r => r.payload);
+      ebWrite(EB_CUSTOM_KEY, custom); ebWrite(EB_REMOVED_KEY, removed); ebWrite(EB_ROUTINES_KEY, routines);
+      return before !== JSON.stringify([custom, removed, routines]);
+    } catch (e) { return false; }
+  },
 };

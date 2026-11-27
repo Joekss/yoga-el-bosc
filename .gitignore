@@ -7,3 +7,6 @@ Thumbs.db
 uploads/
 .DS_Store
 **/.DS_Store
+tests/out-*.png
+node_modules/
+dist/

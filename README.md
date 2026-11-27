@@ -1,115 +1,71 @@
 # El Bosc · Ioga personalitzat — PWA
 
-Breve descripción
-El Bosc és una aplicació web progressiva (PWA) per a sessions de ioga personalitzades: seqüències, seguiment de progrés i una experiència optimitzada per a dispositius mòbils. Aquest repositori conté la interfície (principalment JavaScript/TypeScript) i actius per a la PWA.
+Aplicación web instalable (PWA) para las alumnas de Cèlia: práctica de yoga personalizada según un cuestionario, biblioteca de posturas, calendario, diario y chat con la profesora.
 
-[![Estado](https://img.shields.io/badge/status-beta-yellow)](https://github.com/Joekss/yoga-el-bosc) [![Lenguajes](https://img.shields.io/badge/JavaScript-75.7%25-orange)](https://github.com/Joekss/yoga-el-bosc) [![Lenguajes](https://img.shields.io/badge/TypeScript-18.6%25-blue)](https://github.com/Joekss/yoga-el-bosc)
+Estado: beta.
 
-## Tabla de contenidos
-- [Acerca del proyecto](#acerca-del-proyecto)
-- [Características](#características)
-- [Tecnologías](#tecnologías)
-- [Instalación](#instalación)
-- [Uso](#uso)
-- [PWA / Despliegue](#pwa--despliegue)
-- [Configuración](#configuración)
-- [Contribuir](#contribuir)
-- [Licencia](#licencia)
-- [Contacto](#contacto)
+## Cómo funciona
 
-## Acerca del proyecto
-El Bosc és una PWA pensada per oferir ioga personalitzat: crear i seguir seqüències, guardar preferències i utilitzar l'app offline en mòbil i escriptori. L'objectiu és una experiència lleugera i ràpida amb un enfocament mòbil first.
+- **Interfaz**: React 18 sin paso de compilación. Los archivos `.jsx` se cargan con `<script type="text/babel">` y se compilan en el navegador (`vendor/babel.min.js`). Todo lo necesario está en `vendor/`, sin CDN.
+- **Servidor**: [Supabase](https://supabase.com) para el acceso (correo con enlace o código de 6 cifras), los roles, el cuestionario, el registro de prácticas, el catálogo de posturas y el chat. Las reglas de seguridad (RLS) están en `supabase/migrations/`.
+- **Sin conexión**: el service worker (`sw.js`) guarda la app; lo que se hace sin red se envía al recuperarla.
 
-Estado: Beta
+## Estructura
 
-## Características
-- Seqüències de ioga personalitzables
-- Interfície adaptada a mòbils (PWA)
-- Ús offline amb sincronització quan hi ha connexió
-- Interfície simple i accessible
+| Ruta | Qué hay |
+| --- | --- |
+| `index.html` | Página de la app (producción) |
+| `YOGA El Bosc.html` | Página de diseño con marco de iPhone y panel de ajustes |
+| `app.jsx` | Estado global, acceso y navegación |
+| `components/` | Pantallas: acceso, consentimiento, cuestionario, práctica, chat… |
+| `data/backend.jsx` | Toda la comunicación con Supabase |
+| `data/asanas.jsx` | Posturas y catálogo de la profesora |
+| `supabase/` | Migraciones SQL y guía de configuración |
+| `tests/` | Pruebas de los flujos principales con un Supabase simulado |
+| `privacitat.html` | Política de privacidad |
 
-## Tecnologías
-Composició del repositori (estimat):
-- JavaScript — 75.7%
-- TypeScript — 18.6%
-- HTML — 3.1%
-- CSS — 2.6%
+## Arrancar en local
 
-Stack esperat (ajusta si és diferent):
-- Frontend: JavaScript / TypeScript (pot ser una app amb framework com React, Vue o similar)
-- PWA: manifest.json, service worker
-- Build / Tooling: (Vite / Webpack / Create React App / etc.) — [Rellenar]
+Requisitos: Python 3 (servidor estático) y Node.js 18+ para las pruebas.
 
-## Instalación
-Requisitos previs:
-- Node.js >= 14 (o la versió requerida pel projecte)
-- npm o yarn
-
-Clona el repositori:
 ```bash
-git clone https://github.com/Joekss/yoga-el-bosc.git
-cd yoga-el-bosc
+npm start
 ```
-Instal·la dependències:
+
+Abre http://localhost:5000.
+
+## Pruebas
+
 ```bash
-# amb npm
+npm test
+```
+
+Recorren el acceso (invitación, código, alumna revocada, profesora), el consentimiento, el cuestionario, la práctica, el catálogo compartido, el chat y el borrado de cuenta. Usan `tests/fake-supabase.js`, así que no tocan datos reales. Se ejecutan también en GitHub en cada pull request (`.github/workflows/tests.yml`).
+
+## Configurar Supabase
+
+Sigue `supabase/README.md`: ejecutar las migraciones, hacer profesora a Cèlia, plantilla del correo con código y direcciones permitidas.
+
+## Publicar
+
+La app se publica sola en **GitHub Pages** (`https://joekss.github.io/yoga-el-bosc/`) cada vez que se fusiona un cambio en `main` (`.github/workflows/deploy.yml`): compila `dist/`, pasa las pruebas y la publica.
+
+Activarlo una vez: en GitHub → **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+
+Para generar la versión optimizada a mano:
+
+```bash
 npm install
-
-# o amb yarn
-yarn
 ```
 
-## Uso
-Comandes comunes (ajusta segons el package.json):
 ```bash
-# mode desenvolupament
-npm run dev
-# o
-yarn dev
-
-# build per producció
 npm run build
-# o
-yarn build
-
-# servir build localment (opcional)
-npm run serve
 ```
 
-Si utilitzeu TypeScript, assegureu-vos de compilar/activar l'server de desenvolupament corresponent (p. ex. `tsc --noEmit` o integrat en l'script `dev`).
-
-## PWA / Despliegue
-- Comprova que `manifest.json` i el service worker estan correctament configurats.
-- Per desplegar: Netlify, Vercel, GitHub Pages (si és estàtica) o qualsevol hosting d'static files.
-- Verifica el suport offline i la correcta gestió de rutes.
-
-## Configuración
-Variables d'entorn (afegeix `.env.example` al repo):
-- VITE_API_URL=http://api.example.com
-- NODE_ENV=production
-- OTHER_KEY=[Rellenar]
-
-## Contribuir
-1. Fes fork del repositori.
-2. Crea una branca: `git checkout -b feature/mi-cambio`.
-3. Afegeix commits clars i proves si s'escau.
-4. Obre un Pull Request descrivint els canvis.
+`dist/` es la misma app pero compilada antes: abre en unos 0,4 s en un móvil lento en vez de unos 9 s, y la versión de caché se calcula sola en cada build. La raíz del repositorio sigue funcionando sin compilar (útil para desarrollar con `npm start`).
 
 ## Licencia
-[Aquesta app es propietat de Cèlia Betriu Acunya]
 
-MIT © 2026 Joekss
+Software propietario. © 2026 Cèlia Cuña Betriu. Todos los derechos reservados. Ver `LICENSE`.
 
-## Contacto
-Autor: Joekss
-Repositorio: https://github.com/Joekss/yoga-el-bosc
-
-## - Avis Legal - Aviso legal
-La propietat i ús Aquesta aplicació, el seu codi, dissenys, continguts i tots els materials associats són propietat exclusiva de La Cèlia Cuña Betriu. L’usuari no està autoritzat a copiar, modificar, redistribuir o fer un ús comercial del programari sense l’autorització prèvia i per escrit del propietari. Qualsevol ús indegut, alteració no autoritzada o explotació il·licitada d’aquestes aportacions podrà ser objecte d’accions legals i reclamacions per danys i perjudicis, segons la legislació aplicable.
-
-Per a consultes o per sol·licitar permisos d’ús: contacta amb Joelreintegra@gmail.com
-
-Peu de pàgina / copyright (breu) © 2026 La Cèlia. Tots els drets reservats. L’ús, la modificació o la distribució no autoritzats poden donar lloc a accions legals.
-
----
-
+Per a consultes o per sol·licitar permisos d'ús, contacteu amb la propietària.

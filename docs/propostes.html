@@ -1,0 +1,154 @@
+<title>El Bosc: propuestas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,500&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: una columna; propuestas en tarjetas con botón "Me gusta" y resumen fijo abajo */
+:root {
+  --bg: #F5EFE3; --surface: #FBF8F1; --line: #DDD2BC; --ink: #2C2A24; --soft: #6E6757;
+  --accent: #8C5232; --moss: #4E5D33; --pick: #E7EDDC;
+  --serif: "Cormorant Garamond", Georgia, serif;
+  --sans: "Inter", -apple-system, system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #1C1A16; --surface: #24211C; --line: #3A352C; --ink: #EDE6D6; --soft: #A69E8C;
+  --accent: #D9976A; --moss: #A9B98A; --pick: #2C3324; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #1C1A16; --surface: #24211C; --line: #3A352C; --ink: #EDE6D6; --soft: #A69E8C;
+  --accent: #D9976A; --moss: #A9B98A; --pick: #2C3324; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 780px; margin: 0 auto; padding-block: 40px 140px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-family: var(--serif); font-style: italic; font-weight: 500; font-size: clamp(34px, 7vw, 46px); line-height: 1.05; margin: 0 0 10px; text-wrap: balance; }
+.lede { color: var(--soft); max-width: 62ch; margin: 0 0 8px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--soft); margin: 16px 0 8px; }
+h2 { font-family: var(--serif); font-weight: 500; font-size: 28px; margin: 36px 0 4px; }
+.sec-note { color: var(--soft); font-size: 13px; margin: 0 0 12px; }
+.grid { display: grid; gap: 10px; }
+.card { display: grid; grid-template-columns: 1fr auto; gap: 6px 14px; align-items: start; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.card > div { min-width: 0; }
+.card.picked { background: var(--pick); border-color: color-mix(in srgb, var(--moss) 45%, var(--line)); }
+.t { font-weight: 600; }
+.d { color: var(--soft); margin-top: 3px; font-size: 14px; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.tag { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--soft); }
+.tag.rec { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); font-weight: 600; }
+.like { border: 1px solid var(--line); background: transparent; color: var(--ink); font: 500 13px var(--sans); padding: 7px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap; }
+.picked .like { background: var(--moss); border-color: var(--moss); color: var(--surface); }
+.like:focus-visible, .bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: color-mix(in srgb, var(--bg) 94%, transparent); backdrop-filter: blur(8px); border-top: 1px solid var(--line);
+  padding: 12px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.bar-in { max-width: 780px; margin: 0 auto; display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.count { font-size: 14px; font-variant-numeric: tabular-nums; }
+.bar button { border: 0; border-radius: 999px; padding: 10px 16px; background: var(--accent); color: var(--surface); font: 600 14px var(--sans); cursor: pointer; }
+.bar button[disabled] { opacity: .45; cursor: default; }
+#out { width: 100%; margin-top: 10px; font: 13px/1.45 ui-monospace, Menlo, monospace; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px; min-height: 90px; }
+</style>
+
+<div class="wrap">
+  <h1>Ideas para El Bosc</h1>
+  <p class="lede">Mejoras que creo que valdrían la pena, agrupadas por a quién ayudan. Marca las que te gusten y pulsa <b>Copiar mi selección</b> para pegármela en el chat.</p>
+  <div class="legend">
+    <span><b>Esfuerzo:</b> bajo = unas horas · medio = 1–2 días · alto = varios días</span>
+    <span><span class="tag rec" style="margin:0">Recomendada</span> = mi apuesta para empezar</span>
+  </div>
+
+  <div id="list"></div>
+</div>
+
+<div class="bar">
+  <div class="bar-in">
+    <span class="count" id="count">0 elegidas</span>
+    <div style="display:flex; gap:8px">
+      <button id="clear" type="button" style="background:transparent;color:var(--soft);border:1px solid var(--line)">Borrar</button>
+      <button id="copy" type="button" disabled>Copiar mi selección</button>
+    </div>
+  </div>
+  <textarea id="out" readonly hidden aria-label="Selección"></textarea>
+</div>
+
+<script>
+const SECTIONS = [
+  { title: 'Durante la práctica', note: 'Lo que la alumna nota cada día.', items: [
+    ['voz', 'Práctica guiada por voz', 'La app dice el nombre de la postura, cuándo inhalar y exhalar y cuándo cambiar. Así se puede practicar sin mirar la pantalla. Usa la voz del propio móvil, sin coste.', 'medio', true],
+    ['campana', 'Campana y música ambiental', 'Campana suave entre posturas y música opcional (bosque, cuencos) con volumen propio.', 'bajo', true],
+    ['animo', '"¿Cómo te encuentras hoy?"', 'Antes de empezar: cansada, con energía o con alguna molestia. La sesión se ajusta (más suave, más corta, sin la zona que duele).', 'medio', true],
+    ['respira', 'Ejercicios de respiración', 'Temporizador animado para respiración cuadrada, 4-7-8 y respiración alterna, de 3 a 10 minutos.', 'medio', false],
+    ['medita', 'Meditación con temporizador', 'Cuenta atrás con campana de inicio y final, y meditaciones guiadas grabadas por Cèlia.', 'bajo', false],
+    ['fotos', 'Fotos o vídeos de Cèlia en cada postura', 'Además del dibujo, una foto o un vídeo corto de la profesora haciendo la postura. Ella los sube desde la app.', 'medio', false],
+  ]},
+  { title: 'Seguimiento y motivación', note: 'Para que vuelvan a practicar.', items: [
+    ['valora', 'Valoración después de practicar', 'Al acabar: cómo me he sentido y si algo ha molestado. Cèlia lo ve en el chat y las próximas sesiones lo tienen en cuenta.', 'bajo', true],
+    ['recordatorio', 'Recordatorio diario a su hora', 'Aviso en el móvil a la hora que elija cada alumna, aunque la app esté cerrada. Requiere las notificaciones push.', 'medio', true],
+    ['mapa', 'Calendario de constancia', 'Un mapa de los días practicados, al estilo de un calendario de pared, y pequeños hitos (primera semana, 10 sesiones). Sin rankings ni presión.', 'bajo', false],
+    ['repetir', 'Favoritas y repetir sesión', 'Guardar posturas favoritas y volver a hacer una sesión que gustó.', 'bajo', false],
+    ['programas', 'Programas de varias semanas', 'Planes como "Espalda sana en 4 semanas", con una sesión distinta cada día y progreso visible.', 'alto', false],
+  ]},
+  { title: 'Para Cèlia', note: 'Menos trabajo de gestión y mejor seguimiento.', items: [
+    ['asignar', 'Asignar rutinas a una alumna', 'Cèlia elige una rutina y la manda a una o varias alumnas; aparece en su inicio como "la práctica de hoy".', 'medio', true],
+    ['panel', 'Panel de seguimiento', 'De un vistazo: quién no practica desde hace días, constancia semanal de cada alumna y avisos cuando alguien marca una molestia nueva.', 'medio', true],
+    ['rapidas', 'Respuestas rápidas en el chat', 'Mensajes guardados ("¡Muy bien esta semana!", "¿Cómo va la espalda?") para enviar con un toque.', 'bajo', false],
+    ['clases', 'Horario de clases y reservas', 'Clases presenciales u online con plazas, reserva desde la app, lista de espera y recordatorio el día antes.', 'alto', false],
+    ['bonos', 'Control de bonos', 'Cuántas clases le quedan a cada alumna y cuándo caduca su bono. Sin pagos dentro de la app al principio.', 'medio', false],
+    ['directo', 'Clases en directo y grabaciones', 'Enlace a Zoom o Meet en el calendario, y la grabación disponible después para quien no pudo venir.', 'medio', false],
+    ['informe', 'Informe de una alumna', 'Resumen de prácticas, molestias y notas para revisar juntas, listo para imprimir.', 'medio', false],
+  ]},
+  { title: 'Base técnica', note: 'No se ven, pero evitan problemas.', items: [
+    ['push', 'Notificaciones push', 'Necesarias para recordatorios, mensajes nuevos del chat y avisos de clase con la app cerrada (en iPhone, con la app instalada).', 'medio', true],
+    ['sentry', 'Aviso automático de errores', 'Si algo falla en el móvil de una alumna, te llega un aviso con lo que pasó (Sentry, plan gratuito).', 'bajo', true],
+    ['sync', 'Diario y calendario en la cuenta', 'Que no se pierdan al cambiar de móvil. El diario es íntimo: solo lo vería la alumna.', 'medio', false],
+    ['instalar', 'Guía para instalar la app', 'Pantalla que explica paso a paso cómo añadirla a la pantalla de inicio en iPhone y Android.', 'bajo', true],
+    ['oscuro', 'Modo oscuro en los ajustes', 'Ya existe en el diseño; falta poder elegirlo. Útil para practicar de noche.', 'bajo', false],
+    ['terminos', 'Términos de uso', 'Texto corto sobre el uso de la app y responsabilidad, aceptado al entrar por primera vez.', 'bajo', false],
+    ['dominio', 'Dominio propio', 'Una dirección tipo elbosc.cat en lugar de la del hosting.', 'bajo', false],
+    ['modulos', 'Modernizar el código', 'Pasar a módulos con Vite. No cambia nada para las alumnas, pero hace más fácil y seguro seguir añadiendo funciones.', 'alto', false],
+  ]},
+];
+
+const KEY = 'elbosc-propostes-v1';
+let picked = {};
+try { picked = JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(picked)); } catch (e) {} };
+const EFFORT = { bajo: 'Esfuerzo bajo', medio: 'Esfuerzo medio', alto: 'Esfuerzo alto' };
+
+const list = document.getElementById('list');
+SECTIONS.forEach(sec => {
+  const h = document.createElement('h2'); h.textContent = sec.title; list.appendChild(h);
+  const n = document.createElement('p'); n.className = 'sec-note'; n.textContent = sec.note; list.appendChild(n);
+  const g = document.createElement('div'); g.className = 'grid'; list.appendChild(g);
+  sec.items.forEach(([id, title, desc, effort, rec]) => {
+    const c = document.createElement('div'); c.className = 'card'; c.dataset.id = id;
+    c.innerHTML = '<div><div class="t"></div><div class="d"></div><div class="tags"></div></div><button type="button" class="like" aria-pressed="false">Me gusta</button>';
+    c.querySelector('.t').textContent = title;
+    c.querySelector('.d').textContent = desc;
+    const tags = c.querySelector('.tags');
+    const e = document.createElement('span'); e.className = 'tag'; e.textContent = EFFORT[effort]; tags.appendChild(e);
+    if (rec) { const r = document.createElement('span'); r.className = 'tag rec'; r.textContent = 'Recomendada'; tags.appendChild(r); }
+    c.querySelector('.like').addEventListener('click', () => { picked[id] = !picked[id]; if (!picked[id]) delete picked[id]; save(); paint(); });
+    c._title = title;
+    g.appendChild(c);
+  });
+});
+
+const out = document.getElementById('out');
+function selection() {
+  return [...document.querySelectorAll('.card')].filter(c => picked[c.dataset.id]).map(c => '- ' + c._title);
+}
+function paint() {
+  document.querySelectorAll('.card').forEach(c => {
+    const on = !!picked[c.dataset.id];
+    c.classList.toggle('picked', on);
+    const b = c.querySelector('.like'); b.textContent = on ? 'Elegida ✓' : 'Me gusta'; b.setAttribute('aria-pressed', on);
+  });
+  const n = selection().length;
+  document.getElementById('count').textContent = n === 1 ? '1 elegida' : n + ' elegidas';
+  document.getElementById('copy').disabled = n === 0;
+}
+document.getElementById('copy').addEventListener('click', async () => {
+  const text = 'Estas son las mejoras que nos gustan para El Bosc:\n' + selection().join('\n');
+  const btn = document.getElementById('copy');
+  try { await navigator.clipboard.writeText(text); btn.textContent = 'Copiado'; setTimeout(() => btn.textContent = 'Copiar mi selección', 1800); }
+  catch (e) { out.hidden = false; out.value = text; out.focus(); out.select(); }
+});
+document.getElementById('clear').addEventListener('click', () => { picked = {}; save(); out.hidden = true; paint(); });
+paint();
+</script>

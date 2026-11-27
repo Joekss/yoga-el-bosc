@@ -1,0 +1,54 @@
+name: Publicar a GitHub Pages
+
+# Cada canvi a main: construeix dist/, passa les proves i el publica.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Instal·la eines
+        env:
+          PUPPETEER_SKIP_DOWNLOAD: "1"
+        run: |
+          npm install --no-save --no-package-lock --omit=dev playwright@1.48.2 esbuild@0.24.0
+          npx playwright install --with-deps chromium
+      - name: Construeix dist/
+        run: node scripts/build.js
+      - name: Proves contra dist/ (Supabase simulat)
+        run: |
+          python3 -m http.server 5001 --directory dist &
+          until curl -s localhost:5001 > /dev/null; do sleep 1; done
+          BASE=http://localhost:5001/ node tests/smoke.spec.js
+      - name: Afegeix .nojekyll
+        run: touch dist/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
