@@ -6,14 +6,17 @@ function generateSequence(profile, asanas) {
   const goals = profile.goals || [];
   const focusZones = profile.focusZones || [];
   const avoidZones = profile.avoidZones || [];
-  const injuries = [...(profile.currentInjuries || []), ...(profile.conditions || [])].map(slug);
+  const injuries = injuryTags([...(profile.currentInjuries || []), ...(profile.conditions || []), ...(profile.todayDiscomfort || [])]);
   const style = profile.style || 'Hatha';
   const time = profile.timeOfDay || 'Matí';
 
   // Filter unsafe poses
+  const avoid = avoidZones.map(slug).filter(Boolean);
   const safe = asanas.filter(a => {
-    if (!a.contraindications) return true;
-    return !a.contraindications.some(c => injuries.includes(c));
+    if ((a.contraindications || []).some(c => injuries.includes(c))) return false;
+    // Zones a evitar (avui o sempre): fora les postures que les treballen directament
+    if (avoid.length && (a.target || []).some(t => avoid.some(z => slug(t).startsWith(z.slice(0, 5))))) return false;
+    return true;
   });
 
   // Score each asana
@@ -106,6 +109,51 @@ function generateSequence(profile, asanas) {
   return sequence;
 }
 
+// Tradueix lesions i condicions (en qualsevol idioma del qüestionari) a les
+// etiquetes de contraindicació de les postures (data/asanas.jsx).
+const INJURY_MAP = [
+  [/coll|cuello|neck/, ['lesio-coll']],
+  [/hernia/, ['hernia-discal', 'lesio-esquena']],
+  [/esquena|espalda|back|lumbar/, ['lesio-esquena']],
+  [/genoll|rodilla|knee/, ['lesio-genoll']],
+  [/canell|muneca|wrist/, ['lesio-canell']],
+  [/espatll|hombro|shoulder/, ['lesio-espatlla']],
+  [/maluc|cadera|hip/, ['lesio-maluc']],
+  [/turmell|tobillo|ankle/, ['lesio-turmell']],
+  [/embaras|pregnan/, ['embaras', 'embaras-avancat']],
+  [/hipertens|tension alta|high blood/, ['hipertensio', 'hipertensio-no-controlada']],
+  [/vertig|mareo|dizz/, ['vertigen']],
+  [/glaucom/, ['glaucoma']],
+];
+function injuryTags(list) {
+  const out = new Set();
+  (list || []).forEach(item => {
+    const s = slug(item);
+    if (!s) return;
+    out.add(s);
+    INJURY_MAP.forEach(([re, tags]) => { if (re.test(s)) tags.forEach(t => out.add(t)); });
+  });
+  return [...out];
+}
+
+// "Com et trobes avui?": ajusta una còpia del perfil per a la sessió d'avui
+//   checkin = { energy: 'low'|'ok'|'high', minutes, discomfort: [zones] }
+function adjustProfileForToday(profile, checkin) {
+  if (!checkin) return profile;
+  const p = { ...profile };
+  if (checkin.minutes) p.duration = checkin.minutes;
+  p.todayDiscomfort = checkin.discomfort || [];
+  if (p.todayDiscomfort.length) p.avoidZones = [...new Set([...(p.avoidZones || []), ...p.todayDiscomfort])];
+  if (checkin.energy === 'low') {
+    p.goals = [...new Set([...(p.goals || []), 'Relaxació'])];
+    p.style = 'Restauratiu';
+    if (p.level === 'avancat') p.level = 'intermedi';
+  } else if (checkin.energy === 'high') {
+    p.goals = [...new Set([...(p.goals || []), 'Energia', 'Força'])];
+  }
+  return p;
+}
+
 function slug(s) {
   return (s||'').toString().toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
@@ -114,3 +162,5 @@ function slug(s) {
 
 window.generateSequence = generateSequence;
 window.slugify = slug;
+window.injuryTags = injuryTags;
+window.adjustProfileForToday = adjustProfileForToday;

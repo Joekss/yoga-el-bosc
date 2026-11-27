@@ -11,8 +11,147 @@ const ebDayKey = (y, m, d) => `${y}-${ebPad(m+1)}-${ebPad(d)}`;
 const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number); const [h,mi] = String(n.time||'00:00').split(':').map(Number); return new Date(Y, (M||1)-1, D||1, h||0, mi||0, 0, 0); };
 if (typeof window !== 'undefined') window.EBNotes = { load: ebLoadNotes, save: ebSaveNotes, dayKey: ebDayKey, dateOf: ebNoteDate, KEY: EB_NOTES_KEY };
 
+// ── Avisos: missatges nous i recordatori diari (notificacions push) ──
+const NotificationSettings = ({ lang, role }) => {
+  const [support] = uS(() => (window.EBPush ? window.EBPush.support() : 'unsupported'));
+  const [on, setOn] = uS(false);
+  const [messages, setMessages] = uS(true);
+  const [reminder, setReminder] = uS(role !== 'teacher');
+  const [time, setTime] = uS('09:00');
+  const [busy, setBusy] = uS(false);
+  const [msg, setMsg] = uS(null);
+  const L = {
+    title: {ca:'Avisos', es:'Avisos', en:'Notifications'}[lang],
+    messages: {ca:'Missatges nous del xat', es:'Mensajes nuevos del chat', en:'New chat messages'}[lang],
+    reminder: {ca:'Recordatori diari per practicar', es:'Recordatorio diario para practicar', en:'Daily practice reminder'}[lang],
+    at: {ca:'a les', es:'a las', en:'at'}[lang],
+    enable: {ca:'Activar els avisos', es:'Activar los avisos', en:'Turn on notifications'}[lang],
+    save: {ca:'Desar', es:'Guardar', en:'Save'}[lang],
+    off: {ca:'Desactivar en aquest mòbil', es:'Desactivar en este móvil', en:'Turn off on this phone'}[lang],
+    saved: {ca:'Avisos desats.', es:'Avisos guardados.', en:'Notifications saved.'}[lang],
+    disabled: {ca:'Avisos desactivats.', es:'Avisos desactivados.', en:'Notifications turned off.'}[lang],
+    ios: {ca:'A l\'iPhone, primer afegeix l\'app a la pantalla d\'inici (Compartir → Afegir a la pantalla d\'inici) i obre-la des d\'allà.', es:'En el iPhone, primero añade la app a la pantalla de inicio (Compartir → Añadir a pantalla de inicio) y ábrela desde allí.', en:'On iPhone, first add the app to your Home Screen (Share → Add to Home Screen) and open it from there.'}[lang],
+    unsupported: {ca:'Aquest navegador no permet avisos.', es:'Este navegador no permite avisos.', en:'This browser doesn\'t support notifications.'}[lang],
+    denied: {ca:'Els avisos estan bloquejats. Activa\'ls als ajustos del mòbil per a aquesta app.', es:'Los avisos están bloqueados. Actívalos en los ajustes del móvil para esta app.', en:'Notifications are blocked. Allow them in your phone settings for this app.'}[lang],
+    error: {ca:'No s\'han pogut activar. Torna-ho a provar.', es:'No se han podido activar. Vuelve a probar.', en:'Couldn\'t turn them on. Try again.'}[lang],
+    note: {ca:'Per privacitat, l\'avís no mostra el text del missatge. Si ja has practicat aquell dia, no et recordarem res.', es:'Por privacidad, el aviso no muestra el texto del mensaje. Si ya has practicado ese día, no te recordaremos nada.', en:'For privacy, the notification doesn\'t show the message text. If you\'ve already practised that day, we won\'t remind you.'}[lang],
+  };
+  uE(() => {
+    if (support !== 'ok' || !window.EBPush) return;
+    window.EBPush.current().then(c => { if (c) { setOn(true); setMessages(c.notify_messages); setReminder(!!c.reminder_time); if (c.reminder_time) setTime(c.reminder_time); } });
+  }, []);
+  const save = async () => {
+    setBusy(true); setMsg(null);
+    try { await window.EBPush.enable({ messages, reminderTime: reminder ? time : null, lang }); setOn(true); setMsg({ ok: true, text: L.saved }); }
+    catch (e) { setMsg({ ok: false, text: e.code === 'denied' ? L.denied : L.error }); }
+    setBusy(false);
+  };
+  const off = async () => { setBusy(true); await window.EBPush.disable(); setOn(false); setMsg({ ok: true, text: L.disabled }); setBusy(false); };
+  const lbl = { fontFamily:'var(--sans)', fontSize:11, letterSpacing:'0.15em', textTransform:'uppercase', color:'var(--accent)', display:'block' };
+  const row = { display:'flex', alignItems:'center', justifyContent:'space-between', gap:10, padding:'8px 0', fontFamily:'var(--sans)', fontSize:14, color:'var(--ink)' };
+  return (
+    <div>
+      <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
+      <label style={lbl}>{L.title}</label>
+      {support !== 'ok' ? (
+        <p style={{ fontFamily:'var(--sans)', fontSize:13, color:'var(--ink-soft)', lineHeight:1.5, margin:'10px 0 0' }}>{L[support === 'ios-install' ? 'ios' : support]}</p>
+      ) : (
+        <div style={{ marginTop:6 }}>
+          <label htmlFor="eb-push-msg" style={row}>{L.messages}
+            <input id="eb-push-msg" type="checkbox" checked={messages} onChange={e => setMessages(e.target.checked)} style={{ width:20, height:20, accentColor:'var(--accent)' }}/>
+          </label>
+          <label htmlFor="eb-push-rem" style={row}>{L.reminder}
+            <input id="eb-push-rem" type="checkbox" checked={reminder} onChange={e => setReminder(e.target.checked)} style={{ width:20, height:20, accentColor:'var(--accent)' }}/>
+          </label>
+          {reminder && (
+            <div style={{ ...row, justifyContent:'flex-start' }}>
+              <span style={{ color:'var(--ink-soft)' }}>{L.at}</span>
+              <input id="eb-push-time" aria-label={L.reminder} type="time" value={time} step="900" onChange={e => setTime(e.target.value || '09:00')}
+                style={{ border:'1.5px solid color-mix(in srgb, var(--ink) 12%, transparent)', borderRadius:10, padding:'6px 10px', background:'var(--cream)', color:'var(--ink)', fontFamily:'var(--sans)', fontSize:15 }}/>
+            </div>
+          )}
+          <button disabled={busy} onClick={save} style={{ width:'100%', marginTop:8, padding:'11px', borderRadius:12, border:'none', background:'var(--accent)', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer' }}>
+            {on ? L.save : L.enable}
+          </button>
+          {on && <button disabled={busy} onClick={off} style={{ width:'100%', marginTop:8, padding:'10px', borderRadius:12, background:'transparent', border:'1px solid color-mix(in srgb, var(--ink) 15%, transparent)', color:'var(--ink-soft)', fontFamily:'var(--sans)', fontSize:13, cursor:'pointer' }}>{L.off}</button>}
+          <p style={{ fontFamily:'var(--sans)', fontSize:11.5, color:'var(--ink-soft)', lineHeight:1.5, margin:'8px 0 0' }}>{L.note}</p>
+        </div>
+      )}
+      {msg && <div role="status" style={{ fontFamily:'var(--sans)', fontSize:12, color: msg.ok ? 'var(--leaf-deep)' : 'var(--accent)', marginTop:6 }}>{msg.text}</div>}
+    </div>
+  );
+};
+
+// ── Calendari de constància: últimes 12 setmanes i petits hitos ──
+const ConstancyCalendar = ({ lang, log }) => {
+  const WEEKS = 12;
+  const dayKey = (d) => d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  const perDay = {};
+  log.forEach(x => { const k = dayKey(new Date(x.completed_at)); perDay[k] = (perDay[k] || 0) + (x.duration_sec || 0); });
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const start = new Date(today); start.setDate(start.getDate() - ((start.getDay() + 6) % 7) - (WEEKS - 1) * 7);
+  const weeks = [];
+  for (let w = 0; w < WEEKS; w++) {
+    const col = [];
+    for (let d = 0; d < 7; d++) { const day = new Date(start); day.setDate(start.getDate() + w * 7 + d); col.push(day); }
+    weeks.push(col);
+  }
+  const level = (sec) => sec <= 0 ? 0 : sec < 600 ? 1 : sec < 1500 ? 2 : 3;
+  const bg = ['color-mix(in srgb, var(--ink) 7%, transparent)', 'color-mix(in srgb, var(--leaf) 35%, transparent)', 'color-mix(in srgb, var(--leaf) 65%, transparent)', 'var(--leaf-deep)'];
+  const totalMin = Math.round(log.reduce((s, x) => s + (x.duration_sec || 0), 0) / 60);
+  const days = Object.keys(perDay).length;
+  let best = 0, run = 0;
+  for (let i = 0; i < 400; i++) { const d = new Date(today); d.setDate(d.getDate() - i); if (perDay[dayKey(d)]) { run++; best = Math.max(best, run); } else run = 0; }
+  const L = {
+    title: {ca:'La teva constància', es:'Tu constancia', en:'Your consistency'}[lang],
+    days:  {ca:'dies practicats', es:'días practicados', en:'days practised'}[lang],
+    less:  {ca:'Menys', es:'Menos', en:'Less'}[lang], more: {ca:'Més', es:'Más', en:'More'}[lang],
+  };
+  const MILESTONES = [
+    [log.length >= 1, {ca:'Primera pràctica', es:'Primera práctica', en:'First practice'}],
+    [best >= 3, {ca:'3 dies seguits', es:'3 días seguidos', en:'3 days in a row'}],
+    [best >= 7, {ca:'Una setmana seguida', es:'Una semana seguida', en:'A full week'}],
+    [log.length >= 10, {ca:'10 pràctiques', es:'10 prácticas', en:'10 practices'}],
+    [totalMin >= 300, {ca:'5 hores', es:'5 horas', en:'5 hours'}],
+    [log.length >= 50, {ca:'50 pràctiques', es:'50 prácticas', en:'50 practices'}],
+  ];
+  const fmtDay = (d) => { try { return d.toLocaleDateString(lang === 'ca' ? 'ca-ES' : lang, { day:'numeric', month:'short' }); } catch (e) { return ''; } };
+  return (
+    <div className="yb-card" style={{ padding:16 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:12, gap:8, flexWrap:'wrap' }}>
+        <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:20 }}>{L.title}</div>
+        <div style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)' }}>{days} {L.days}</div>
+      </div>
+      <div role="img" aria-label={L.title + ': ' + days + ' ' + L.days} style={{ display:'grid', gridTemplateColumns:`repeat(${WEEKS}, 1fr)`, gap:4 }}>
+        {weeks.map((col, w) => (
+          <div key={w} style={{ display:'grid', gridTemplateRows:'repeat(7, 1fr)', gap:4 }}>
+            {col.map((d, i) => {
+              const sec = perDay[dayKey(d)] || 0;
+              const future = d > today;
+              return <div key={i} title={fmtDay(d) + (sec ? ' · ' + Math.round(sec / 60) + ' min' : '')}
+                style={{ aspectRatio:'1', borderRadius:3, background: future ? 'transparent' : bg[level(sec)], outline: d.getTime() === today.getTime() ? '1.5px solid var(--accent)' : 'none' }}/>;
+            })}
+          </div>
+        ))}
+      </div>
+      <div style={{ display:'flex', justifyContent:'flex-end', alignItems:'center', gap:4, marginTop:8, fontFamily:'var(--sans)', fontSize:11, color:'var(--ink-soft)' }}>
+        {L.less}{bg.map((c, i) => <span key={i} style={{ width:10, height:10, borderRadius:2, background:c, display:'inline-block' }}/>)}{L.more}
+      </div>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginTop:12 }}>
+        {MILESTONES.map(([got, label], i) => (
+          <span key={i} style={{ fontFamily:'var(--sans)', fontSize:11.5, padding:'4px 10px', borderRadius:999,
+            border:'1px solid ' + (got ? 'color-mix(in srgb, var(--leaf) 60%, transparent)' : 'color-mix(in srgb, var(--ink) 10%, transparent)'),
+            color: got ? 'var(--leaf-deep)' : 'var(--ink-soft)', opacity: got ? 1 : 0.6 }}>
+            {got ? '✓ ' : ''}{label[lang]}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, onRepeat, lastPoseIds, onOpenBreath, practiceLog, assignment, onStartAssignment, onOpenTracking, onOpenInstall, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -21,6 +160,9 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
     return { ca: 'Bona nit', es: 'Buenas noches', en: 'Good evening' }[lang];
   })();
 
+  const [personalV, setPersonalV] = uS(0);
+  uE(() => { const r = () => setPersonalV(v => v + 1); window.addEventListener('elbosc-personal-sync', r); return () => window.removeEventListener('elbosc-personal-sync', r); }, []);
+  const savedSessions = uM(() => (window.EBSessions ? window.EBSessions.list() : []), [personalV]);
   const [confirmDelete, setConfirmDelete] = uS(false);
   const [deleting, setDeleting] = uS(false);
   const [deleteErr, setDeleteErr] = uS('');
@@ -146,6 +288,51 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
         </div>
       </div>
 
+      {/* Instal·lar l'app (si encara no ho està) */}
+      <InstallCard lang={lang} onOpen={onOpenInstall}/>
+
+      {/* Rutina que ha assignat la professora */}
+      <AssignedRoutineCard lang={lang} assignment={assignment} onStart={onStartAssignment}/>
+
+      {/* Respira i Medita */}
+      <div style={{ padding:'16px 24px 0', display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+        {[['breath', 'breath', {ca:'Respira',es:'Respira',en:'Breathe'}, {ca:'3–10 min',es:'3–10 min',en:'3–10 min'}],
+          ['meditate', 'moon', {ca:'Medita',es:'Medita',en:'Meditate'}, {ca:'5–30 min',es:'5–30 min',en:'5–30 min'}]].map(([m, ic, l, sub]) => (
+          <button key={m} onClick={() => onOpenBreath && onOpenBreath(m)} className="yb-card"
+            style={{ display:'flex', alignItems:'center', gap:12, padding:'14px 16px', cursor:'pointer', border:'none', textAlign:'left', color:'var(--ink)' }}>
+            <span style={{ width:36, height:36, borderRadius:'50%', background:'color-mix(in srgb, var(--accent) 14%, transparent)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+              <Icon name={ic} size={18} color="var(--accent)"/>
+            </span>
+            <span>
+              <span style={{ display:'block', fontFamily:'var(--serif)', fontStyle:'italic', fontSize:20 }}>{l[lang]}</span>
+              <span style={{ display:'block', fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)' }}>{sub[lang]}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Repetir i sessions desades */}
+      {(lastPoseIds || savedSessions.length > 0) && (
+        <div style={{ padding: '16px 24px 0', display:'flex', gap: 8, overflowX:'auto' }} className="yb-scroll">
+          {lastPoseIds && (
+            <button onClick={() => onRepeat && onRepeat(lastPoseIds)} className="yb-chip clay"
+              style={{ whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, padding:'10px 14px', cursor:'pointer' }}>
+              <Icon name="refresh" size={13} color="currentColor"/> {{ca:'Repetir l\'última',es:'Repetir la última',en:'Repeat last'}[lang]}
+            </button>
+          )}
+          {savedSessions.map(ss => (
+            <span key={ss.id} className="yb-chip" style={{ whiteSpace:'nowrap', display:'inline-flex', alignItems:'center', gap:6, padding:'6px 6px 6px 12px' }}>
+              <button onClick={() => onRepeat && onRepeat(ss.poseIds)} style={{ background:'none', border:'none', color:'inherit', font:'inherit', cursor:'pointer', padding:'4px 0', display:'inline-flex', alignItems:'center', gap:6 }}>
+                <Icon name="heart" size={12} color="var(--accent)"/> {ss.name}
+              </button>
+              <button aria-label={{ca:'Treure',es:'Quitar',en:'Remove'}[lang] + ' ' + ss.name} onClick={() => window.EBSessions.remove(ss.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:4, color:'var(--ink-soft)' }}>
+                <Icon name="close" size={11} color="currentColor"/>
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
       {/* Sequence preview */}
       <div style={{ padding: '32px 24px 16px' }}>
         <div className="yb-divider-leaf">{t.session.preview}</div>
@@ -187,10 +374,15 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
         </div>
       </div>
 
+      {/* Calendari de constància */}
+      <div style={{ padding: '0 24px 24px' }}>
+        <ConstancyCalendar lang={lang} log={practiceLog || []}/>
+      </div>
+
       {/* Teacher note */}
       <div style={{ padding: '0 24px 100px' }}>
         <div className="yb-card" style={{ background:'color-mix(in srgb, var(--accent) 8%, var(--cream))', display:'flex', gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius:'50%', background:'var(--accent)', flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--cream)', fontFamily:'var(--serif)', fontSize: 20 }}>M</div>
+          <div style={{ width: 44, height: 44, borderRadius:'50%', background:'var(--accent)', flexShrink: 0, display:'flex', alignItems:'center', justifyContent:'center', color:'var(--cream)', fontFamily:'var(--serif)', fontSize: 20 }}>C</div>
           <div>
             <div style={{ fontFamily:'var(--sans)', fontSize: 11, color:'var(--accent)', letterSpacing:'0.15em', textTransform:'uppercase' }}>{t.messages_.from}</div>
             <div style={{ fontFamily:'var(--serif)', fontSize: 15, lineHeight: 1.5, color:'var(--ink)', marginTop: 4, fontStyle:'italic' }}>
@@ -262,6 +454,10 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
             <div style={{ marginTop:16 }}>
               <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'6px 0 14px' }}/>
               <label style={themeLabelStyle}>{PT.teacherZone}</label>
+              <button onClick={() => { setShowProfile(false); onOpenTracking && onOpenTracking(); }}
+                style={{ width:'100%', marginTop:10, padding:'12px', borderRadius:12, background:'var(--ink)', border:'none', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
+                {{ca:'Seguiment de les alumnes',es:'Seguimiento de las alumnas',en:'Student progress'}[lang]}
+              </button>
               <button onClick={() => { setShowProfile(false); onOpenStudents && onOpenStudents(); }}
                 style={{ width:'100%', marginTop:10, padding:'12px', borderRadius:12, background:'var(--accent)', border:'none', color:'var(--cream)', fontFamily:'var(--sans)', fontSize:14, cursor:'pointer', boxSizing:'border-box' }}>
                 {{ca:'Alumnes i accés',es:'Alumnas y acceso',en:'Students and access'}[lang]}
@@ -284,6 +480,13 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
             </button>
           )}
 
+          <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
+          <NotificationSettings lang={lang} role={role}/>
+          {onOpenInstall && (
+            <button onClick={() => { setShowProfile(false); onOpenInstall(); }} style={{ background:'none', border:'none', padding:'8px 0 0', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:13, cursor:'pointer' }}>
+              {{ca:'Com instal·lar l\'app al mòbil',es:'Cómo instalar la app en el móvil',en:'How to install the app'}[lang]}
+            </button>
+          )}
           <div style={{ height:1, background:'color-mix(in srgb, var(--ink) 8%, transparent)', margin:'16px 0 12px' }}/>
           <label style={themeLabelStyle}>{{ca:'Privacitat',es:'Privacidad',en:'Privacy'}[lang]}</label>
           <div style={{ display:'flex', flexDirection:'column', gap:8, marginTop:10 }}>
@@ -413,10 +616,11 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
 // ── Library ─────────────────────────────────────────────────
 const Library = ({ t, lang, asanas, onOpenPose, illustrationStyle }) => {
   const [filter, setFilter] = uS('all');
-  const families = ['all','peu','equilibri','flexio','extensio','torsio','restauratiu','meditacio','mobilitat'];
-  const familyLabels = { all: { ca:'Totes', es:'Todas', en:'All' }, peu:'Peu', equilibri:'Equilibri', flexio:'Flexió', extensio:'Extensió', torsio:'Torsió', restauratiu:'Restaurativa', meditacio:'Meditació', mobilitat:'Mobilitat' };
+  const families = ['all','fav','peu','equilibri','flexio','extensio','torsio','restauratiu','meditacio','mobilitat'];
+  const familyLabels = { all: { ca:'Totes', es:'Todas', en:'All' }, fav: { ca:'♥ Preferides', es:'♥ Favoritas', en:'♥ Favourites' }, peu:'Peu', equilibri:'Equilibri', flexio:'Flexió', extensio:'Extensió', torsio:'Torsió', restauratiu:'Restaurativa', meditacio:'Meditació', mobilitat:'Mobilitat' };
 
-  const filtered = filter === 'all' ? asanas : asanas.filter(a => a.family === filter);
+  const favIds = filter === 'fav' && window.EBFavorites ? window.EBFavorites.list() : [];
+  const filtered = filter === 'all' ? asanas : filter === 'fav' ? asanas.filter(a => favIds.includes(a.id)) : asanas.filter(a => a.family === filter);
 
   return (
     <div className="yb-scroll" style={{ height: '100%', overflowY: 'auto', background: 'var(--paper)' }}>
@@ -461,7 +665,76 @@ const Library = ({ t, lang, asanas, onOpenPose, illustrationStyle }) => {
 };
 
 // ── Pose Detail ─────────────────────────────────────────────
-const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle }) => {
+// Foto o vídeo de la professora fent la postura (si n'hi ha); la professora el puja aquí
+const PoseMedia = ({ lang, poseId, canEdit }) => {
+  const [media, setMedia] = uS(() => (window.EBPoseMedia ? window.EBPoseMedia.get(poseId) : null));
+  const [urls, setUrls] = uS({});
+  const [busy, setBusy] = uS(false);
+  const [err, setErr] = uS('');
+  const photoRef = React.useRef(null), videoRef = React.useRef(null);
+  const L = {
+    addPhoto: {ca:'Afegir foto', es:'Añadir foto', en:'Add photo'}[lang],
+    addVideo: {ca:'Afegir vídeo', es:'Añadir vídeo', en:'Add video'}[lang],
+    change: {ca:'Canviar', es:'Cambiar', en:'Change'}[lang],
+    remove: {ca:'Treure', es:'Quitar', en:'Remove'}[lang],
+    uploading: {ca:'Pujant…', es:'Subiendo…', en:'Uploading…'}[lang],
+    big: {ca:'El fitxer és massa gran (màxim 50 MB).', es:'El archivo es demasiado grande (máximo 50 MB).', en:'File too large (max 50 MB).'}[lang],
+    fail: {ca:'No s\'ha pogut pujar. Comprova la connexió.', es:'No se ha podido subir. Comprueba la conexión.', en:'Upload failed. Check your connection.'}[lang],
+    alt: {ca:'La Cèlia fent la postura', es:'Cèlia haciendo la postura', en:'Cèlia doing the pose'}[lang],
+  };
+  uE(() => {
+    let alive = true;
+    if (!media || !window.EBPoseMedia) { setUrls({}); return; }
+    Promise.all([window.EBPoseMedia.url(media.photo), window.EBPoseMedia.url(media.video)])
+      .then(([photo, video]) => { if (alive) setUrls({ photo, video }); });
+    return () => { alive = false; };
+  }, [media && media.photo, media && media.video]);
+
+  const pick = (kind) => async (e) => {
+    const file = e.target.files && e.target.files[0]; e.target.value = '';
+    if (!file) return;
+    if (file.size > 50 * 1048576) { setErr(L.big); return; }
+    setBusy(true); setErr('');
+    try {
+      const path = await window.EBPoseMedia.upload(poseId, file);
+      const next = { ...(media || {}), [kind]: path };
+      window.EBPoseMedia.set(poseId, next); setMedia(next);
+    } catch (x) { setErr(L.fail); }
+    setBusy(false);
+  };
+  const clear = (kind) => { const next = { ...(media || {}) }; delete next[kind]; window.EBPoseMedia.set(poseId, next); setMedia(next.photo || next.video ? next : null); };
+
+  if (!media && !canEdit) return null;
+  const btn = { padding:'6px 12px', borderRadius:999, border:'1px solid color-mix(in srgb, var(--accent) 40%, transparent)', background:'transparent', color:'var(--accent)', fontFamily:'var(--sans)', fontSize:12, cursor:'pointer' };
+  return (
+    <div style={{ padding:'20px 24px 0', display:'flex', flexDirection:'column', gap:12, alignItems:'center' }}>
+      {media && media.video && urls.video && (
+        <video src={urls.video} controls playsInline preload="metadata" style={{ width:'100%', maxWidth:420, borderRadius:20, background:'#000' }}/>
+      )}
+      {media && media.photo && urls.photo && !media.video && (
+        <img src={urls.photo} alt={L.alt} style={{ width:'100%', maxWidth:420, borderRadius:20, objectFit:'cover' }}/>
+      )}
+      {media && media.photo && urls.photo && media.video && (
+        <img src={urls.photo} alt={L.alt} style={{ width:'100%', maxWidth:420, borderRadius:20, objectFit:'cover' }}/>
+      )}
+      {canEdit && (
+        <div style={{ display:'flex', gap:8, flexWrap:'wrap', justifyContent:'center' }}>
+          <input ref={photoRef} type="file" accept="image/*" hidden onChange={pick('photo')}/>
+          <input ref={videoRef} type="file" accept="video/*" hidden onChange={pick('video')}/>
+          <button disabled={busy} style={btn} onClick={() => photoRef.current.click()}><Icon name="image" size={12} color="currentColor"/> {media && media.photo ? L.change : L.addPhoto}</button>
+          <button disabled={busy} style={btn} onClick={() => videoRef.current.click()}><Icon name="play" size={12} color="currentColor"/> {media && media.video ? L.change : L.addVideo}</button>
+          {media && media.photo && <button style={{ ...btn, color:'var(--ink-soft)', borderColor:'color-mix(in srgb, var(--ink) 15%, transparent)' }} onClick={() => clear('photo')}>{L.remove} foto</button>}
+          {media && media.video && <button style={{ ...btn, color:'var(--ink-soft)', borderColor:'color-mix(in srgb, var(--ink) 15%, transparent)' }} onClick={() => clear('video')}>{L.remove} vídeo</button>}
+        </div>
+      )}
+      {busy && <div role="status" style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--ink-soft)' }}>{L.uploading}</div>}
+      {err && <div role="alert" style={{ fontFamily:'var(--sans)', fontSize:12, color:'var(--accent)' }}>{err}</div>}
+    </div>
+  );
+};
+
+const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle, role }) => {
+  const [fav, setFav] = uS(() => !!(window.EBFavorites && window.EBFavorites.has(asana.id)));
   if (!asana) return null;
   const muscleSilhouette = (
     <svg viewBox="0 0 120 200" width="100" height="160">
@@ -504,8 +777,10 @@ const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle }) => {
             <Icon name="back" size={18}/>
           </button>
           <div style={{ display:'flex', gap: 8 }}>
-            <button aria-label={({ca:'Preferida',es:'Favorita',en:'Favourite'})[lang]} style={{ background:'var(--cream)', border:'none', borderRadius:'50%', width:40, height:40, cursor:'pointer' }}>
-              <Icon name="heart" size={18} color="var(--ink-soft)"/>
+            <button aria-label={({ca:'Preferida',es:'Favorita',en:'Favourite'})[lang]} aria-pressed={fav}
+              onClick={() => { if (window.EBFavorites) { window.EBFavorites.toggle(asana.id); setFav(window.EBFavorites.has(asana.id)); } }}
+              style={{ background: fav ? 'color-mix(in srgb, var(--accent) 18%, var(--cream))' : 'var(--cream)', border:'none', borderRadius:'50%', width:40, height:40, cursor:'pointer' }}>
+              <Icon name="heart" size={18} color={fav ? 'var(--accent)' : 'var(--ink-soft)'}/>
             </button>
           </div>
         </div>
@@ -518,6 +793,8 @@ const PoseDetail = ({ t, lang, asana, onClose, illustrationStyle }) => {
             {asana.name[lang] || asana.name.ca}
           </h1>
         </div>
+
+        <PoseMedia lang={lang} poseId={asana.id} canEdit={role === 'teacher'}/>
 
         <div style={{ display:'flex', justifyContent:'center', padding: '24px 16px' }}>
           <div style={{ width: 240, height: 240, background:'var(--cream)', borderRadius: 24, display:'flex', alignItems:'center', justifyContent:'center', border:'1px solid color-mix(in srgb, var(--ink) 6%, transparent)' }}>

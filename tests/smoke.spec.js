@@ -12,7 +12,7 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
 async function page(browser, scenario) {
   const ctx = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
   await ctx.route('**/vendor/supabase.js', r => r.fulfill({ contentType: 'application/javascript', body: FAKE }));
-  await ctx.addInitScript(s => { if (!sessionStorage.getItem('init')) { localStorage.clear(); if (s) localStorage.setItem('fake-sb', JSON.stringify(s)); if (s && s.catalog) localStorage.setItem('fake-sb-catalog', JSON.stringify(s.catalog)); if (s && s.messages) localStorage.setItem('fake-sb-messages', JSON.stringify(s.messages)); if (s && s.personal) localStorage.setItem('fake-sb-personal', JSON.stringify(s.personal)); sessionStorage.setItem('init', '1'); } }, scenario);
+  await ctx.addInitScript(s => { if (!sessionStorage.getItem('init')) { localStorage.clear(); if (s) localStorage.setItem('fake-sb', JSON.stringify(s)); if (s && s.catalog) localStorage.setItem('fake-sb-catalog', JSON.stringify(s.catalog)); if (s && s.messages) localStorage.setItem('fake-sb-messages', JSON.stringify(s.messages)); if (s && s.personal) localStorage.setItem('fake-sb-personal', JSON.stringify(s.personal)); if (s && s.practice) localStorage.setItem('fake-sb-practice', JSON.stringify(s.practice)); if (s && s.assignments) localStorage.setItem('fake-sb-assignments', JSON.stringify(s.assignments)); sessionStorage.setItem('init', '1'); } }, scenario);
   const p = await ctx.newPage();
   p.errors = [];
   p.on('pageerror', e => p.errors.push(e.message));
@@ -178,18 +178,41 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     const saves = calls.filter(c => c.table === 'profiles' && c.op === 'update');
     ok(saves.some(c => c.payload.data && c.payload.data.consent && c.payload.data.consent.version), 'desa el consentiment amb versió');
     ok(saves.some(c => c.payload.data && c.payload.data.quizDone && c.payload.data.profile), 'desa el qüestionari');
-    // Pràctica: entra i salta totes les postures
+    // Com et trobes avui? → pràctica → valoració
     await p.click('text=Començar pràctica');
+    await waitText(p, 'Com et trobes avui?');
+    await p.click('button:text-is("Cansada")');
+    await p.click('button:text-is("10 min")');
+    await p.click('button:text-is("Genolls")');
+    await p.click('text=Preparar la pràctica');
+    await p.waitForSelector('button[aria-label="Postura següent"]');
     for (let i = 0; i < 60; i++) {
-      const done = await p.evaluate(() => document.body.innerText.includes('Començar pràctica'));
+      const done = await p.evaluate(() => document.body.innerText.includes('Com t\'has sentit?'));
       if (done) break;
       await p.click('button[aria-label="Postura següent"]', { timeout: 2000 }).catch(() => {});
       await p.waitForTimeout(50);
     }
+    await waitText(p, 'Com t\'has sentit?');
+    ok(true, 'en acabar demana la valoració');
+    await p.click('button:has-text("Molt bé")');
+    await p.click('button[aria-pressed]:text-is("Sí")');
+    await p.fill('#eb-fb-note', 'Una mica el coll');
+    await p.check('#eb-fb-keep');
+    await p.click('button:text-is("Desar")');
     await waitText(p, 'Començar pràctica');
-    await p.waitForTimeout(500);
+    await p.waitForTimeout(700);
     const practice = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-practice') || '[]'));
     ok(practice.length === 1, 'envia la pràctica al servidor');
+    const pr = practice[0] || {};
+    ok(pr.checkin && pr.checkin.energy === 'low' && pr.checkin.minutes === 10 && pr.checkin.discomfort.includes('Genolls'), 'desa com es trobava abans');
+    ok(pr.feeling === 4 && pr.discomfort === 'Una mica el coll', 'desa la valoració i la molèstia');
+    ok(Array.isArray(pr.pose_ids) && pr.pose_ids.length > 0, 'desa les postures fetes');
+    const knee = await p.evaluate((ids) => (window.EBPoses.effective()).filter(a => ids.includes(a.id) && (a.contraindications || []).includes('lesio-genoll')).map(a => a.id), pr.pose_ids || []);
+    ok(knee.length === 0, 'amb molèstia de genolls no hi ha postures contraindicades: ' + knee.join(','));
+    const home = await text(p);
+    ok(home.includes('Repetir l\'última'), 'ofereix repetir l\'última pràctica');
+    const saved = await p.evaluate(() => JSON.parse(localStorage.getItem('elbosc-sessions') || '[]'));
+    ok(saved.length === 1 && saved[0].poseIds.length === pr.pose_ids.length, 'desa la sessió per repetir-la');
     const body = await text(p);
     ok(/1\s*Dies consecutius/.test(body) && /1 \/ \d\s*Aquesta setmana/.test(body), 'ratxa 1 i 1 aquesta setmana');
     ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
@@ -354,6 +377,177 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     const all = sent.join('\n');
     ok(sent.length > 0, 'a la web publicada sí que envia l\'error');
     ok(!all.includes('anna@example.com') && !all.includes('abc123'), 'sense correus ni paràmetres de l\'adreça');
+  }
+
+  console.log('15. Respiració i meditació');
+  {
+    const p = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna' });
+    await p.clock.install();
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'anna@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Començar pràctica');
+    await p.click('button:has-text("Respira")');
+    await waitText(p, 'Quadrada');
+    await p.click('button:text-is("4-7-8")');
+    await p.click('button:text-is("3 min")');
+    await p.click('button:text-is("Començar")');
+    await waitText(p, 'Inspira');
+    await p.clock.fastForward('00:05');
+    await waitText(p, 'Reté');
+    ok(true, 'segueix les fases inspira → reté');
+    await p.clock.fastForward('03:00');
+    await waitText(p, 'minuts de calma');
+    ok(true, 'en acabar el temps mostra el resum');
+    await p.waitForTimeout(400);
+    const practice = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-practice') || '[]'));
+    ok(practice.some(r => r.checkin && r.checkin.type === 'respiracio' && r.duration_sec === 180), 'compta com a pràctica (3 min de respiració)');
+    await p.click('text=Tornar a l\'inici');
+    await p.click('button:has-text("Medita")');
+    await waitText(p, 'Campana cada 5 minuts');
+    ok(true, 'obre la meditació amb temporitzador');
+    await p.click('button[aria-label="Sortir"]');
+    await waitText(p, 'La teva constància');
+    ok((await text(p)).includes('1 dies practicats') && (await text(p)).includes('✓ Primera pràctica'), 'el calendari de constància mostra el dia d\'avui');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+  }
+
+  console.log('16. Professora: seguiment, assignar rutina i informe; l\'alumna la fa');
+  {
+    const annaId = 'u-anna@example.com';
+    const routine = { id: 'r-esquena', name: 'Esquena suau', poseIds: ['balasana', 'marjariasana', 'savasana'] };
+    const p = await page(browser, {
+      role: 'teacher',
+      members: [{ email: 'anna@example.com', name: 'Anna', level: 'principiant', status: 'active', invited_at: '2026-10-01T10:00:00Z' }],
+      profiles: [{ id: annaId, email: 'anna@example.com', name: 'Anna', data: { profile: { level: 'principiant', goals: ['Relaxació'], currentInjuries: ['Esquena baixa'] } } }],
+      practice: [{ id: 'p1', user_id: annaId, completed_at: new Date(Date.now() - 2 * 864e5).toISOString(), duration_sec: 1200, poses: 12, feeling: 2, discomfort: 'Em fa mal el genoll en el guerrer', checkin: { energy: 'low', minutes: 20, discomfort: ['Genolls'] } }],
+      catalog: [{ kind: 'routine', id: routine.id, payload: routine }],
+    });
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'celia@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Inici');
+    await p.getByRole('button', { name: 'Inici', exact: true }).click();
+    await p.click('button[aria-label="El teu perfil"]');
+    await p.click('text=Seguiment de les alumnes');
+    await waitText(p, 'Molèsties recents');
+    ok(true, 'avisa que l\'Anna té molèsties recents');
+    await p.click('button:has-text("Anna")');
+    await waitText(p, 'Em fa mal el genoll');
+    ok(true, 'la fitxa mostra la valoració i la molèstia');
+    await p.selectOption('#tp-routine', routine.id);
+    await p.fill('#tp-note', 'Fes-la abans de dormir');
+    await p.click('button:text-is("Assignar")');
+    await waitText(p, 'Pendent');
+    const asg = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-assignments') || '[]'));
+    ok(asg.length === 1 && asg[0].student_id === annaId && asg[0].routine.poseIds.length === 3, 'assigna la rutina a l\'Anna');
+    await p.click('button:has-text("Informe")');
+    await waitText(p, 'Imprimir o desar PDF');
+    ok((await text(p)).toUpperCase().includes('INFORME DE SEGUIMENT'), 'obre l\'informe imprimible');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+
+    const q = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna', assignments: asg });
+    await q.goto(BASE);
+    await q.fill('#eb-email', 'anna@example.com');
+    await q.click('button[type=submit]');
+    await q.fill('#eb-code', '123456');
+    await q.click('button[type=submit]');
+    await waitText(q, 'Esquena suau');
+    ok((await text(q)).toUpperCase().includes('LA CÈLIA T\'HA PREPARAT'), 'l\'alumna veu la rutina assignada');
+    await q.click('button:text-is("Començar")');
+    for (let i = 0; i < 10; i++) {
+      if (await q.evaluate(() => document.body.innerText.includes('Com t\'has sentit?'))) break;
+      await q.click('button[aria-label="Postura següent"]', { timeout: 2000 }).catch(() => {});
+      await q.waitForTimeout(50);
+    }
+    await waitText(q, 'Com t\'has sentit?');
+    await q.waitForTimeout(400);
+    const after = await q.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-assignments') || '[]'));
+    ok(after[0] && after[0].done_at, 'en acabar-la queda marcada com a feta');
+    ok(q.errors.length === 0, 'sense errors JS: ' + q.errors.join(' | '));
+    await q.context().close();
+  }
+
+  console.log('17. Foto de la professora en una postura');
+  {
+    const p = await page(browser, { role: 'teacher' });
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'celia@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Postures');
+    await p.getByRole('button', { name: 'Postures', exact: true }).click();
+    await p.click('text=Postura del nen');
+    await waitText(p, 'Afegir foto');
+    const gif = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
+    await p.setInputFiles('input[type=file][accept="image/*"]', { name: 'nen.gif', mimeType: 'image/gif', buffer: gif });
+    await waitText(p, 'Canviar');
+    await p.waitForTimeout(500);
+    const cat = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-catalog') || '[]'));
+    const m = cat.find(r => r.kind === 'pose_media' && r.id === 'balasana');
+    ok(!!(m && m.payload.photo), 'la foto queda desada a la postura');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+
+    const q = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna', catalog: cat });
+    await q.goto(BASE);
+    await q.fill('#eb-email', 'anna@example.com');
+    await q.click('button[type=submit]');
+    await q.fill('#eb-code', '123456');
+    await q.click('button[type=submit]');
+    await waitText(q, 'Començar pràctica');
+    await q.getByRole('button', { name: 'Postures', exact: true }).click();
+    await q.click('text=Postura del nen');
+    await q.waitForSelector('img[alt="La Cèlia fent la postura"]', { timeout: 10000 });
+    ok(true, 'l\'alumna veu la foto de la Cèlia');
+    ok(!(await text(q)).includes('Afegir foto'), 'l\'alumna no pot pujar fotos');
+    await q.context().close();
+  }
+
+  console.log('18. Avisos: secció a Configuració i obrir el xat des d\'una notificació');
+  {
+    const p = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna' });
+    await p.goto(BASE + '?tab=messages');
+    await p.fill('#eb-email', 'anna@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Esperant un missatge de la Cèlia');
+    ok(true, 'amb ?tab=messages obre directament el xat');
+    await p.getByRole('button', { name: 'Inici', exact: true }).click();
+    await p.click('button[aria-label="El teu perfil"]');
+    await waitText(p, 'pantalla d\'inici');
+    ok(true, 'a l\'iPhone sense instal·lar explica que cal afegir l\'app a la pantalla d\'inici');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+  }
+
+  console.log('19. Guia per instal·lar l\'app');
+  {
+    const p = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna' });
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'anna@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Instal·la El Bosc al mòbil');
+    await p.click('button:text-is("Com fer-ho")');
+    await waitText(p, 'Afegir a la pantalla d\'inici');
+    ok((await text(p)).includes('Safari'), 'a l\'iPhone explica els passos amb Safari');
+    await p.click('button[aria-label="Tancar"]');
+    await p.click('button:text-is("Ara no")');
+    await p.reload();
+    await waitText(p, 'Començar pràctica');
+    ok(!(await text(p)).includes('Instal·la El Bosc al mòbil'), 'si dius "Ara no" no torna a sortir');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
   }
 
   await browser.close();

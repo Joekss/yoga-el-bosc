@@ -6,9 +6,10 @@
     "start": "python3 -m http.server 5000",
     "map:svg": "mmdc -i ELBOSC-MAP.md -o ELBOSC-MAP.svg -w 1200 -H 800",
     "map:png": "mmdc -i ELBOSC-MAP.md -o ELBOSC-MAP.png -w 1600 -H 1000",
-    "test": "node tests/smoke.spec.js",
+    "test": "bash tests/run.sh",
     "build": "node scripts/build.js",
-    "start:dist": "python3 -m http.server 5001 --directory dist"
+    "start:dist": "python3 -m http.server 5001 --directory dist",
+    "test:dist": "node scripts/build.js && DIR=dist PORT=5001 bash tests/run.sh"
   },
   "author": "Joekss",
   "license": "MIT",

@@ -6,9 +6,9 @@ La app ya no decide quién entra ni quién es profesora: lo decide Supabase. Hay
 
 1. Abre **SQL Editor → New query**.
 2. Pega el contenido de `migrations/001_acces_i_rols.sql` y pulsa **Run**.
-3. Repite, en orden, con el resto: `002_practiques_i_privacitat.sql`, `003_cataleg.sql`, `004_xat.sql`, `005_enduriment.sql`, `006_diari_i_calendari.sql` (y los que se añadan después).
+3. Repite, en orden, con el resto: `002_practiques_i_privacitat.sql`, `003_cataleg.sql`, `004_xat.sql` … `010_notificacions.sql` (y los que se añadan después).
 
-> En el proyecto `cuigobpxeyzigialyiwc` ya están aplicadas del 001 al 006.
+> En el proyecto `cuigobpxeyzigialyiwc` ya están aplicadas del 001 al 010, y la función `push` (notificaciones) está desplegada.
 
 Se pueden volver a ejecutar sin romper nada si alguno falla a medias.
 
@@ -63,3 +63,10 @@ Las pruebas (`tests/smoke.spec.js`) usan un Supabase simulado (`tests/fake-supab
 ## Antes de publicar: rellenar la política de privacidad
 
 `privacitat.html` tiene campos marcados en amarillo que hay que completar: el correo de contacto (el nombre y la región ya están).
+
+## Notificaciones push (ya configurado)
+
+- La función `supabase/functions/push` envía los avisos. Solo acepta llamadas de la propia base de datos (cabecera secreta guardada en `private.push_config`).
+- Las claves VAPID se generaron dentro del servidor la primera vez (`private.push_config`); no están en el código.
+- Un mensaje nuevo del chat avisa a la otra persona (trigger `messages_push`) y cada 15 minutos se envían los recordatorios diarios (tarea `elbosc-recordatoris` de pg_cron).
+- Si se vuelve a desplegar la función: `supabase functions deploy push --no-verify-jwt`.

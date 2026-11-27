@@ -77,6 +77,13 @@ function App() {
   const [invite] = uSA(() => (window.readInvite ? window.readInvite() : null));
   const [showStudents, setShowStudents] = uSA(false);
   const [practiceLog, setPracticeLog] = uSA([]);
+  const [practiceSeq, setPracticeSeq] = uSA(null);     // seqüència d'avui (ajustada o repetida)
+  const [todayCheckin, setTodayCheckin] = uSA(null);
+  const [lastEntryId, setLastEntryId] = uSA(null);
+  const [assignment, setAssignment] = uSA(null);         // rutina pendent assignada per la professora
+  const [showTracking, setShowTracking] = uSA(false);
+  const [showInstall, setShowInstall] = uSA(false);
+  const activeAssignment = uRA(null);
   const stats = uMA(() => window.EBBackend ? window.EBBackend.practiceStats(practiceLog) : { streak: 0, total: 0, minutes: 0, thisWeek: 0 }, [practiceLog]);
   const role = isProd ? ((account && account.role) || 'student') : (tweaks.role || 'student');
 
@@ -111,6 +118,7 @@ function App() {
       window.EBBackend.refreshPractice(acc.userId).then(log => { if (seq === loadSeq.current) setPracticeLog(log); }).catch(() => {});
       if (window.EBCatalog) window.EBCatalog.sync(acc.role).then(changed => { if (changed) setPosesVersion(v => v + 1); });
       if (window.EBPersonal) window.EBPersonal.sync(acc.userId).catch(() => {});
+      if (acc.role !== 'teacher' && window.EBAssignments) window.EBAssignments.mine(acc.userId).then(a => { if (seq === loadSeq.current) setAssignment(a); }).catch(() => {});
       // Treu ?inv= i restes de l'enllaç màgic de la barra d'adreces
       try { if (window.location.search || window.location.hash) history.replaceState(null, '', window.location.pathname); } catch (e) {}
       if (acc.role === 'teacher') { setStage(s => s === 'practice' ? s : 'app'); setTab(tb => tb === 'home' ? 'messages' : tb); return; }
@@ -131,6 +139,14 @@ function App() {
       if (event === 'SIGNED_OUT') { setAccount(null); setStage('auth'); }
     });
     return () => { alive = false; off(); };
+  }, []);
+
+  // Obrir el xat en tocar una notificació (?tab=messages o missatge del service worker)
+  uEA(() => {
+    try { if (new URLSearchParams(location.search).get('tab') === 'messages') setTab('messages'); } catch (e) {}
+    const onMsg = (e) => { if (e.data && e.data.type === 'open' && String(e.data.url).includes('tab=messages')) setTab('messages'); };
+    if (navigator.serviceWorker) navigator.serviceWorker.addEventListener('message', onMsg);
+    return () => { if (navigator.serviceWorker) navigator.serviceWorker.removeEventListener('message', onMsg); };
   }, []);
 
   // En recuperar la connexió, envia el que s'hagi fet sense xarxa
@@ -154,10 +170,43 @@ function App() {
     await window.EBBackend.deleteAccount();
     setAccount(null); setProfile(DEFAULT_PROFILE); setPracticeLog([]); setTab('home'); setStage('auth');
   };
+  const startFromCheckin = (checkin) => {
+    setTodayCheckin(checkin);
+    setPracticeSeq(generateSequence(adjustProfileForToday(profile, checkin), asanas));
+    setStage('practice');
+  };
+  // Repeteix una sessió a partir de les postures (si alguna ja no existeix, se salta)
+  const repeatSession = (poseIds) => {
+    const byId = Object.fromEntries(asanas.map(a => [a.id, a]));
+    const seq = (poseIds || []).map(id => byId[id]).filter(Boolean).map(a => ({ ...a }));
+    if (!seq.length) return;
+    window.EBSound && window.EBSound.unlock();
+    setTodayCheckin(null); setPracticeSeq(seq); setStage('practice');
+  };
+  const startAssignment = (a) => { activeAssignment.current = a.id; repeatSession((a.routine || {}).poseIds); };
   const completePractice = (result) => {
-    setStage('app');
-    if (!account || !result) return;
-    window.EBBackend.logPractice(account.userId, result).finally(() => setPracticeLog(window.EBBackend.readPracticeLog(account.userId)));
+    if (!result) { setStage('app'); return; }
+    if (!account) { setStage('feedback'); return; }
+    window.EBBackend.logPractice(account.userId, { ...result, checkin: todayCheckin })
+      .then(entry => setLastEntryId(entry.id))
+      .finally(() => setPracticeLog(window.EBBackend.readPracticeLog(account.userId)));
+    lastPoseIds.current = result.poseIds;
+    if (activeAssignment.current && window.EBAssignments) {
+      window.EBAssignments.done(activeAssignment.current).catch(() => {});
+      activeAssignment.current = null; setAssignment(null);
+    }
+    setStage('feedback');
+  };
+  const lastPoseIds = uRA(null);
+  const saveFeedback = (fb) => {
+    if (fb && fb.saveSession && lastPoseIds.current && window.EBSessions) {
+      const d = new Date().toLocaleDateString(lang === 'ca' ? 'ca-ES' : lang, { day:'numeric', month:'short' });
+      window.EBSessions.save(fb.sessionName || d, lastPoseIds.current);
+    }
+    if (fb && fb.feeling && account && lastEntryId) {
+      window.EBBackend.ratePractice(account.userId, lastEntryId, fb).finally(() => setPracticeLog(window.EBBackend.readPracticeLog(account.userId)));
+    }
+    setPracticeSeq(null); setTodayCheckin(null); setStage('app');
   };
   const hasConsent = () => !isProd || !!(account && account.data && account.data.consent);
 
@@ -245,7 +294,15 @@ function App() {
             onExportData={() => window.EBBackend.exportData(account)}
             onDeleteAccount={isProd && role !== 'teacher' ? deleteAccount : null}
             asanas={asanas} onPosesChanged={() => setPosesVersion(v => v + 1)}
-            onStartPractice={() => setStage('practice')}
+            onStartPractice={() => setStage('checkin')}
+            onRepeat={repeatSession}
+            practiceLog={practiceLog}
+            assignment={assignment}
+            onStartAssignment={startAssignment}
+            onOpenTracking={() => setShowTracking(true)}
+            onOpenInstall={() => setShowInstall(true)}
+            onOpenBreath={(m) => setStage(m === 'meditate' ? 'meditate' : 'breath')}
+            lastPoseIds={(practiceLog.slice().reverse().find(x => x.pose_ids && x.pose_ids.length) || {}).pose_ids || null}
             onOpenPose={(p) => setPoseDetail(p)}
             illustrationStyle={tweaks.illustrationStyle}
             onChangeName={(nm) => { const next = { ...profile, name: nm }; setProfile(next); persistProfile(next); }}
@@ -256,14 +313,26 @@ function App() {
           {tab === 'journal' && <Journal t={t} lang={lang}/>}
           {tab === 'messages' && <Chat t={t} lang={lang} role={role} asanas={asanas} account={isProd ? account : null}/>}
           <TabBar active={tab} setActive={setTab} t={t} role={role}/>
-          {poseDetail && <PoseDetail t={t} lang={lang} asana={poseDetail} onClose={() => setPoseDetail(null)} illustrationStyle={tweaks.illustrationStyle}/>}
+          {poseDetail && <PoseDetail t={t} lang={lang} asana={poseDetail} role={role} onClose={() => setPoseDetail(null)} illustrationStyle={tweaks.illustrationStyle}/>}
           {showStudents && role === 'teacher' && <StudentsPanel lang={lang} onClose={() => setShowStudents(false)}/>}
+          {showTracking && role === 'teacher' && <TrackingPanel lang={lang} onClose={() => setShowTracking(false)}/>}
+          {showInstall && <InstallGuide lang={lang} onClose={() => setShowInstall(false)}/>}
         </>
       )}
+      {(stage === 'breath' || stage === 'meditate') && (
+        <BreathScreen lang={lang} mode={stage} onExit={() => setStage('app')}
+          onDone={(r) => { if (account) window.EBBackend.logPractice(account.userId, { durationSec: r.durationSec, poses: 0, checkin: { type: r.type } }).finally(() => setPracticeLog(window.EBBackend.readPracticeLog(account.userId))); }}/>
+      )}
+      {stage === 'checkin' && (
+        <CheckinScreen lang={lang} defaultMinutes={profile.duration} onBack={() => setStage('app')} onStart={startFromCheckin}/>
+      )}
+      {stage === 'feedback' && (
+        <FeedbackScreen lang={lang} onSave={saveFeedback} onSkip={() => saveFeedback(null)}/>
+      )}
       {stage === 'practice' && (
-        <PracticeMode t={t} sequence={sequence} lang={lang}
+        <PracticeMode t={t} sequence={practiceSeq || sequence} lang={lang}
           illustrationStyle={tweaks.illustrationStyle}
-          onExit={() => setStage('app')}
+          onExit={() => { activeAssignment.current = null; setPracticeSeq(null); setStage('app'); }}
           onComplete={completePractice}/>
       )}
       </ErrorBoundary>

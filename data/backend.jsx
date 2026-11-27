@@ -98,6 +98,7 @@
 
   async function signOut() {
     try { await personalClear(); } catch (e) {}
+    try { await window.EBPush.disable(); } catch (e) {}
     clearCache();
     try { if (sb()) await sb().auth.signOut(); } catch (e) {}
   }
@@ -138,19 +139,37 @@
     if (!sb()) return;
     const log = readLog(uid);
     const pending = log.filter(x => !x.synced);
-    if (!pending.length) return;
-    const rows = pending.map(x => ({ id: x.id, user_id: uid, completed_at: x.completed_at, duration_sec: x.duration_sec, poses: x.poses }));
-    const { error } = await sb().from('practice_sessions').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
-    if (error) return;
-    const ids = new Set(pending.map(x => x.id));
-    writeLog(uid, readLog(uid).map(x => ids.has(x.id) ? { ...x, synced: true } : x));
+    if (pending.length) {
+      const rows = pending.map(x => ({
+        id: x.id, user_id: uid, completed_at: x.completed_at, duration_sec: x.duration_sec, poses: x.poses,
+        checkin: x.checkin || null, pose_ids: x.pose_ids || null,
+        feeling: x.feeling || null, discomfort: x.discomfort || null,
+      }));
+      const { error } = await sb().from('practice_sessions').upsert(rows, { onConflict: 'id', ignoreDuplicates: true });
+      if (error) return;
+      const ids = new Set(pending.map(x => x.id));
+      writeLog(uid, readLog(uid).map(x => ids.has(x.id) ? { ...x, synced: true, ratingSynced: true } : x));
+    }
+    // Valoracions afegides després que la pràctica ja s'hagués enviat
+    for (const x of readLog(uid).filter(x => x.synced && x.feeling && !x.ratingSynced)) {
+      const { error } = await sb().from('practice_sessions').update({ feeling: x.feeling, discomfort: x.discomfort || null }).eq('id', x.id);
+      if (error) return;
+      writeLog(uid, readLog(uid).map(y => y.id === x.id ? { ...y, ratingSynced: true } : y));
+    }
   }
 
-  async function logPractice(uid, { durationSec, poses }) {
-    const entry = { id: uuid(), completed_at: new Date().toISOString(), duration_sec: Math.max(0, Math.round(durationSec || 0)), poses: poses || 0, synced: false };
+  async function logPractice(uid, { durationSec, poses, poseIds, checkin }) {
+    const entry = { id: uuid(), completed_at: new Date().toISOString(), duration_sec: Math.max(0, Math.round(durationSec || 0)), poses: poses || 0,
+      pose_ids: Array.isArray(poseIds) ? poseIds.slice(0, 200) : null, checkin: checkin || null, synced: false };
     writeLog(uid, [...readLog(uid), entry]);
     try { await pushPending(uid); } catch (e) {}
     return entry;
+  }
+
+  // Valoració en acabar ("com t'has sentit", molèsties)
+  async function ratePractice(uid, entryId, { feeling, discomfort }) {
+    writeLog(uid, readLog(uid).map(x => x.id === entryId ? { ...x, feeling, discomfort: discomfort || null, ratingSynced: false } : x));
+    try { await pushPending(uid); } catch (e) {}
   }
 
   // Porta l'historial del servidor (per si ha practicat des d'un altre mòbil)
@@ -159,12 +178,12 @@
     try { await pushPending(uid); } catch (e) {}
     const since = new Date(Date.now() - 400 * 864e5).toISOString();
     const { data, error } = await sb().from('practice_sessions')
-      .select('id, completed_at, duration_sec, poses').eq('user_id', uid).gte('completed_at', since)
+      .select('id, completed_at, duration_sec, poses, pose_ids, feeling, discomfort, checkin').eq('user_id', uid).gte('completed_at', since)
       .order('completed_at', { ascending: true });
     if (error || !data) return readLog(uid);
     const local = readLog(uid);
     const serverIds = new Set(data.map(x => x.id));
-    const merged = [...data.map(x => ({ ...x, synced: true })), ...local.filter(x => !serverIds.has(x.id) && !x.synced)];
+    const merged = [...data.map(x => ({ ...x, synced: true, ratingSynced: true })), ...local.filter(x => !serverIds.has(x.id) && !x.synced)];
     merged.sort((a, b) => a.completed_at < b.completed_at ? -1 : 1);
     writeLog(uid, merged);
     return merged;
@@ -340,7 +359,7 @@
   // ── Diari i calendari personals ─────────────────────────────────────────
   // Es desen al mòbil a l'instant (com sempre) i se'n guarda còpia a
   // public.personal_items, que només pot llegir la mateixa alumna.
-  const PERSONAL = { journal: 'elbosc-journal', calendar: 'elbosc-calendar-notes' };
+  const PERSONAL = { journal: 'elbosc-journal', calendar: 'elbosc-calendar-notes', favorites: 'elbosc-favorites', sessions: 'elbosc-sessions' };
   const snapKey = (kind) => 'elbosc-sync-snap-' + kind;      // últim estat conegut (id → json)
   const queueKey = (kind) => 'elbosc-sync-queue-' + kind;    // canvis pendents d'enviar
   const rj = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
@@ -417,6 +436,126 @@
 
   window.EBPersonal = { changed: personalChanged, sync: personalSync, flush: personalFlush, clear: personalClear };
 
+  // Postures preferides i sessions desades (es sincronitzen com el diari)
+  const listOf = (kind) => rj(PERSONAL[kind], []);
+  const saveList = (kind, arr) => { wj(PERSONAL[kind], arr); personalChanged(kind, arr); try { window.dispatchEvent(new Event('elbosc-personal-sync')); } catch (e) {} };
+  window.EBFavorites = {
+    list: () => listOf('favorites').map(x => x.id),
+    has: (poseId) => listOf('favorites').some(x => x.id === poseId),
+    toggle: (poseId) => {
+      const cur = listOf('favorites');
+      saveList('favorites', cur.some(x => x.id === poseId) ? cur.filter(x => x.id !== poseId) : [...cur, { id: poseId, at: Date.now() }]);
+    },
+  };
+  window.EBSessions = {
+    list: () => listOf('sessions').sort((a, b) => b.at - a.at),
+    save: (name, poseIds) => saveList('sessions', [...listOf('sessions'), { id: 's' + Date.now().toString(36), name: String(name || '').slice(0, 60), poseIds, at: Date.now() }]),
+    remove: (id) => saveList('sessions', listOf('sessions').filter(x => x.id !== id)),
+  };
+
+  // ── Seguiment i rutines assignades ──────────────────────────────────────
+  // Professora: alumnes amb les seves pràctiques dels últims 90 dies
+  async function trackingData() {
+    const since = new Date(Date.now() - 90 * 864e5).toISOString();
+    const [studs, prac, asg] = await Promise.all([
+      chatStudents(),
+      sb().from('practice_sessions').select('id, user_id, completed_at, duration_sec, poses, feeling, discomfort, checkin').gte('completed_at', since).order('completed_at', { ascending: false }).limit(5000),
+      sb().from('assignments').select('*').order('created_at', { ascending: false }).limit(500),
+    ]);
+    if (prac.error) throw fail(isNetworkError(prac.error) ? 'offline' : 'server', prac.error);
+    const byUser = {};
+    (prac.data || []).forEach(r => { (byUser[r.user_id] = byUser[r.user_id] || []).push(r); });
+    const asgBy = {};
+    ((asg && asg.data) || []).forEach(a => { (asgBy[a.student_id] = asgBy[a.student_id] || []).push(a); });
+    return studs.filter(x => x.joined).map(x => ({ ...x, practices: byUser[x.id] || [], assignments: asgBy[x.id] || [] }));
+  }
+
+  async function assignRoutine(studentId, routine, note) {
+    const { error } = await sb().from('assignments').insert({
+      student_id: studentId, routine_id: routine.id,
+      routine: { id: routine.id, name: routine.name, poseIds: routine.poseIds },
+      note: note ? String(note).slice(0, 500) : null,
+    });
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+  }
+  async function removeAssignment(id) {
+    const { error } = await sb().from('assignments').delete().eq('id', id);
+    if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+  }
+
+  // Alumna: la rutina pendent més recent
+  async function myAssignment(uid) {
+    if (!sb()) return null;
+    const { data, error } = await sb().from('assignments').select('*').eq('student_id', uid).is('done_at', null).order('created_at', { ascending: false }).limit(1);
+    if (error || !data || !data.length) return null;
+    return data[0];
+  }
+  async function markAssignmentDone(id) {
+    if (!sb()) return;
+    await sb().from('assignments').update({ done_at: new Date().toISOString() }).eq('id', id);
+  }
+
+  window.EBTeacher = { tracking: trackingData, assign: assignRoutine, unassign: removeAssignment };
+  window.EBAssignments = { mine: myAssignment, done: markAssignmentDone };
+
+  // ── Notificacions push ──────────────────────────────────────────────────
+  const b64ToBytes = (b64) => {
+    const pad = '='.repeat((4 - b64.length % 4) % 4);
+    const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+    return Uint8Array.from(raw, c => c.charCodeAt(0));
+  };
+  const isIOS = () => /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isStandalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+
+  const EBPush = {
+    // 'ok' | 'unsupported' | 'ios-install' (a iPhone cal instal·lar l'app primer) | 'denied'
+    support() {
+      if (isIOS() && !isStandalone()) return 'ios-install';
+      if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'unsupported';
+      if (Notification.permission === 'denied') return 'denied';
+      return 'ok';
+    },
+    async current() {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = reg && await reg.pushManager.getSubscription();
+        if (!sub || !sb()) return null;
+        const { data } = await sb().from('push_subscriptions').select('notify_messages, reminder_time').eq('endpoint', sub.endpoint).maybeSingle();
+        return data || null;
+      } catch (e) { return null; }
+    },
+    // Activa (o actualitza) els avisos d'aquest dispositiu
+    async enable({ messages, reminderTime, lang }) {
+      if (!sb()) throw fail('no-backend');
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') throw fail('denied');
+      const { data: key, error: kErr } = await sb().rpc('push_public_key');
+      if (kErr || !key) throw fail('server', kErr);
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(key) });
+      const j = sub.toJSON();
+      const { data: sess } = await sb().auth.getSession();
+      const { error } = await sb().from('push_subscriptions').upsert({
+        endpoint: j.endpoint, user_id: sess.session.user.id, p256dh: j.keys.p256dh, auth: j.keys.auth,
+        notify_messages: !!messages, reminder_time: reminderTime || null,
+        tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Europe/Madrid', lang: ['ca', 'es', 'en'].includes(lang) ? lang : 'ca',
+      });
+      if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
+    },
+    async disable() {
+      try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        const sub = reg && await reg.pushManager.getSubscription();
+        if (sub) {
+          if (sb()) await sb().from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+          await sub.unsubscribe();
+        }
+      } catch (e) {}
+    },
+  };
+  window.EBPush = EBPush;
+
   window.EBChat = {
     messages: chatMessages, students: chatStudents, send: chatSend, markRead: chatMarkRead,
     react: chatReact, upload: chatUpload, subscribe: chatSubscribe,
@@ -428,7 +567,7 @@
     getSession, sendLoginEmail, verifyCode, loadAccount, saveProfile, signOut, onAuthChange,
     listMembers, addMember, setMemberStatus, removeMember,
     readCache,
-    logPractice, refreshPractice, readPracticeLog: readLog, practiceStats,
+    logPractice, ratePractice, refreshPractice, readPracticeLog: readLog, practiceStats,
     deleteAccount, exportData,
   };
 })();
