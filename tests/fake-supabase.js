@@ -67,6 +67,15 @@
         c.members = m; localStorage.setItem('fake-sb', JSON.stringify(c));
         return { data: null, error: null };
       }
+      if (table === 'personal_items') {
+        let rows = JSON.parse(localStorage.getItem('fake-sb-personal') || '[]');
+        const f = Object.fromEntries(st.filters);
+        if (st.op === 'upsert') { rows = rows.filter(r => !(r.kind === st.payload.kind && r.id === st.payload.id)).concat([st.payload]); }
+        if (st.op === 'delete') { rows = rows.filter(r => !(r.kind === f.kind && r.id === f.id)); }
+        if (st.op === 'select') return { data: rows.filter(r => r.user_id === s.user.id && (!f.kind || r.kind === f.kind)), error: null };
+        localStorage.setItem('fake-sb-personal', JSON.stringify(rows));
+        return { data: null, error: null };
+      }
       if (table === 'catalog') {
         let rows = JSON.parse(localStorage.getItem('fake-sb-catalog') || '[]');
         if (st.op === 'upsert') { if (c.role !== 'teacher') return { data: null, error: { message: 'rls' } }; rows = rows.filter(r => !(r.kind === st.payload.kind && r.id === st.payload.id)).concat([st.payload]); }

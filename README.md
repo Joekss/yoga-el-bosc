@@ -65,20 +65,7 @@ npm run build
 `dist/` es la misma app pero compilada antes: abre en unos 0,4 s en un móvil lento en vez de unos 9 s, y la versión de caché se calcula sola en cada build. La raíz del repositorio sigue funcionando sin compilar (útil para desarrollar con `npm start`).
 
 ## Licencia
-[Aquesta app es propietat de Cèlia Betriu Acunya]
 
-MIT © 2026 Joekss
+Software propietario. © 2026 Cèlia Betriu Acunya. Todos los derechos reservados. Ver `LICENSE`.
 
-## Contacto
-Autor: Joekss
-Repositorio: https://github.com/Joekss/yoga-el-bosc
-
-## - Avis Legal - Aviso legal
-La propietat i ús Aquesta aplicació, el seu codi, dissenys, continguts i tots els materials associats són propietat exclusiva de La Cèlia Cuña Betriu. L’usuari no està autoritzat a copiar, modificar, redistribuir o fer un ús comercial del programari sense l’autorització prèvia i per escrit del propietari. Qualsevol ús indegut, alteració no autoritzada o explotació il·licitada d’aquestes aportacions podrà ser objecte d’accions legals i reclamacions per danys i perjudicis, segons la legislació aplicable.
-
-Per a consultes o per sol·licitar permisos d’ús: contacta amb Joelreintegra@gmail.com
-
-Peu de pàgina / copyright (breu) © 2026 La Cèlia. Tots els drets reservats. L’ús, la modificació o la distribució no autoritzats poden donar lloc a accions legals.
-
----
-
+Per a consultes o per sol·licitar permisos d'ús, contacteu amb la propietària.

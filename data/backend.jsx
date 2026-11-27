@@ -97,6 +97,7 @@
   }
 
   async function signOut() {
+    try { await personalClear(); } catch (e) {}
     clearCache();
     try { if (sb()) await sb().auth.signOut(); } catch (e) {}
   }
@@ -335,6 +336,86 @@
     const { error } = await sb().from('student_notes').delete().eq('id', id);
     if (error) throw fail(isNetworkError(error) ? 'offline' : 'server', error);
   }
+
+  // ── Diari i calendari personals ─────────────────────────────────────────
+  // Es desen al mòbil a l'instant (com sempre) i se'n guarda còpia a
+  // public.personal_items, que només pot llegir la mateixa alumna.
+  const PERSONAL = { journal: 'elbosc-journal', calendar: 'elbosc-calendar-notes' };
+  const snapKey = (kind) => 'elbosc-sync-snap-' + kind;      // últim estat conegut (id → json)
+  const queueKey = (kind) => 'elbosc-sync-queue-' + kind;    // canvis pendents d'enviar
+  const rj = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v == null ? d : v; } catch (e) { return d; } };
+  const wj = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  let personalUid = null;
+  let applyingRemote = false;
+
+  // Calcula què ha canviat respecte de l'últim estat i ho posa a la cua
+  function personalChanged(kind, arr) {
+    if (applyingRemote || !PERSONAL[kind]) return;
+    const snap = rj(snapKey(kind), {});
+    const q = rj(queueKey(kind), {});
+    const now = {};
+    (arr || []).forEach(it => { if (it && it.id) now[it.id] = JSON.stringify(it); });
+    Object.keys(now).forEach(id => { if (snap[id] !== now[id]) q[id] = { op: 'upsert', item: JSON.parse(now[id]) }; });
+    Object.keys(snap).forEach(id => { if (!(id in now)) q[id] = { op: 'delete' }; });
+    wj(snapKey(kind), now); wj(queueKey(kind), q);
+    personalFlush(kind).catch(() => {});
+  }
+
+  async function personalFlush(kind) {
+    if (!sb() || !personalUid) return;
+    const q = rj(queueKey(kind), {});
+    for (const id of Object.keys(q)) {
+      const op = q[id];
+      const res = op.op === 'delete'
+        ? await sb().from('personal_items').delete().eq('kind', kind).eq('id', id)
+        : await sb().from('personal_items').upsert({ user_id: personalUid, kind, id, payload: op.item, updated_at: new Date().toISOString() });
+      if (res.error) return;
+      const cur = rj(queueKey(kind), {}); delete cur[id]; wj(queueKey(kind), cur);
+    }
+  }
+
+  // Porta el que hi ha al compte i ho combina amb el mòbil.
+  // El primer cop en un dispositiu, puja el que ja hi havia.
+  async function personalSync(uid) {
+    personalUid = uid;
+    if (!sb()) return false;
+    let changed = false;
+    for (const kind of Object.keys(PERSONAL)) {
+      try {
+        const firstTime = localStorage.getItem(snapKey(kind)) == null;
+        if (firstTime) personalChanged(kind, rj(PERSONAL[kind], []));
+        await personalFlush(kind);
+        const { data, error } = await sb().from('personal_items').select('id, payload').eq('kind', kind);
+        if (error || !data) continue;
+        const q = rj(queueKey(kind), {});
+        const byId = {};
+        data.forEach(r => { byId[r.id] = r.payload; });
+        Object.keys(q).forEach(id => { if (q[id].op === 'delete') delete byId[id]; else byId[id] = q[id].item; });
+        const merged = Object.values(byId);
+        const before = JSON.stringify(rj(PERSONAL[kind], []));
+        const snap = {}; data.forEach(r => { snap[r.id] = JSON.stringify(r.payload); });
+        applyingRemote = true;
+        wj(PERSONAL[kind], merged);
+        applyingRemote = false;
+        wj(snapKey(kind), { ...snap, ...Object.fromEntries(Object.entries(q).filter(([, o]) => o.op === 'upsert').map(([id, o]) => [id, JSON.stringify(o.item)])) });
+        if (before !== JSON.stringify(merged)) changed = true;
+      } catch (e) { applyingRemote = false; }
+    }
+    if (changed) { try { window.dispatchEvent(new Event('elbosc-personal-sync')); } catch (e) {} }
+    return changed;
+  }
+
+  // En sortir: envia el pendent i treu el diari del mòbil (ja és al compte)
+  async function personalClear() {
+    for (const kind of Object.keys(PERSONAL)) {
+      try { await personalFlush(kind); } catch (e) {}
+      const pending = Object.keys(rj(queueKey(kind), {})).length;
+      if (!pending) [PERSONAL[kind], snapKey(kind), queueKey(kind)].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+    }
+    personalUid = null;
+  }
+
+  window.EBPersonal = { changed: personalChanged, sync: personalSync, flush: personalFlush, clear: personalClear };
 
   window.EBChat = {
     messages: chatMessages, students: chatStudents, send: chatSend, markRead: chatMarkRead,

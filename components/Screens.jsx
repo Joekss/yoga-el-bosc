@@ -5,7 +5,7 @@ const { useState: uS, useMemo: uM, useEffect: uE } = React;
 // ── Notes del calendari (compartides amb l'App per als avisos) ──
 const EB_NOTES_KEY = 'elbosc-calendar-notes';
 const ebLoadNotes = () => { try { const s = JSON.parse(localStorage.getItem(EB_NOTES_KEY)); if (Array.isArray(s)) return s; } catch(e){} return []; };
-const ebSaveNotes = (arr) => { try { localStorage.setItem(EB_NOTES_KEY, JSON.stringify(arr)); } catch(e){} };
+const ebSaveNotes = (arr) => { try { localStorage.setItem(EB_NOTES_KEY, JSON.stringify(arr)); } catch(e){} try { window.EBPersonal && window.EBPersonal.changed('calendar', arr); } catch(e){} };
 const ebPad = (n) => String(n).padStart(2, '0');
 const ebDayKey = (y, m, d) => `${y}-${ebPad(m+1)}-${ebPad(d)}`;
 const ebNoteDate = (n) => { const [Y,M,D] = String(n.date).split('-').map(Number); const [h,mi] = String(n.time||'00:00').split(':').map(Number); return new Date(Y, (M||1)-1, D||1, h||0, mi||0, 0, 0); };
@@ -593,9 +593,10 @@ const Calendar = ({ t, lang, profile }) => {
   uE(() => { const iv = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(iv); }, []);
   // Si un altre component (l'App) modifica les notes en una altra pestanya, re-sincronitza
   uE(() => {
-    const onStorage = (e) => { if (e.key === EB_NOTES_KEY) setNotes(ebLoadNotes()); };
+    const onStorage = (e) => { if (!e || !e.key || e.key === EB_NOTES_KEY) setNotes(ebLoadNotes()); };
+    window.addEventListener('elbosc-personal-sync', onStorage);
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    return () => { window.removeEventListener('storage', onStorage); window.removeEventListener('elbosc-personal-sync', onStorage); };
   }, []);
 
   const days_lang = ({ ca:['Dl','Dt','Dc','Dj','Dv','Ds','Dg'], es:['Lu','Ma','Mi','Ju','Vi','Sá','Do'], en:['Mo','Tu','We','Th','Fr','Sa','Su'] })[lang] || ['Mo','Tu','We','Th','Fr','Sa','Su'];
@@ -735,11 +736,12 @@ const Calendar = ({ t, lang, profile }) => {
 // ── Journal ─────────────────────────────────────────────────
 const JOURNAL_KEY = 'elbosc-journal';
 const jLoad = () => { try { const s = JSON.parse(localStorage.getItem(JOURNAL_KEY)); if (Array.isArray(s)) return s; } catch(e){} return []; };
-const jSave = (arr) => { try { localStorage.setItem(JOURNAL_KEY, JSON.stringify(arr)); } catch(e){} };
+const jSave = (arr) => { try { localStorage.setItem(JOURNAL_KEY, JSON.stringify(arr)); } catch(e){} try { window.EBPersonal && window.EBPersonal.changed('journal', arr); } catch(e){} };
 const MOOD_EMOJI = ['◔','◑','◐','●','✦'];
 
 const Journal = ({ t, lang, onShare }) => {
   const [entries, setEntries] = uS(jLoad);
+  uE(() => { const r = () => setEntries(jLoad()); window.addEventListener('elbosc-personal-sync', r); return () => window.removeEventListener('elbosc-personal-sync', r); }, []);
   const [mood, setMood] = uS(3);
   const [note, setNote] = uS('');
   const locale = lang === 'ca' ? 'ca-ES' : lang === 'es' ? 'es-ES' : 'en-US';

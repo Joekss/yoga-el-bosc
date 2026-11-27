@@ -12,7 +12,7 @@ const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if 
 async function page(browser, scenario) {
   const ctx = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
   await ctx.route('**/vendor/supabase.js', r => r.fulfill({ contentType: 'application/javascript', body: FAKE }));
-  await ctx.addInitScript(s => { if (!sessionStorage.getItem('init')) { localStorage.clear(); if (s) localStorage.setItem('fake-sb', JSON.stringify(s)); if (s && s.catalog) localStorage.setItem('fake-sb-catalog', JSON.stringify(s.catalog)); if (s && s.messages) localStorage.setItem('fake-sb-messages', JSON.stringify(s.messages)); sessionStorage.setItem('init', '1'); } }, scenario);
+  await ctx.addInitScript(s => { if (!sessionStorage.getItem('init')) { localStorage.clear(); if (s) localStorage.setItem('fake-sb', JSON.stringify(s)); if (s && s.catalog) localStorage.setItem('fake-sb-catalog', JSON.stringify(s.catalog)); if (s && s.messages) localStorage.setItem('fake-sb-messages', JSON.stringify(s.messages)); if (s && s.personal) localStorage.setItem('fake-sb-personal', JSON.stringify(s.personal)); sessionStorage.setItem('init', '1'); } }, scenario);
   const p = await ctx.newPage();
   p.errors = [];
   p.on('pageerror', e => p.errors.push(e.message));
@@ -295,6 +295,40 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     await q.waitForTimeout(600);
     msgs = await q.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-messages') || '[]'));
     ok(msgs.some(m => m.from_role === 'student' && m.body === 'Molt bé, gràcies!'), 'la resposta de l\'alumna es desa');
+    ok(q.errors.length === 0, 'sense errors JS: ' + q.errors.join(' | '));
+    await q.context().close();
+  }
+
+  console.log('13. Diari al compte: no es perd en canviar de mòbil');
+  {
+    const login = async (p) => {
+      await p.goto(BASE);
+      await p.fill('#eb-email', 'anna@example.com');
+      await p.click('button[type=submit]');
+      await p.fill('#eb-code', '123456');
+      await p.click('button[type=submit]');
+      await waitText(p, 'Començar pràctica');
+    };
+    const p = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna' });
+    await login(p);
+    await p.getByRole('button', { name: 'Diari', exact: true }).click();
+    await p.fill('textarea[placeholder="..."]', 'Avui he dormit millor després del ioga');
+    await p.click('text=Guardar');
+    await p.waitForTimeout(600);
+    const personal = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-personal') || '[]'));
+    ok(personal.some(r => r.kind === 'journal' && r.user_id === 'u-anna@example.com' && r.payload.text.includes('dormit millor')), 'l\'entrada es desa al compte de l\'alumna');
+    await p.getByRole('button', { name: 'Inici', exact: true }).click();
+    await p.click('button[aria-label="El teu perfil"]');
+    await p.click('text=Tancar sessió');
+    await waitText(p, 'Entra a El Bosc');
+    ok(await p.evaluate(() => !localStorage.getItem('elbosc-journal')), 'en tancar sessió el diari no queda al mòbil');
+    await p.context().close();
+
+    const q = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna', personal });
+    await login(q);
+    await q.getByRole('button', { name: 'Diari', exact: true }).click();
+    await waitText(q, 'dormit millor');
+    ok(true, 'en un altre mòbil l\'entrada hi és');
     ok(q.errors.length === 0, 'sense errors JS: ' + q.errors.join(' | '));
     await q.context().close();
   }

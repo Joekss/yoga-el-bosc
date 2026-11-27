@@ -110,6 +110,7 @@ function App() {
       setPracticeLog(window.EBBackend.readPracticeLog(acc.userId));
       window.EBBackend.refreshPractice(acc.userId).then(log => { if (seq === loadSeq.current) setPracticeLog(log); }).catch(() => {});
       if (window.EBCatalog) window.EBCatalog.sync(acc.role).then(changed => { if (changed) setPosesVersion(v => v + 1); });
+      if (window.EBPersonal) window.EBPersonal.sync(acc.userId).catch(() => {});
       // Treu ?inv= i restes de l'enllaç màgic de la barra d'adreces
       try { if (window.location.search || window.location.hash) history.replaceState(null, '', window.location.pathname); } catch (e) {}
       if (acc.role === 'teacher') { setStage(s => s === 'practice' ? s : 'app'); setTab(tb => tb === 'home' ? 'messages' : tb); return; }
@@ -138,6 +139,7 @@ function App() {
     const onOnline = () => {
       window.EBBackend.refreshPractice(account.userId).then(setPracticeLog).catch(() => {});
       if (window.EBCatalog) window.EBCatalog.sync(account.role).then(changed => { if (changed) setPosesVersion(v => v + 1); });
+      if (window.EBPersonal) window.EBPersonal.sync(account.userId).catch(() => {});
     };
     window.addEventListener('online', onOnline);
     return () => window.removeEventListener('online', onOnline);
