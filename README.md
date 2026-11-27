@@ -66,6 +66,6 @@ npm run build
 
 ## Licencia
 
-Software propietario. © 2026 Cèlia Betriu Acunya. Todos los derechos reservados. Ver `LICENSE`.
+Software propietario. © 2026 Cèlia Cuña Betriu. Todos los derechos reservados. Ver `LICENSE`.
 
 Per a consultes o per sol·licitar permisos d'ús, contacteu amb la propietària.

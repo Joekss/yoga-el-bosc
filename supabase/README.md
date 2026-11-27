@@ -62,4 +62,4 @@ Las pruebas (`tests/smoke.spec.js`) usan un Supabase simulado (`tests/fake-supab
 
 ## Antes de publicar: rellenar la política de privacidad
 
-`privacitat.html` tiene campos marcados en amarillo que hay que completar: nombre de la responsable y correo de contacto (la región ya está: Frankfurt).
+`privacitat.html` tiene campos marcados en amarillo que hay que completar: el correo de contacto (el nombre y la región ya están).
