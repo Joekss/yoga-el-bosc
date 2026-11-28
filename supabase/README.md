@@ -6,9 +6,9 @@ La app ya no decide quién entra ni quién es profesora: lo decide Supabase. Hay
 
 1. Abre **SQL Editor → New query**.
 2. Pega el contenido de `migrations/001_acces_i_rols.sql` y pulsa **Run**.
-3. Repite, en orden, con el resto: `002_practiques_i_privacitat.sql`, `003_cataleg.sql`, `004_xat.sql` … `010_notificacions.sql` (y los que se añadan después).
+3. Repite, en orden, con el resto: `002_practiques_i_privacitat.sql`, `003_cataleg.sql`, `004_xat.sql` … `011_veu_celia.sql` (y los que se añadan después).
 
-> En el proyecto `cuigobpxeyzigialyiwc` ya están aplicadas del 001 al 010, y la función `push` (notificaciones) está desplegada.
+> En el proyecto `cuigobpxeyzigialyiwc` ya están aplicadas del 001 al 011, y la función `push` (notificaciones) está desplegada.
 
 Se pueden volver a ejecutar sin romper nada si alguno falla a medias.
 

@@ -10,7 +10,7 @@ let failures = 0;
 const ok = (cond, msg) => { console.log((cond ? '  ✓ ' : '  ✗ ') + msg); if (!cond) failures++; };
 
 async function page(browser, scenario) {
-  const ctx = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block' });
+  const ctx = await browser.newContext({ ...devices['iPhone 13'], serviceWorkers: 'block', permissions: ['microphone'] });
   await ctx.route('**/vendor/supabase.js', r => r.fulfill({ contentType: 'application/javascript', body: FAKE }));
   await ctx.addInitScript(s => { if (!sessionStorage.getItem('init')) { localStorage.clear(); if (s) localStorage.setItem('fake-sb', JSON.stringify(s)); if (s && s.catalog) localStorage.setItem('fake-sb-catalog', JSON.stringify(s.catalog)); if (s && s.messages) localStorage.setItem('fake-sb-messages', JSON.stringify(s.messages)); if (s && s.personal) localStorage.setItem('fake-sb-personal', JSON.stringify(s.personal)); if (s && s.practice) localStorage.setItem('fake-sb-practice', JSON.stringify(s.practice)); if (s && s.assignments) localStorage.setItem('fake-sb-assignments', JSON.stringify(s.assignments)); sessionStorage.setItem('init', '1'); } }, scenario);
   const p = await ctx.newPage();
@@ -22,7 +22,8 @@ const text = (p) => p.innerText('body');
 const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includes(t), s, { timeout: 15000 });
 
 (async () => {
-  const browser = await chromium.launch();
+  // Micròfon fals perquè es puguin provar les notes de veu i l'estudi de veu
+  const browser = await chromium.launch({ args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] });
 
   console.log('1. Enllaç d\'invitació no dóna accés');
   {
@@ -546,6 +547,59 @@ const waitText = (p, s) => p.waitForFunction(t => document.body.innerText.includ
     await p.reload();
     await waitText(p, 'Començar pràctica');
     ok(!(await text(p)).includes('Instal·la El Bosc al mòbil'), 'si dius "Ara no" no torna a sortir');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+  }
+
+  console.log('20. Notes de veu al xat');
+  {
+    const msgs = [{ id: 'm1', student_id: 'u-anna@example.com', from_role: 'teacher', kind: 'text', body: 'Hola Anna!', created_at: new Date(Date.now() - 60000).toISOString(), read_at: null, reactions: [] }];
+    const p = await page(browser, { role: 'student', status: 'active', quizDone: true, name: 'Anna', messages: msgs });
+    await p.goto(BASE + '?tab=messages');
+    await p.fill('#eb-email', 'anna@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await waitText(p, 'Hola Anna!');
+    await p.click('button[aria-label="Àudio"]');
+    await waitText(p, 'Gravant… 0:02');
+    ok(true, 'el comptador avança mentre grava');
+    await p.click('button[aria-label="Descartar"]');
+    await p.click('button[aria-label="Àudio"]');
+    await waitText(p, 'Gravant… 0:01');
+    ok(true, 'després de descartar es pot tornar a gravar');
+    await p.click('button[aria-label="Enviar"]');
+    await p.waitForFunction(() => (window.__sbCalls || []).some(c => c.upload && /\.(m4a|webm|ogg)$/.test(c.upload)), null, { timeout: 8000 });
+    const up = await p.evaluate(() => window.__sbCalls.find(c => c.upload && /\.(m4a|webm|ogg)$/.test(c.upload)));
+    ok(/^audio\/(mp4|webm|ogg)$/.test(up.type), 'puja l\'àudio amb un tipus que el servidor accepta (' + up.type + ')');
+    ok(await p.locator('button[aria-label="Reproduir àudio"]').count() === 1, 'la nota de veu surt al xat amb el botó de reproduir');
+    ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
+    await p.context().close();
+  }
+
+  console.log('21. La professora grava la seva veu');
+  {
+    const p = await page(browser, { role: 'teacher', status: 'active', quizDone: true, name: 'Cèlia' });
+    await p.goto(BASE);
+    await p.fill('#eb-email', 'celia@example.com');
+    await p.click('button[type=submit]');
+    await p.fill('#eb-code', '123456');
+    await p.click('button[type=submit]');
+    await p.getByRole('button', { name: 'Inici', exact: true }).click();
+    await p.click('button[aria-label="El teu perfil"]');
+    await p.click('text=La teva veu');
+    await waitText(p, '0 de 73 gravades');
+    await p.click('button[aria-label^="Gravar: Respira a poc a poc"]');
+    await waitText(p, 'Gravant… 0:01');
+    await p.click('button[aria-label="Aturar i desar"]');
+    await waitText(p, '1 de 73 gravades');
+    const cat = await p.evaluate(() => JSON.parse(localStorage.getItem('fake-sb-catalog') || '[]'));
+    const row = cat.find(r => r.kind === 'voice' && r.id === 'breathe');
+    ok(row && /^voice\/breathe-/.test(row.payload.path), 'desa la gravació al catàleg compartit');
+    ok(await p.locator('button[aria-label="Escoltar: Respira a poc a poc."]').count() === 1, 'es pot escoltar la frase gravada');
+    await p.click('button[aria-label="Esborrar: Respira a poc a poc."]');
+    await waitText(p, '0 de 73 gravades');
+    ok(true, 'es pot esborrar');
     ok(p.errors.length === 0, 'sense errors JS: ' + p.errors.join(' | '));
     await p.context().close();
   }

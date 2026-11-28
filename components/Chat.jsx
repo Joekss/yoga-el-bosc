@@ -301,21 +301,26 @@ const seedConversations = (lang) => {
 const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
   const [showActions, setShowActions] = uSC(false);
   const [audioPlaying, setAudioPlaying] = uSC(false);
+  const [audioPos, setAudioPos] = uSC(0);
+  const [audioErr, setAudioErr] = uSC(false);
   const audioElRef = uRC(null);
+  uEC(() => () => { try { audioElRef.current && audioElRef.current.pause(); } catch (e) {} }, []);
   const toggleAudio = () => {
     const url = msg.body?.url;
     if (!url) return;
-    if (audioPlaying) {
-      audioElRef.current?.pause();
-      setAudioPlaying(false);
-    } else {
-      if (!audioElRef.current) {
-        audioElRef.current = new Audio(url);
-        audioElRef.current.onended = () => { setAudioPlaying(false); audioElRef.current = null; };
-      }
-      audioElRef.current.play().catch(() => setAudioPlaying(false));
-      setAudioPlaying(true);
+    let a = audioElRef.current;
+    if (a && a.src !== url) { try { a.pause(); } catch (e) {} a = null; }
+    if (!a) {
+      a = new Audio(); a.preload = 'auto'; a.src = url;
+      a.ontimeupdate = () => setAudioPos(a.currentTime || 0);
+      a.onended = () => { setAudioPlaying(false); setAudioPos(0); };
+      a.onerror = () => { setAudioPlaying(false); setAudioErr(true); };
+      audioElRef.current = a;
     }
+    if (audioPlaying) { a.pause(); setAudioPlaying(false); return; }
+    setAudioErr(false);
+    window.EBVoice && window.EBVoice.stop();
+    a.play().then(() => setAudioPlaying(true)).catch(() => { setAudioPlaying(false); setAudioErr(true); });
   };
   const bg = mine
     ? 'var(--accent)'
@@ -339,11 +344,14 @@ const Bubble = ({ msg, mine, t, lang, asanas, onReact, onLongPress }) => {
             <Icon name={audioPlaying ? 'pause' : 'play'} size={14} color={mine ? 'var(--accent)':'var(--cream)'}/>
           </button>
           <div style={{ display:'flex', alignItems:'center', gap: 2, height: 24 }}>
-            {wf.map((v,i)=>(
-              <div key={i} style={{ width: 3, height: `${Math.max(v*100, 12)}%`, background: mine ? 'color-mix(in srgb, var(--cream) 70%, transparent)':'var(--accent)', borderRadius: 2 }}/>
-            ))}
+            {wf.map((v,i)=>{ const played = msg.body.duration && (audioPlaying || audioPos) ? (i / wf.length) <= (audioPos / msg.body.duration) : true; return (
+              <div key={i} style={{ width: 3, height: `${Math.max(v*100, 12)}%`, background: mine ? 'var(--cream)':'var(--accent)', opacity: played ? 0.9 : 0.35, borderRadius: 2, transition:'opacity .2s' }}/>
+            ); })}
           </div>
-          <span style={{ fontFamily:'var(--sans)', fontSize: 11, opacity: 0.85 }}>{msg.body.duration}s</span>
+          <span style={{ fontFamily:'var(--sans)', fontSize: 11, opacity: 0.85, fontVariantNumeric:'tabular-nums' }}>
+            {(() => { const d = msg.body.duration || 0; const v = audioPlaying || audioPos ? Math.floor(audioPos) : d; return Math.floor(v / 60) + ':' + String(v % 60).padStart(2, '0'); })()}
+          </span>
+          {audioErr && <span role="alert" style={{ fontFamily:'var(--sans)', fontSize: 11 }}>{({ca:'No es pot reproduir',es:'No se puede reproducir',en:'Can\'t play'})[lang]}</span>}
         </div>
       );
     }
@@ -538,8 +546,6 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
   const [recT, setRecT] = uSC(0);
   const [privateMode, setPrivateMode] = uSC(false);
   const [scheduled, setScheduled] = uSC(null); // timestamp or null
-  const recTimer = uRC(null);
-  const recTRef = uRC(0);
   const mediaRecRef = uRC(null);
   const inputRef = uRC(null);
   const imageInputRef = uRC(null);
@@ -556,12 +562,8 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
   };
   const [fileErr, setFileErr] = uSC('');
 
-  uEC(() => {
-    if (!recording) {
-      if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
-    }
-    return () => { if (recTimer.current) clearInterval(recTimer.current); };
-  }, [recording]);
+  // En sortir del xat a mitja gravació, s'allibera el micròfon
+  uEC(() => () => { const h = mediaRecRef.current; if (h && h.cancel) h.cancel(); }, []);
 
   const ph = broadcastCount > 0
     ? t.composerPhBroadcast.replace('{n}', broadcastCount)
@@ -582,50 +584,48 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
     inputRef.current?.focus();
   };
 
-  const startRecording = () => {
+  // Notes de veu: toca el micròfon per començar, la fletxa per enviar i la creu per descartar
+  const micErr = (code) => ({
+    permission: { ca:'Cal permís de micròfon. Activa\'l a la configuració del navegador i torna-ho a provar.', es:'Hace falta permiso de micrófono. Actívalo en la configuración del navegador y vuelve a probar.', en:'Microphone permission is needed. Turn it on in your browser settings and try again.' },
+    unsupported: { ca:'Aquest navegador no pot gravar àudio.', es:'Este navegador no puede grabar audio.', en:'This browser can\'t record audio.' },
+    empty: { ca:'No s\'ha gravat res. Torna-ho a provar.', es:'No se ha grabado nada. Vuelve a probar.', en:'Nothing was recorded. Try again.' },
+  }[code] || { ca:'No s\'ha pogut gravar l\'àudio.', es:'No se ha podido grabar el audio.', en:'Couldn\'t record audio.' })[lang];
+
+  const startRecording = async () => {
     if (mediaRecRef.current) return;
-    // getUserMedia ha d'estar en el handler directe (iOS exigeix gesture directe)
-    navigator.mediaDevices?.getUserMedia({ audio: true }).then(stream => {
-      // Detecta el millor MIME: iOS només suporta audio/mp4
-      const mimeType = ['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm', 'audio/ogg'].find(
-        m => { try { return MediaRecorder.isTypeSupported(m); } catch(e) { return false; } }
-      ) || '';
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-      const chunks = [];
-      recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-      recorder.start();
-      mediaRecRef.current = { recorder, stream, chunks, mimeType };
-      recTRef.current = 0;
+    setFileErr('');
+    mediaRecRef.current = 'starting';
+    try {
+      const h = await window.EBRecorder.start({ maxSec: 300, onTick: (s) => setRecT(s) });
+      mediaRecRef.current = h;
+      h.onAutoStop = () => handleRecordingEnd();
       setRecT(0);
-      recTimer.current = setInterval(() => { recTRef.current++; setRecT(recTRef.current); }, 1000);
       setRecording(true);
-    }).catch(() => {
+    } catch (e) {
       mediaRecRef.current = null;
-      alert({ ca:'Cal permís de micròfon. Ves a Ajustaments > Safari > Micròfon i activa\'l.', es:'Necesitas permiso de micrófono. Ve a Ajustes > Safari > Micrófono y actívalo.', en:'Microphone permission needed. Go to Settings > Safari > Microphone.' }[lang] || 'Microphone permission needed.');
-    });
+      setFileErr(micErr(e && e.message));
+    }
   };
 
-  const handleRecordingEnd = () => {
-    clearInterval(recTimer.current);
-    recTimer.current = null;
-    setRecording(false);
-    const duration = recTRef.current;
-    const wf = Array.from({length: Math.min(20, Math.max(4, Math.max(duration, 1)*2))}, () => 0.2 + Math.random()*0.7);
-    const ctx = mediaRecRef.current;
+  const cancelRecording = () => {
+    const h = mediaRecRef.current;
     mediaRecRef.current = null;
-    if (!ctx) return;
-    if (ctx.recorder && ctx.recorder.state !== 'inactive') {
-      ctx.recorder.onstop = () => {
-        const blobType = (ctx.mimeType || ctx.recorder.mimeType || 'audio/mp4').split(';')[0];
-        const blob = new Blob(ctx.chunks, { type: blobType });
-        const url = URL.createObjectURL(blob);
-        ctx.stream.getTracks().forEach(t => t.stop());
-        const ext = { 'audio/mp4':'m4a', 'audio/webm':'webm', 'audio/ogg':'ogg', 'audio/mpeg':'mp3', 'audio/aac':'aac' }[blobType] || 'm4a';
-        sendMsg('audio', { duration: Math.max(duration, 1), waveform: wf.map(v => Math.round(v * 100) / 100), url, blob, ext });
-      };
-      ctx.recorder.stop();
-    } else {
-      ctx.stream?.getTracks().forEach(t => t.stop());
+    setRecording(false);
+    if (h && h.cancel) h.cancel();
+  };
+
+  const handleRecordingEnd = async () => {
+    const h = mediaRecRef.current;
+    mediaRecRef.current = null;
+    setRecording(false);
+    if (!h || !h.stop) return;
+    try {
+      const { blob, duration, ext } = await h.stop();
+      const n = Math.min(24, Math.max(6, duration * 2));
+      const wf = Array.from({ length: n }, (_, i) => Math.round((0.3 + 0.6 * Math.abs(Math.sin(i * 1.7 + duration))) * 100) / 100);
+      sendMsg('audio', { duration, waveform: wf, url: URL.createObjectURL(blob), blob, ext });
+    } catch (e) {
+      setFileErr(micErr(e && e.message));
     }
   };
 
@@ -675,9 +675,9 @@ const Composer = ({ t, lang, asanas, role, broadcastCount, recipientName, onSend
           <div style={{ display:'flex', alignItems:'center', gap: 12, padding:'10px 14px', background:'color-mix(in srgb, var(--accent) 10%, var(--cream))', borderRadius: 999 }}>
             <span style={{ width: 10, height: 10, borderRadius:'50%', background:'var(--accent)', animation:'ybBreathe 1.2s ease infinite' }}/>
             <div style={{ flex:1, fontFamily:'var(--sans)', fontSize: 13, color:'var(--ink)' }}>
-              {t.record} <span style={{ opacity:0.6, marginLeft: 8 }}>{recT}s</span>
+              {t.record} <span style={{ opacity:0.6, marginLeft: 8, fontVariantNumeric:'tabular-nums' }}>{Math.floor(recT/60)}:{String(recT%60).padStart(2,'0')}</span>
             </div>
-            <button onClick={()=>setRecording(false)} style={{ background:'transparent', border:'none', cursor:'pointer', color:'var(--ink-soft)', padding: 4 }}>
+            <button aria-label={({ca:'Descartar',es:'Descartar',en:'Discard'})[lang]} onClick={cancelRecording} style={{ background:'transparent', border:'none', cursor:'pointer', color:'var(--ink-soft)', padding: 4 }}>
               <Icon name="close" size={16}/>
             </button>
             <button aria-label={({ca:'Enviar',es:'Enviar',en:'Send'})[lang]} onClick={handleRecordingEnd} style={{ width: 36, height: 36, borderRadius:'50%', background:'var(--accent)', border:'none', cursor:'pointer', color:'var(--cream)', display:'flex', alignItems:'center', justifyContent:'center' }}>

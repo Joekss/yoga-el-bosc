@@ -169,7 +169,7 @@ const ConstancyCalendar = ({ lang, log }) => {
 };
 
 // ── Dashboard ───────────────────────────────────────────────
-const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, onRepeat, lastPoseIds, onOpenBreath, practiceLog, assignment, onStartAssignment, onOpenTracking, onOpenInstall, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
+const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, textSize, onChangeTextSize, onOpenStudents, onRedoQuiz, stats, onExportData, onDeleteAccount, onRepeat, lastPoseIds, onOpenBreath, practiceLog, assignment, onStartAssignment, onOpenTracking, onOpenInstall, onOpenVoice, asanas, onPosesChanged, onStartPractice, onOpenPose, illustrationStyle, onLogout, onChangeName }) => {
   const totalMin = Math.round(sequence.reduce((s,p)=>s+p.duration,0)/60);
   const greeting = (() => {
     const h = new Date().getHours();
@@ -477,6 +477,7 @@ const Dashboard = ({ t, profile, sequence, lang, role, theme, onChangeTheme, tex
               <div className="eb-group-title">{PT.teacherZone}</div>
               <div className="eb-group">
                 <Row icon="chart" tone="ink" title={L({ca:'Seguiment de les alumnes',es:'Seguimiento de las alumnas',en:'Student progress'})} sub={L({ca:'Qui practica, molèsties i informes',es:'Quién practica, molestias e informes',en:'Who practises, discomfort and reports'})} onClick={() => { close(); onOpenTracking && onOpenTracking(); }}/>
+                <Row icon="mic" title={L({ca:'La teva veu',es:'Tu voz',en:'Your voice'})} sub={L({ca:'Grava les frases que sentiran a la pràctica',es:'Graba las frases que oirán en la práctica',en:'Record the phrases students hear in practice'})} end={window.EBVoice && window.EBVoice.count() ? window.EBVoice.count() : undefined} onClick={() => { close(); onOpenVoice && onOpenVoice(); }}/>
                 <Row icon="user-plus" title={L({ca:'Alumnes i accés',es:'Alumnas y acceso',en:'Students and access'})} sub={L({ca:'Afegir, posar en pausa, convidar',es:'Añadir, poner en pausa, invitar',en:'Add, pause, invite'})} onClick={() => { close(); onOpenStudents && onOpenStudents(); }}/>
                 <Row icon="flower" title={L({ca:'Postures',es:'Posturas',en:'Poses'})} sub={L({ca:'Afegir o treure postures',es:'Añadir o quitar posturas',en:'Add or remove poses'})} onClick={() => { close(); setShowPoseMgr(true); }}/>
                 <Row icon="sparkle" title={L({ca:'Rutines',es:'Rutinas',en:'Routines'})} sub={L({ca:'Crear seqüències per assignar',es:'Crear secuencias para asignar',en:'Create sequences to assign'})} onClick={() => { close(); setShowRoutineMgr(true); }}/>

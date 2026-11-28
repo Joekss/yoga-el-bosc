@@ -106,10 +106,12 @@ const BreathScreen = ({ lang = 'ca', mode = 'breath', onExit, onDone }) => {
   React.useEffect(() => {
     if (!running || isMed || !window.EBSound) return;
     const word = t[phaseName] + (pattern === 'alt' ? ' ' + side : '');
-    window.EBSound.speak(word, lang);
+    const keys = pattern === 'alt' ? [phaseName, cycleNo % 2 === 0 ? 'left' : 'right'] : [phaseName];
+    if (window.EBVoice) window.EBVoice.say(keys, word, lang); else window.EBSound.speak(word, lang);
   }, [running, phaseIdx, cycleNo]);
 
-  React.useEffect(() => () => { window.EBSound && window.EBSound.stopAll(); }, []);
+  React.useEffect(() => () => { window.EBSound && window.EBSound.stopAll(); window.EBVoice && window.EBVoice.stop(); }, []);
+  React.useEffect(() => { window.EBVoice && window.EBVoice.preload(['inhale', 'hold', 'exhale', 'left', 'right']); }, []);
 
   // Manté la pantalla encesa
   React.useEffect(() => {
