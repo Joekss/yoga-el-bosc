@@ -98,6 +98,8 @@
 <script type="text/babel" src="data/backend.jsx"></script>
 <script type="text/babel" src="data/sound.jsx"></script>
 <script type="text/babel" src="data/asanas.jsx"></script>
+<script type="text/babel" src="data/asanas-ashtanga.jsx"></script>
+<script type="text/babel" src="data/voice.jsx"></script>
 <script type="text/babel" src="data/i18n.jsx"></script>
 <script type="text/babel" src="data/sequencer.jsx"></script>
 <script type="text/babel" src="components/Icons.jsx"></script>
@@ -111,6 +113,7 @@
 <script type="text/babel" src="components/Breath.jsx"></script>
 <script type="text/babel" src="components/Teacher.jsx"></script>
 <script type="text/babel" src="components/Install.jsx"></script>
+<script type="text/babel" src="components/Voice.jsx"></script>
 <script type="text/babel" src="components/Chat.jsx"></script>
 <script type="text/babel" src="app.jsx"></script>
 
@@ -129,6 +132,13 @@ if ('serviceWorker' in navigator) {
     var btn = document.createElement('button'); btn.textContent = T[1];
     btn.onclick = function () { location.reload(); };
     bar.appendChild(span); bar.appendChild(btn); document.body.appendChild(bar);
+    // Al mòbil l'app instal·lada pot quedar oberta en segon pla dies sencers amb la versió vella.
+    // Si hi ha versió nova i l'app torna després de 10 minuts fora, es recarrega sola.
+    var hiddenAt = 0;
+    document.addEventListener('visibilitychange', function () {
+      if (document.visibilityState === 'hidden') { hiddenAt = Date.now(); return; }
+      if (hiddenAt && Date.now() - hiddenAt > 10 * 60 * 1000) location.reload();
+    });
   });
   window.addEventListener('load', function () {
     navigator.serviceWorker.register('sw.js').then(function (reg) {

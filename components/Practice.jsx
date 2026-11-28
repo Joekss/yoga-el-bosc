@@ -32,13 +32,21 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
     next:  {ca:'Prepara\'t per canviar', es:'Prepárate para cambiar', en:'Get ready to change'}[lang],
     secs:  {ca:'segons', es:'segundos', en:'seconds'}[lang],
     done:  {ca:'Pràctica acabada. Gràcies.', es:'Práctica terminada. Gracias.', en:'Practice complete. Thank you.'}[lang],
+    celia: {ca:'Veu de la Cèlia', es:'Voz de Cèlia', en:'Cèlia\'s voice'}[lang],
   };
   const practiced = useRefP(0);   // segons reals practicats (sense pauses)
+  const started = useRefP(false);
+  // Veu: la de la Cèlia si ha gravat la frase; si no, la del mòbil
+  const voice = (keys, fallback) => window.EBVoice ? window.EBVoice.say(keys, fallback, lang) : (fallback && window.EBSound && window.EBSound.speak(fallback, lang));
+  useEffectP(() => {
+    if (window.EBVoice) window.EBVoice.preload(['start', 'breathe', 'next', 'end', ...sequence.map(a => window.EBVoice.poseKey(a.id))]);
+  }, []);
   const done = useRefP(false);
   const finish = () => {
     if (done.current) return;
     done.current = true;
     window.EBSound && window.EBSound.stopAll();
+    voice(['end'], null);
     onComplete({ durationSec: practiced.current, poses: Math.min(idx + 1, sequence.length), poseIds: sequence.map(a => a.id) });
   };
 
@@ -63,18 +71,22 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
     if (!current || !window.EBSound) return;
     window.EBSound.bell();
     const name = current.name[lang] || current.name.ca;
-    const t = setTimeout(() => window.EBSound.speak(name + '. ' + current.duration + ' ' + SL.secs + '.', lang), 600);
+    const say = async () => {
+      if (idx === 0 && !started.current) { started.current = true; await voice(['start'], null); }
+      voice([window.EBVoice ? window.EBVoice.poseKey(current.id) : current.id], name + '. ' + current.duration + ' ' + SL.secs + '.');
+    };
+    const t = setTimeout(say, 600);
     return () => clearTimeout(t);
   }, [idx]);
   // Recordatoris a mitja postura i abans de canviar
   useEffectP(() => {
     if (!current || !window.EBSound || paused) return;
-    if (current.duration >= 40 && remaining === Math.round(current.duration / 2)) window.EBSound.speak(SL.breathe, lang);
-    if (current.duration >= 20 && remaining === 5 && idx < sequence.length - 1) window.EBSound.speak(SL.next, lang);
+    if (current.duration >= 40 && remaining === Math.round(current.duration / 2)) voice(['breathe'], SL.breathe);
+    if (current.duration >= 20 && remaining === 5 && idx < sequence.length - 1) voice(['next'], SL.next);
   }, [remaining]);
   useEffectP(() => {
     if (!window.EBSound) return;
-    if (paused) { window.EBSound.stopAmbient(); try { speechSynthesis.cancel(); } catch (e) {} }
+    if (paused) { window.EBSound.stopAmbient(); window.EBVoice && window.EBVoice.stop(); try { speechSynthesis.cancel(); } catch (e) {} }
     else window.EBSound.startAmbient();
   }, [paused]);
   useEffectP(() => () => { window.EBSound && window.EBSound.stopAll(); }, []);
@@ -113,7 +125,7 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
     }}>
       {/* Header */}
       <div style={{ padding: 'calc(env(safe-area-inset-top, 0px) + 20px) 20px 8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <button onClick={() => { window.EBSound && window.EBSound.stopAll(); onExit(); }} aria-label={PL.exit} style={{ background:'transparent', border:'none', color:'var(--cream)', cursor:'pointer', padding: 8 }}>
+        <button onClick={() => { window.EBSound && window.EBSound.stopAll(); window.EBVoice && window.EBVoice.stop(); onExit(); }} aria-label={PL.exit} style={{ background:'transparent', border:'none', color:'var(--cream)', cursor:'pointer', padding: 8 }}>
           <Icon name="close" size={22}/>
         </button>
         <div style={{ fontFamily: 'var(--sans)', fontSize: 12, letterSpacing: '0.2em', opacity: 0.7 }}>
@@ -191,10 +203,10 @@ const PracticeMode = ({ t, sequence, lang, onExit, onComplete, illustrationStyle
           <div role="dialog" aria-label={SL.title} onClick={e => e.stopPropagation()}
             style={{ width:'100%', background:'var(--paper)', color:'var(--ink)', borderRadius:'24px 24px 0 0', padding:'22px 22px calc(env(safe-area-inset-bottom, 0px) + 24px)' }}>
             <div style={{ fontFamily:'var(--serif)', fontStyle:'italic', fontSize:24, marginBottom:14 }}>{SL.title}</div>
-            {[['voice', SL.voice], ['bell', SL.bell]].map(([k, label]) => (
+            {[['voice', SL.voice], ...(window.EBVoice && window.EBVoice.count() ? [['celia', SL.celia]] : []), ['bell', SL.bell]].map(([k, label]) => (
               <label key={k} htmlFor={'eb-snd-' + k} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'10px 0', fontFamily:'var(--sans)', fontSize:15 }}>
                 {label}
-                <input id={'eb-snd-' + k} type="checkbox" checked={!!sp[k]} onChange={e => changeSound({ [k]: e.target.checked })} style={{ width:22, height:22, accentColor:'var(--accent)' }}/>
+                <input id={'eb-snd-' + k} type="checkbox" checked={k === 'celia' ? sp.celia !== false : !!sp[k]} onChange={e => changeSound({ [k]: e.target.checked })} style={{ width:22, height:22, accentColor:'var(--accent)' }}/>
               </label>
             ))}
             <div style={{ fontFamily:'var(--sans)', fontSize:15, margin:'10px 0 8px' }}>{SL.amb}</div>

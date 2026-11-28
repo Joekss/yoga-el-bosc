@@ -568,6 +568,7 @@ const EB_CUSTOM_KEY = 'elbosc-custom-poses';
 const EB_REMOVED_KEY = 'elbosc-removed-poses';
 const EB_ROUTINES_KEY = 'elbosc-routines';
 const EB_MEDIA_KEY = 'elbosc-pose-media';   // { poseId: { photo, video } } (rutes a Storage)
+const EB_VOICE_KEY = 'elbosc-voice';        // { clau: { path, duration, type } } frases gravades per la Cèlia (data/voice.jsx)
 const ebRead = (k) => { try { return JSON.parse(localStorage.getItem(k)) || []; } catch (e) { return []; } };
 const ebWrite = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
@@ -611,6 +612,7 @@ window.EBRoutines = {
 
 window.EBCatalog = {
   canWrite: false,
+  queue: (op) => ebQueue(op),
   // Envia els canvis pendents (només la professora)
   flush: async function () {
     if (!this.canWrite || !window.sb || this._flushing) return;
@@ -650,14 +652,16 @@ window.EBCatalog = {
       if (this.canWrite) await this.flush();
       if (ebRead(EB_PENDING_KEY).length) return false; // no trepitgem canvis locals pendents
       const readMedia = () => { try { return JSON.parse(localStorage.getItem(EB_MEDIA_KEY)) || {}; } catch (e) { return {}; } };
-      const before = JSON.stringify([ebRead(EB_CUSTOM_KEY), ebRead(EB_REMOVED_KEY), ebRead(EB_ROUTINES_KEY), readMedia()]);
+      const readVoice = () => { try { return JSON.parse(localStorage.getItem(EB_VOICE_KEY)) || {}; } catch (e) { return {}; } };
+      const before = JSON.stringify([ebRead(EB_CUSTOM_KEY), ebRead(EB_REMOVED_KEY), ebRead(EB_ROUTINES_KEY), readMedia(), readVoice()]);
       const custom = data.filter(r => r.kind === 'pose').map(r => r.payload);
       const removed = data.filter(r => r.kind === 'removed_pose').map(r => r.id);
       const routines = data.filter(r => r.kind === 'routine').map(r => r.payload);
       const media = {}; data.filter(r => r.kind === 'pose_media').forEach(r => { media[r.id] = r.payload; });
+      const voice = {}; data.filter(r => r.kind === 'voice').forEach(r => { voice[r.id] = r.payload; });
       ebWrite(EB_CUSTOM_KEY, custom); ebWrite(EB_REMOVED_KEY, removed); ebWrite(EB_ROUTINES_KEY, routines);
-      try { localStorage.setItem(EB_MEDIA_KEY, JSON.stringify(media)); } catch (e) {}
-      return before !== JSON.stringify([custom, removed, routines, media]);
+      try { localStorage.setItem(EB_MEDIA_KEY, JSON.stringify(media)); localStorage.setItem(EB_VOICE_KEY, JSON.stringify(voice)); } catch (e) {}
+      return before !== JSON.stringify([custom, removed, routines, media, voice]);
     } catch (e) { return false; }
   },
 };

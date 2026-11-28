@@ -1,4 +1,4 @@
-const CACHE = 'elbosc-v35';
+const CACHE = 'elbosc-v37';
 
 const SHELL = [
   './',
@@ -15,6 +15,7 @@ const SHELL = [
   './components/Breath.jsx',
   './components/Teacher.jsx',
   './components/Install.jsx',
+  './components/Voice.jsx',
   './privacitat.html',
   './components/Chat.jsx',
   './tweaks-panel.jsx',
@@ -26,6 +27,8 @@ const SHELL = [
   './data/backend.jsx',
   './data/sound.jsx',
   './data/asanas.jsx',
+  './data/asanas-ashtanga.jsx',
+  './data/voice.jsx',
   './data/i18n.jsx',
   './data/sequencer.jsx',
   './icons/icon-192.png',
